@@ -108,6 +108,7 @@ export class GuestsService {
         country: g.country,
         language: g.language,
         notes: g.notes,
+        passportLast4: g.passport_last4 ?? null,
         bookings: bookings.map((b) => ({ id: b.id, reference: b.reference, status: b.status, from: b.from_date, to: b.to_date, roomName: b.room_name, total: b.total, paid: b.paid, currency: b.currency })),
         discountCodes: codes.map(toCode),
         reviews: reviews.map(toReview),

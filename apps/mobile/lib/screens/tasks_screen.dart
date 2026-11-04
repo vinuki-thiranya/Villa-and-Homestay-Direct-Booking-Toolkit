@@ -14,13 +14,14 @@ const _typeIcons = {
 
 /// Today's task board (spec §3.6). Tick a task to mark it done; offline the list is read-only.
 class TasksScreen extends StatelessWidget {
-  const TasksScreen({super.key, required this.services, required this.onUnauthorized});
+  const TasksScreen({super.key, required this.services, required this.propertyId, required this.onUnauthorized});
   final AppServices services;
+  final String propertyId;
   final Future<void> Function() onUnauthorized;
 
   @override
   Widget build(BuildContext context) {
-    final pid = services.store.propertyId!;
+    final pid = propertyId;
     final today = isoDate(DateTime.now());
     return CachedView(
       cacheKey: 'tasks:$pid:$today',

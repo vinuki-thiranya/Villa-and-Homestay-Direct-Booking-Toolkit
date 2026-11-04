@@ -1,3 +1,4 @@
+import { reinstateProviderAction } from '../../../actions-r3';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { Check, Empty, Field, Section, Select, TextArea } from '@/components/owner/fields';
 import { money } from '@/lib/format';
@@ -83,8 +84,15 @@ export default async function AddOnSetupPage() {
                       · ★ {Number(p.rating).toFixed(1)} ({p.ratingCount})
                     </span>
                   )}
-                  {!p.active && <span className="pill bg-bad-bg text-bad">Inactive</span>}
+                  {!p.active && !p.removedAt && <span className="pill bg-bad-bg text-bad">Inactive</span>}
+                  {p.removedAt && <span className="pill bg-bad-bg text-bad">Removed by guest ratings</span>}
                 </div>
+                {p.removedAt && (
+                  <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl bg-bad-bg/60 p-3 text-sm">
+                    <p className="min-w-0 flex-1 text-bad">{p.removedReason ?? 'Average rating below 4.0'}. Their add-ons were switched off.</p>
+                    <ActionForm action={reinstateProviderAction.bind(null, p.id)} submitLabel="Reinstate" variant="secondary" inline confirm={`Reinstate ${p.name}? Their add-ons stay off until you switch them on.`} />
+                  </div>
+                )}
                 <p className="text-sm text-muted">{p.serviceTypes.map((t) => ADD_ON_CATEGORY_LABEL[t] ?? t).join(', ') || 'No services listed'}</p>
                 <details className="mt-2">
                   <summary className="cursor-pointer text-sm font-medium text-brand">Edit</summary>

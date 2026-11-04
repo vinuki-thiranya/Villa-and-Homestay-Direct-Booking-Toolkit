@@ -3,6 +3,19 @@ import { CommonModule } from './common/common.module.js';
 import { RevalidateService } from './common/revalidate.service.js';
 import { CONFIG, type AppConfig } from './config.js';
 import { AddOnsService } from './modules/addons/addons.service.js';
+import { AdminController } from './modules/admin/admin.controller.js';
+import { AdminService } from './modules/admin/admin.service.js';
+import { SupportService } from './modules/admin/support.service.js';
+import { BillingService } from './modules/billing/billing.service.js';
+import { BrandingService } from './modules/branding/branding.service.js';
+import { ChannelsService } from './modules/channels/channels.service.js';
+import { PortfolioService } from './modules/dashboard/portfolio.service.js';
+import { DocumentsService } from './modules/documents/documents.service.js';
+import { FlagsService } from './modules/flags/flags.service.js';
+import { InvoicesService } from './modules/invoices/invoices.service.js';
+import { OwnerR3Controller } from './modules/owner/owner-r3.controller.js';
+import { StatementsService } from './modules/statements/statements.service.js';
+import { TeamService } from './modules/team/team.service.js';
 import { AuthController } from './modules/auth/auth.controller.js';
 import { AuthService } from './modules/auth/auth.service.js';
 import { AvailabilityService } from './modules/availability/availability.service.js';
@@ -32,6 +45,10 @@ import { StorageService } from './modules/storage/storage.service.js';
 
 export const DOMAIN_PROVIDERS = [
   RevalidateService,
+  FlagsService,
+  DocumentsService,
+  BrandingService,
+  TeamService,
   InventoryService,
   CatalogService,
   PropertiesService,
@@ -54,6 +71,13 @@ export const DOMAIN_PROVIDERS = [
   AddOnsService,
   GuestsService,
   SequencesService,
+  InvoicesService,
+  StatementsService,
+  BillingService,
+  ChannelsService,
+  PortfolioService,
+  SupportService,
+  AdminService,
   JobsService,
   { provide: LLM_CLIENT, useFactory: (config: AppConfig) => llmClientFactory(config), inject: [CONFIG] },
 ];
@@ -68,6 +92,6 @@ export class DomainModule {}
 
 @Module({
   imports: [DomainModule],
-  controllers: [AuthController, PublicController, PublicR2Controller, WebhooksController, OwnerController, OwnerR2Controller],
+  controllers: [AuthController, PublicController, PublicR2Controller, WebhooksController, OwnerController, OwnerR2Controller, OwnerR3Controller, AdminController],
 })
 export class AppModule {}

@@ -29,7 +29,7 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 export const CANCELLATION_POLICIES = ['flexible', 'moderate', 'strict'] as const;
 export type CancellationPolicy = (typeof CANCELLATION_POLICIES)[number];
 
-export const RATE_PLAN_KINDS = ['seasonal', 'weekend', 'long_stay', 'last_minute'] as const;
+export const RATE_PLAN_KINDS = ['seasonal', 'weekend', 'long_stay', 'last_minute', 'monthly'] as const;
 export type RatePlanKind = (typeof RATE_PLAN_KINDS)[number];
 
 export const BOOKING_MODES = ['instant', 'request'] as const;
@@ -100,3 +100,42 @@ export const REPEAT_GUEST_CODE_AFTER_DAYS = 335;
 export const REPEAT_GUEST_CODE_VALID_DAYS = 90;
 /** WhatsApp customer-service window. */
 export const WHATSAPP_SERVICE_WINDOW_HOURS = 24;
+
+// ---------------- Release 3
+export const PLANS = ['basic', 'pro', 'pro_multi', 'manager'] as const;
+export type Plan = (typeof PLANS)[number];
+
+/**
+ * Spec §8 prices in LKR per month: a flat fee, or a percentage of direct-booking value instead.
+ * extraPropertyFee applies to every property from `extraFrom` on (Pro Multi: beyond the first;
+ * Manager: every managed property).
+ */
+export const PLAN_PRICING: Record<Plan, { flat: number; extraPropertyFee: number; extraFrom: number; pct: number; maxProperties: number | null }> = {
+  basic: { flat: 5000, extraPropertyFee: 0, extraFrom: 1, pct: 2.5, maxProperties: 1 },
+  pro: { flat: 10000, extraPropertyFee: 0, extraFrom: 1, pct: 2.5, maxProperties: 1 },
+  pro_multi: { flat: 15000, extraPropertyFee: 5000, extraFrom: 1, pct: 2.0, maxProperties: 5 },
+  manager: { flat: 25000, extraPropertyFee: 3000, extraFrom: 0, pct: 1.5, maxProperties: null },
+};
+
+/** Monthly platform fee in LKR for a flat plan with this many properties. */
+export function flatPlanFee(plan: Plan, properties: number): number {
+  const p = PLAN_PRICING[plan];
+  return p.flat + p.extraPropertyFee * Math.max(0, properties - p.extraFrom);
+}
+
+export const FEATURE_FLAGS = [
+  'ai_concierge',
+  'housekeeping',
+  'add_on_marketplace',
+  'guest_crm',
+  'long_stay',
+  'multi_property',
+  'owner_statements',
+  'white_label',
+  'ota_direct_api',
+] as const;
+export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
+
+export const UTILITY_METERS = ['electricity', 'water', 'gas', 'other'] as const;
+export const INVITE_ROLES = ['manager', 'staff'] as const;
+export const TICKET_STATUSES = ['open', 'pending', 'closed'] as const;

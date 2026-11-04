@@ -110,6 +110,17 @@ const STRINGS = {
 
 export type MessageKey = keyof (typeof STRINGS)['en'];
 
+export const MESSAGE_KEYS = Object.keys(STRINGS.en) as MessageKey[];
+
+/** Default text for a key (the admin translation editor shows these next to overrides). */
+export function defaultMessage(lang: Language, key: MessageKey): string {
+  return (STRINGS as Record<string, Record<MessageKey, string>>)[lang]?.[key] ?? STRINGS.en[key];
+}
+
+export function fillMessage(template: string, vars: Record<string, string | number> = {}): string {
+  return template.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? `{${k}}`));
+}
+
 export function t(lang: Language | string, key: MessageKey, vars: Record<string, string | number> = {}): string {
   const table = (STRINGS as Record<string, Record<MessageKey, string>>)[lang] ?? STRINGS.en;
   return table[key].replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? `{${k}}`));

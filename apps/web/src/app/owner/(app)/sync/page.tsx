@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { CopyButton } from '@/components/owner/CopyButton';
@@ -39,7 +40,12 @@ export default async function SyncPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Channels</h1>
-        <ActionForm action={syncNowAction.bind(null, property.id)} submitLabel="Sync now" pendingLabel="Syncing…" inline />
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/owner/sync/live" className="btn-secondary">
+            Live connection
+          </Link>
+          <ActionForm action={syncNowAction.bind(null, property.id)} submitLabel="Sync now" pendingLabel="Syncing…" inline />
+        </div>
       </div>
       <p className="text-sm text-muted">
         Calendars sync every 15 minutes. iCal never includes guest names, and Airbnb or Booking.com may take up to their own refresh time to pick up a change —

@@ -6,6 +6,8 @@ import { InventoryService } from '../inventory/inventory.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { OpsService } from '../ops/ops.service.js';
 import { SequencesService } from '../sequences/sequences.service.js';
+import { BillingService } from '../billing/billing.service.js';
+import { ChannelsService } from '../channels/channels.service.js';
 
 /** The recurring jobs. Each is safe to run concurrently with itself and idempotent. */
 @Injectable()
@@ -20,6 +22,8 @@ export class JobsService {
     private readonly notify: NotificationsService,
     private readonly ops: OpsService,
     private readonly sequences: SequencesService,
+    private readonly channels: ChannelsService,
+    private readonly billing: BillingService,
   ) {}
 
   /** Every minute: expire holds, abandon their pending bookings (spec §6 hold). */
@@ -66,6 +70,17 @@ export class JobsService {
     return this.sequences.repeatGuestCodes();
   }
 
+  /** Every minute: push queued availability to connectivity partners, then import new OTA bookings. */
+  async syncChannels(): Promise<void> {
+    await this.channels.pushAll();
+    await this.channels.pullAll();
+  }
+
+  /** Daily: last month's commission ledger rows (idempotent; effectively runs on the 1st). */
+  runBilling(): Promise<number> {
+    return this.billing.runDue();
+  }
+
   /** Daily. */
   refreshFx(): Promise<number> {
     return this.fx.refresh();
@@ -80,4 +95,6 @@ export const SCHEDULE = [
   { name: 'sequences', everyMs: 15 * 60_000, run: (j: JobsService) => j.runSequences() },
   { name: 'task-boards', everyMs: 60 * 60_000, run: (j: JobsService) => j.buildTaskBoards() },
   { name: 'repeat-guest-codes', everyMs: 24 * 3_600_000, run: (j: JobsService) => j.repeatGuestCodes() },
+  { name: 'channel-sync', everyMs: 60_000, run: (j: JobsService) => j.syncChannels() },
+  { name: 'billing-ledger', everyMs: 24 * 3_600_000, run: (j: JobsService) => j.runBilling() },
 ] as const;

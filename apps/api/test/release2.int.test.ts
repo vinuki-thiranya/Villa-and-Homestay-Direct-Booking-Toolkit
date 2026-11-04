@@ -6,6 +6,7 @@ import { AddOnsService } from '../src/modules/addons/addons.service.js';
 import { AvailabilityService } from '../src/modules/availability/availability.service.js';
 import { BookingsService } from '../src/modules/bookings/bookings.service.js';
 import { ConciergeService, type LlmClient } from '../src/modules/concierge/concierge.service.js';
+import { FlagsService } from '../src/modules/flags/flags.service.js';
 import { GuestsService } from '../src/modules/guests/guests.service.js';
 import { InboxService } from '../src/modules/inbox/inbox.service.js';
 import { NotificationsService } from '../src/modules/notifications/notifications.service.js';
@@ -107,6 +108,7 @@ describe('AI concierge (stubbed model)', () => {
       ctx.get(NotificationsService),
       ctx.app.get<AppConfig>(CONFIG),
       llm,
+      ctx.get(FlagsService),
     );
   }
 

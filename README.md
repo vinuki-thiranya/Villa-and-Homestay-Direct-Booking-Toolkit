@@ -48,7 +48,13 @@ to the API log instead of being sent. Without `REDIS_URL` the recurring jobs run
 To use Supabase instead of the embedded database, put the Singapore project's session-pooler URI in `DATABASE_URL`
 and run `npm run db:migrate`.
 
-Release 2 (WhatsApp inbox, AI concierge, housekeeping, add-ons, reviews, CRM) is described in [docs/plan.md §7](docs/plan.md).
+Release 2 (WhatsApp inbox, AI concierge, housekeeping, add-ons, reviews, CRM) is described in [docs/plan.md §7](docs/plan.md);
+Release 3 (team access, manager companies and owner statements, white label, long stays and invoices, OTA adapter,
+commission ledger, admin console) in [§8](docs/plan.md).
+
+Demo logins (dev OTP `123456`): owner `0770000000` (Villa Lagoon, Pro, simulated OTA connection), caretaker company
+`0770000001` (Manager plan, two owners and properties, white label), limited manager `0770000002`, StayDirect admin
+`0770000099` at `/admin`.
 Set `ANTHROPIC_API_KEY` and switch the concierge on under *Setup → Concierge* to try it; without a key, guest messages land in the inbox only.
 
 ## Tests
@@ -66,6 +72,7 @@ guarantees under test live in the database:
 - PayHere notifies are signature-verified and idempotent; a payment that arrives after the nights were resold is flagged for refund;
 - iCal import adds/releases OTA nights, records conflicts with direct bookings, and never releases nights on a failed fetch;
 - RLS hides other tenants' rows; payment rows are append-only.
+- Release 3: managers limited to their properties by RLS, invite links, plan flags and overrides, the OTA adapter (trigger-queued availability push, OTA booking import, closed dates refused, races recorded as conflicts, cancellations, idempotent revisions), monthly long-stay pricing with metered utilities and numbered append-only invoices, owner statement payout maths and re-issue, the commission ledger, provider auto-removal, admin/tenant token separation, locked template translations, white label.
 - Release 2: WhatsApp webhook signatures and duplicates, the 24-hour window, the AI concierge with a stubbed model (tool use, fallbacks, never books, escalation, monthly budget), discount codes, add-on commission split and job cards, review routing, repeat-guest codes, sequence send hours, the daily task board and the cleaner link; WhatsApp templates checked against Meta's rules.
 
 ## Deploy

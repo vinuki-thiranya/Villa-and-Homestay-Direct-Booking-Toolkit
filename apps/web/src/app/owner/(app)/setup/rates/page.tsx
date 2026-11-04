@@ -3,6 +3,7 @@ import { ActionForm } from '@/components/owner/ActionForm';
 import { Check, Empty, Field, Section, Select } from '@/components/owner/fields';
 import { fmtDate, money } from '@/lib/format';
 import { currentProperty, ownerApi, type OwnerRoom } from '@/lib/owner';
+import { getMe } from '@/lib/owner-r3';
 import { createRatePlanAction, deactivateRatePlanAction } from '../../../actions';
 
 const KIND_LABEL: Record<string, string> = {
@@ -10,6 +11,7 @@ const KIND_LABEL: Record<string, string> = {
   weekend: 'Weekday / weekend',
   long_stay: 'Long stay',
   last_minute: 'Last minute',
+  monthly: 'Monthly stay',
 };
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -17,6 +19,7 @@ function describe(p: PricingRatePlan, currency: string): string {
   const parts: string[] = [];
   if (p.startDate || p.endDate) parts.push(`${fmtDate(p.startDate)} – ${fmtDate(p.endDate)}`);
   if (p.weekdayMask !== 127) parts.push(WEEKDAYS.filter((_, i) => p.weekdayMask & (1 << i)).join(', '));
+  if (p.kind === 'monthly' && p.monthlyRate != null) parts.push(`${money(p.monthlyRate, currency)}/month · utilities ${p.utilities ?? 'included'}`);
   if (p.rate != null) parts.push(`${money(p.rate, currency)}/night`);
   if (p.adjustmentPct != null) parts.push(`${p.adjustmentPct > 0 ? '+' : ''}${p.adjustmentPct}%`);
   if (p.minStayNights) parts.push(`${p.minStayNights}+ nights`);
@@ -32,6 +35,7 @@ function describe(p: PricingRatePlan, currency: string): string {
 export default async function RatesPage() {
   const property = await currentProperty();
   if (!property) return null;
+  const me = await getMe();
   const [plans, rooms] = await Promise.all([
     ownerApi<(PricingRatePlan & { propertyId: string })[]>(`/properties/${property.id}/rate-plans`),
     ownerApi<OwnerRoom[]>(`/properties/${property.id}/rooms`),
@@ -78,6 +82,7 @@ export default async function RatesPage() {
                 ['weekend', 'Weekday / weekend'],
                 ['long_stay', 'Long-stay discount'],
                 ['last_minute', 'Last-minute discount'],
+                ...(me.flags.long_stay ? ([['monthly', 'Monthly stay (nomads)']] as [string, string][]) : []),
               ]}
             />
             <Field label="Priority" name="priority" type="number" min={0} max={100} defaultValue={10} hint="Higher wins when plans overlap" />
@@ -90,6 +95,22 @@ export default async function RatesPage() {
             <Field label="Long stay: from nights" name="minStayNights" type="number" min={2} hint="e.g. 7 or 28" />
             <Field label="Last minute: within days" name="withinDays" type="number" min={0} max={60} hint="e.g. 3" />
           </fieldset>
+
+          {me.flags.long_stay && (
+            <fieldset className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-3">
+              <legend className="px-1 text-sm font-semibold">Monthly stay (only for type “Monthly stay”)</legend>
+              <Field label={`Price for 30 nights (${property.baseCurrency})`} name="monthlyRate" type="number" min={0} step="0.01" hint="Stays of 28+ nights are priced pro rata" />
+              <Select
+                label="Utilities"
+                name="utilities"
+                options={[
+                  ['included', 'Included in the price'],
+                  ['metered', 'Billed from meter readings'],
+                ]}
+              />
+              <Field label="From nights" name="monthlyMinNights" type="number" min={2} max={365} defaultValue={28} />
+            </fieldset>
+          )}
 
           <fieldset className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-4">
             <legend className="px-1 text-sm font-semibold">When</legend>

@@ -42,7 +42,7 @@ const TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
 };
 
 export const BOOKING_LIST_SQL = `
-  select b.*, r.name as room_name, g.name as guest_name, g.phone as guest_phone, g.email as guest_email, p.paid
+  select b.*, r.name as room_name, g.name as guest_name, g.phone as guest_phone, g.email as guest_email, g.passport_last4, p.paid
     from booking b
     join room r on r.id = b.room_id
     left join guest g on g.id = b.guest_id
@@ -260,6 +260,8 @@ export class BookingsService {
       return {
         ...toOwnerBooking(b),
         specialRequests: b.special_requests,
+        guestId: b.guest_id,
+        passportLast4: b.passport_last4 ?? null,
         cancellationPolicy: b.cancellation_policy_snapshot?.policy ?? null,
         balanceDueDate: b.balance_due_date,
         quote: b.quote_snapshot,

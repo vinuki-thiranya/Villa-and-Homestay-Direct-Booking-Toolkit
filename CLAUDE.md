@@ -7,7 +7,8 @@ Start every session by reading this file, [docs/spec.md](docs/spec.md) (product)
 ## Layout
 - `apps/api` — NestJS REST API and BullMQ workers (`src/main.ts`, `src/worker.ts`). SQL migrations in `apps/api/migrations`.
 - `apps/web` — Next.js 16 App Router: guest sites (`/s/[site]`), owner web (`/owner`), marketing (`/`). Host routing in `src/proxy.ts`.
-- `apps/mobile` — Flutter owner app (Today, Tasks, Inbox; offline cache). `flutter test`, `flutter analyze`.
+- `apps/mobile` — Flutter owner app (Today, Tasks, Inbox, property switcher; offline cache). `flutter test`, `flutter analyze`.
+- `.claude/skills/` — vendored design skills (frontend-design, ui-ux-pro-max).
 - `packages/shared` — types, enums, zod schemas, pricing/date helpers shared by api and web. Build it before the apps (`npm run build -w @staydirect/shared`).
 
 ## Commands
@@ -31,6 +32,10 @@ Start every session by reading this file, [docs/spec.md](docs/spec.md) (product)
 11. Every migration touching `night_inventory`, `booking` or `payment` is flagged in the PR description for human review.
 12. **The AI concierge never books.** Its tools may read availability and prices, create booking links and escalate. Never give it a tool that writes `booking`, `hold`, `night_inventory` or `payment`.
 13. **WhatsApp:** free text only inside the 24-hour window; otherwise a template from `templates.ts` (generated from `packages/shared/src/i18n.ts`). Keep template text free of leading/trailing variables (a test enforces it).
+14. **Invoices, owner statements and the commission ledger are append-only** like payments: corrections are new rows with `supersedes_id`. Triggers enforce it.
+15. **Property access is enforced by RLS** (`property_scope`, fed by `AuthGuard` → request context → `withTenant`). New property-scoped tables must get the restrictive `property_scope` policy in their migration.
+16. **Gate plan features with `FlagsService.require()`** in the service, not only in the UI.
+17. **Design skills live in `.claude/skills/`** (frontend-design, ui-ux-pro-max — see its README). Start UI work by generating/reading the design system (`design-system/<project>/MASTER.md`).
 
 ## Conventions
 - API modules live in `apps/api/src/modules/<name>/`; SQL is written by hand with `pg` (`DbService.query/tx/withTenant`), no ORM.

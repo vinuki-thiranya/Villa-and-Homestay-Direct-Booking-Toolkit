@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
 import { CurrencySwitcher } from '@/components/guest/CurrencySwitcher';
 import { waLink } from '@/lib/format';
-import { siteContext } from '@/lib/site';
+import { siteContext, themeStyle } from '@/lib/site';
 
 export default async function SiteLayout({ children, params }: { children: React.ReactNode; params: Promise<{ site: string }> }) {
   const { site } = await params;
@@ -16,7 +16,7 @@ export default async function SiteLayout({ children, params }: { children: React
   ];
 
   return (
-    <div data-theme={p.theme} className="flex min-h-dvh flex-col bg-bg text-fg">
+    <div data-theme={p.theme} style={themeStyle(p)} className="flex min-h-dvh flex-col bg-bg text-fg">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-surface focus:px-4 focus:py-2">
         Skip to content
       </a>
@@ -77,12 +77,26 @@ export default async function SiteLayout({ children, params }: { children: React
                 Privacy notice
               </Link>
             </p>
-            <p>
-              Powered by{' '}
-              <a className="font-medium text-fg underline-offset-2 hover:underline" href="https://staydirect.lk" rel="noopener">
-                StayDirect LK
-              </a>
-            </p>
+            {p.whiteLabel ? (
+              p.brand?.displayName ? (
+                <p className="flex items-center gap-2 sm:justify-end">
+                  {p.brand.logoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element -- owner-supplied logo URL, any host
+                    <img src={p.brand.logoUrl} alt="" className="h-5 w-auto" loading="lazy" />
+                  )}
+                  <span>
+                    Managed by <span className="font-medium text-fg">{p.brand.displayName}</span>
+                  </span>
+                </p>
+              ) : null
+            ) : (
+              <p>
+                Powered by{' '}
+                <a className="font-medium text-fg underline-offset-2 hover:underline" href="https://staydirect.lk" rel="noopener">
+                  StayDirect LK
+                </a>
+              </p>
+            )}
           </div>
         </div>
       </footer>

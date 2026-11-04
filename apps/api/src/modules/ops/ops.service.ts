@@ -3,6 +3,7 @@ import { todayIn, type SessionUser } from '@staydirect/shared';
 import type pg from 'pg';
 import { DbService, type Row } from '../../common/db.service.js';
 import { CONFIG, type AppConfig } from '../../config.js';
+import { FlagsService } from '../flags/flags.service.js';
 import { WhatsAppChannel } from '../notifications/channels.js';
 import { CatalogService } from '../properties/catalog.service.js';
 import { StorageService } from '../storage/storage.service.js';
@@ -58,6 +59,7 @@ export class OpsService {
     private readonly whatsapp: WhatsAppChannel,
     private readonly storage: StorageService,
     @Inject(CONFIG) private readonly config: AppConfig,
+    private readonly flags: FlagsService,
   ) {}
 
   /** Base URL of the owner-facing web app pages that staff open (no login). */
@@ -189,6 +191,7 @@ export class OpsService {
       const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: p.timezone, hour: '2-digit', hourCycle: 'h23' }).format(now));
       if (hour < BOARD_HOUR) continue;
       const today = todayIn(p.timezone, now);
+      if (!(await this.flags.enabled(p.tenant_id, 'housekeeping'))) continue;
       try {
         if (await this.buildBoard(p, today)) built++;
       } catch (err) {
@@ -202,6 +205,7 @@ export class OpsService {
   async buildBoardNow(user: SessionUser, propertyId: string) {
     const owned = await this.db.withTenant(user.tenantId, (tx) => this.db.one(`select id from property where id = $1`, [propertyId], tx));
     if (!owned) throw new NotFoundException('Property not found');
+    await this.flags.require(user.tenantId, 'housekeeping');
     const p = (await this.db.one(`select * from property where id = $1`, [propertyId]))!;
     const date = todayIn(p.timezone);
     return { date, built: await this.buildBoard(p, date) };

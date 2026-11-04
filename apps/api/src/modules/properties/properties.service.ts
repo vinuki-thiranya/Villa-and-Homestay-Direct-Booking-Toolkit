@@ -1,7 +1,9 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   GatewayConfigSchema,
   MAX_ICAL_SOURCES_PER_ROOM,
+  PLAN_PRICING,
+  type Plan,
   type GatewayConfig,
   type PropertyUpsert,
   type RatePlanUpsert,
@@ -12,6 +14,7 @@ import { encryptJson } from '../../common/crypto.js';
 import { DbService, isUniqueViolation } from '../../common/db.service.js';
 import { RevalidateService } from '../../common/revalidate.service.js';
 import { CONFIG, type AppConfig } from '../../config.js';
+import { FlagsService } from '../flags/flags.service.js';
 import { CatalogService } from './catalog.service.js';
 import {
   columnsFor,
@@ -32,6 +35,7 @@ export class PropertiesService {
     private readonly catalog: CatalogService,
     private readonly revalidate: RevalidateService,
     @Inject(CONFIG) private readonly config: AppConfig,
+    private readonly flags: FlagsService,
   ) {}
 
   list(user: SessionUser) {
@@ -56,6 +60,15 @@ export class PropertiesService {
   }
 
   async create(user: SessionUser, input: PropertyUpsert) {
+    const existing = await this.db.one<{ n: number; plan: Plan }>(
+      `select (select count(*)::int from property where tenant_id = $1) as n, (select plan from tenant where id = $1) as plan`,
+      [user.tenantId],
+    );
+    if ((existing?.n ?? 0) >= 1) await this.flags.require(user.tenantId, 'multi_property');
+    const max = existing ? PLAN_PRICING[existing.plan]?.maxProperties : null;
+    if (max != null && (existing?.n ?? 0) >= max) {
+      throw new ForbiddenException({ message: `Your plan includes up to ${max} propert${max === 1 ? 'y' : 'ies'}. Upgrade to add more.`, code: 'plan_limit' });
+    }
     const { cols, params, placeholders } = columnsFor(input, PROPERTY_COLUMNS, 2);
     try {
       return await this.db.withTenant(user.tenantId, async (tx) => {
@@ -160,7 +173,8 @@ export class PropertiesService {
     });
   }
 
-  createRatePlan(user: SessionUser, propertyId: string, input: RatePlanUpsert) {
+  async createRatePlan(user: SessionUser, propertyId: string, input: RatePlanUpsert) {
+    if (input.kind === 'monthly') await this.flags.require(user.tenantId, 'long_stay');
     const { cols, params, placeholders } = columnsFor(input, RATE_PLAN_COLUMNS, 3);
     return this.db.withTenant(user.tenantId, async (tx) => {
       await this.requireProperty(tx, propertyId);
@@ -174,7 +188,8 @@ export class PropertiesService {
     });
   }
 
-  updateRatePlan(user: SessionUser, planId: string, input: RatePlanUpsert) {
+  async updateRatePlan(user: SessionUser, planId: string, input: RatePlanUpsert) {
+    if (input.kind === 'monthly') await this.flags.require(user.tenantId, 'long_stay');
     const { params, set } = columnsFor(input, RATE_PLAN_COLUMNS, 2);
     return this.db.withTenant(user.tenantId, async (tx) => {
       const before = await this.db.one(`select * from rate_plan where id = $1`, [planId], tx);

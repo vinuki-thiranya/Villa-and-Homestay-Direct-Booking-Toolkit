@@ -40,6 +40,8 @@ export function toPricingPlan(p: Row): PricingRatePlan {
     closedToDeparture: p.closed_to_departure,
     priority: p.priority,
     active: p.active,
+    monthlyRate: p.monthly_rate ?? null,
+    utilities: p.utilities ?? null,
   };
 }
 
@@ -211,6 +213,8 @@ export const RATE_PLAN_COLUMNS: Record<string, string> = {
   closedToDeparture: 'closed_to_departure',
   priority: 'priority',
   active: 'active',
+  monthlyRate: 'monthly_rate',
+  utilities: 'utilities',
 };
 
 /** Build "col1, col2" / "$n, $m" / params from an object using a column map. */

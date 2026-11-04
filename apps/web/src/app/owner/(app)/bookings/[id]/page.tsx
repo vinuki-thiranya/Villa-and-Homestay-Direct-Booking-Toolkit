@@ -7,6 +7,7 @@ import { Check, Field, Section, Select } from '@/components/owner/fields';
 import { ApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime, METHOD_LABEL, money, SOURCE_LABEL, waLink } from '@/lib/format';
 import { currentProperty, ownerApi } from '@/lib/owner';
+import { BookingDocuments } from '@/components/owner/BookingDocuments';
 import { OrderBadge } from '@/components/owner/OrderBadge';
 import type { AddOnOrder, OwnerAddOn } from '@/lib/owner-types';
 import { ownerOrderAction } from '../../../actions-r2';
@@ -37,9 +38,12 @@ interface PaymentRow {
 
 interface BookingDetail extends OwnerBookingRow {
   specialRequests: string;
+  guestId: string | null;
+  passportLast4: string | null;
   cancellationPolicy: string | null;
   balanceDueDate: string | null;
   cancelReason: string | null;
+  quote: { monthly?: { planId: string; name: string; utilities: 'included' | 'metered' } | null } | null;
   payments: PaymentRow[];
   history: { from_status: string | null; to_status: string; actor: string; note: string | null; at: string }[];
 }
@@ -278,6 +282,16 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           </ul>
         </Section>
       )}
+
+      <BookingDocuments
+        bookingId={b.id}
+        status={b.status}
+        currency={b.currency}
+        from={b.from}
+        to={b.to}
+        monthly={b.quote?.monthly ?? null}
+        guest={b.guestId ? { id: b.guestId, passportLast4: b.passportLast4 } : null}
+      />
 
       <Section title="Payments">
         {b.payments.length === 0 ? (

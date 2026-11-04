@@ -214,6 +214,38 @@ export class InventoryService {
     }
   }
 
+  /**
+   * Reserve the nights of an OTA booking received through a connectivity partner. Nights already
+   * taken are returned (the caller records sync conflicts); the free ones are reserved.
+   */
+  async reserveOta(
+    tx: pg.PoolClient,
+    args: { tenantId: string; roomId: string; bookingId: string; from: string; to: string; source: string },
+  ): Promise<OccupiedNight[]> {
+    const taken: OccupiedNight[] = [];
+    for (const date of nightsBetween(args.from, args.to)) {
+      try {
+        await this.withSavepoint(tx, () =>
+          this.db.query(
+            `insert into night_inventory (tenant_id, room_id, date, status, source, booking_id) values ($1, $2, $3, 'reserved', $4, $5)`,
+            [args.tenantId, args.roomId, date, args.source, args.bookingId],
+            tx,
+          ),
+        );
+      } catch (err) {
+        if (!isUniqueViolation(err)) throw err;
+        const occupant = await this.db.one<OccupiedNight>(
+          `select room_id, date, status, source, booking_id, ical_source_id from night_inventory
+            where room_id = $1 and date = $2 and status in ('held', 'reserved', 'blocked')`,
+          [args.roomId, date],
+          tx,
+        );
+        if (occupant && occupant.booking_id !== args.bookingId) taken.push(occupant);
+      }
+    }
+    return taken;
+  }
+
   async releaseOtaNights(tx: pg.PoolClient, ids: number[]): Promise<void> {
     if (ids.length === 0) return;
     await this.db.query(

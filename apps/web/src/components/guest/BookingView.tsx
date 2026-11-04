@@ -7,6 +7,7 @@ import type { PublicBooking } from '@staydirect/shared';
 import { publicApi } from '@/lib/client-api';
 import { fmtDate, formatMoney, nightsLabel, waLink } from '@/lib/format';
 import { AddOnsPanel } from './AddOnsPanel';
+import { GuestInvoices } from './GuestInvoices';
 import { PaymentPanel } from './PaymentPanel';
 import { Steps } from './Steps';
 
@@ -193,6 +194,7 @@ function Confirmation({ b, reference, token, onPaid }: { b: PublicBooking; refer
           <strong className="text-fg">Cancellation policy:</strong> {b.cancellationPolicyText}
         </p>
       </div>
+      {['confirmed', 'checked_in', 'checked_out'].includes(b.status) && <GuestInvoices reference={reference} token={token} />}
       {(b.status === 'confirmed' || b.status === 'checked_in') && <AddOnsPanel reference={reference} token={token} onOrdered={onPaid} />}
       {b.balance > 0 && b.status !== 'checked_out' && b.paymentMethods.length > 0 && (
         <details className="card p-5">

@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { OwnerNav } from '@/components/owner/OwnerNav';
+import { hiddenNav } from '@/components/owner/nav-items';
+import { getMe } from '@/lib/owner-r3';
 import { PropertyFields } from '@/components/owner/PropertyFields';
 import { currentProperty, getToken, listProperties, ownerApi } from '@/lib/owner';
 import type { Conversation } from '@/lib/owner-types';
@@ -14,7 +16,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
   if (!(await getToken())) redirect('/owner/login');
-  const [properties, property] = await Promise.all([listProperties(), currentProperty()]);
+  const [properties, property, me] = await Promise.all([listProperties(), currentProperty(), getMe()]);
+  const hidden = hiddenNav({ role: me.user.role, properties: properties.length, flags: me.flags });
   const waiting = property ? await inboxWaiting(property.id) : 0;
   const badges: Record<string, number> = waiting ? { '/owner/inbox': waiting } : {};
 
@@ -25,7 +28,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
           <Link href="/owner" className="mb-6 px-3 font-display text-lg font-semibold">
             StayDirect <span className="text-brand">LK</span>
           </Link>
-          {property && <OwnerNav variant="side" badges={badges} />}
+          {property && <OwnerNav variant="side" badges={badges} hidden={hidden} />}
           <form action={logoutAction} className="mt-auto">
             <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted hover:bg-surface-2">
               <LogOut aria-hidden className="h-5 w-5" /> Log out
@@ -75,7 +78,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
           </main>
         </div>
       </div>
-      {property && <OwnerNav variant="bottom" badges={badges} />}
+      {property && <OwnerNav variant="bottom" badges={badges} hidden={hidden} />}
     </div>
   );
 }

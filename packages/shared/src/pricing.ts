@@ -37,6 +37,10 @@ export interface PricingRatePlan {
   closedToDeparture: boolean;
   priority: number;
   active: boolean;
+  /** monthly: price for 30 nights; stays of at least minStayNights (default 28) are priced pro rata. */
+  monthlyRate?: number | null;
+  /** monthly: whether electricity/water are included or billed from meter readings. */
+  utilities?: 'included' | 'metered' | null;
 }
 
 export interface PricingDefaults {
@@ -89,7 +93,23 @@ export interface StayQuote {
   cancellationPolicy: CancellationPolicy;
   minNights: number;
   ratePlanId: string | null;
+  /** Set when a monthly (long-stay) plan priced the whole stay. */
+  monthly: { planId: string; name: string; utilities: 'included' | 'metered' } | null;
   violations: StayViolation[];
+}
+
+export const MONTHLY_DEFAULT_MIN_NIGHTS = 28;
+
+/** The monthly plan that prices this stay, if any: highest priority among those that qualify. */
+export function monthlyPlanFor(plans: PricingRatePlan[], roomId: string, from: string, nights: number): PricingRatePlan | null {
+  let best: PricingRatePlan | null = null;
+  for (const p of plans) {
+    if (!p.active || p.kind !== 'monthly' || p.monthlyRate == null) continue;
+    if (!appliesToRoom(p, roomId) || !coversDate(p, from)) continue;
+    if (nights < (p.minStayNights ?? MONTHLY_DEFAULT_MIN_NIGHTS)) continue;
+    if (!best || p.priority >= best.priority) best = p;
+  }
+  return best;
 }
 
 function appliesToRoom(plan: PricingRatePlan, roomId: string): boolean {
@@ -133,12 +153,15 @@ export function priceStay(input: PriceStayInput): StayQuote {
   const baseMinor = toMinor(room.baseRate);
   const extraMinor = toMinor(room.extraGuestRate) * extraGuests;
 
+  const monthlyPlan = monthlyPlanFor(plans, room.id, from, nightDates.length);
+  const monthlyNightMinor = monthlyPlan ? Math.round(toMinor(monthlyPlan.monthlyRate!) / 30) : 0;
   const nights: PricedNight[] = [];
   let roomSubtotal = 0;
   for (const date of nightDates) {
-    const plan = nightlyPlanFor(plans, room.id, date);
+    const plan = monthlyPlan ?? nightlyPlanFor(plans, room.id, date);
     let rate = baseMinor;
-    if (plan?.rate != null) rate = toMinor(plan.rate);
+    if (monthlyPlan) rate = monthlyNightMinor;
+    else if (plan?.rate != null) rate = toMinor(plan.rate);
     else if (plan?.adjustmentPct != null) rate = baseMinor + pctOf(baseMinor, plan.adjustmentPct);
     roomSubtotal += rate;
     nights.push({ date, rate: fromMinor(rate), ratePlanId: plan?.id ?? null });
@@ -146,7 +169,7 @@ export function priceStay(input: PriceStayInput): StayQuote {
   const extraGuestTotal = extraMinor * nightDates.length;
 
   // Rules come from the plan governing the arrival night, falling back to property defaults.
-  const arrivalPlan = nightDates.length ? nightlyPlanFor(plans, room.id, from) : null;
+  const arrivalPlan = monthlyPlan ?? (nightDates.length ? nightlyPlanFor(plans, room.id, from) : null);
   const minNights = Math.max(room.minNights, arrivalPlan?.minNights ?? 0);
   if (nightDates.length && nightDates.length < minNights) violations.push('min_nights');
   if (room.maxNights && nightDates.length > room.maxNights) violations.push('max_nights');
@@ -160,7 +183,8 @@ export function priceStay(input: PriceStayInput): StayQuote {
   // Stay-level discounts: the single most generous applicable long-stay or last-minute plan.
   const leadDays = diffDays(today, from);
   let discountPlan: PricingRatePlan | null = null;
-  for (const p of plans) {
+  // A monthly plan is already the long-stay price: it does not stack with stay-level discounts.
+  for (const p of monthlyPlan ? [] : plans) {
     if (!p.active || p.adjustmentPct == null || !appliesToRoom(p, room.id) || !coversDate(p, from)) continue;
     const eligible =
       (p.kind === 'long_stay' && nightDates.length >= (p.minStayNights ?? Infinity)) ||
@@ -193,6 +217,7 @@ export function priceStay(input: PriceStayInput): StayQuote {
     cancellationPolicy: arrivalPlan?.cancellationPolicy ?? defaults.cancellationPolicy,
     minNights,
     ratePlanId: arrivalPlan?.id ?? null,
+    monthly: monthlyPlan ? { planId: monthlyPlan.id, name: monthlyPlan.name, utilities: monthlyPlan.utilities ?? 'included' } : null,
     violations,
   };
 }

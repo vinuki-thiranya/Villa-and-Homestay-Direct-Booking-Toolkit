@@ -30,7 +30,10 @@ const PHOTOS = [
   photo('photo-1584132967334-10e028bd69f7'),
 ];
 
-export async function seed(databaseUrl: string, log: (s: string) => void = console.log): Promise<{ propertyId: string; roomIds: string[]; tenantId: string }> {
+export async function seed(
+  databaseUrl: string,
+  log: (s: string) => void = console.log,
+): Promise<{ propertyId: string; roomIds: string[]; tenantId: string; managerTenantId: string; managerPropertyIds: string[] }> {
   const db = new pg.Client({
     connectionString: databaseUrl,
     ssl: /supabase|sslmode=require/.test(databaseUrl) ? { rejectUnauthorized: false } : undefined,
@@ -39,8 +42,8 @@ export async function seed(databaseUrl: string, log: (s: string) => void = conso
   pg.types.setTypeParser(1082, (v) => v);
   try {
     await db.query('begin');
-    const old = await db.query(`select tenant_id from app_user where phone = $1`, [DEMO_PHONE]);
-    if (old.rows[0]) await wipeTenant(db, old.rows[0].tenant_id);
+    const old = await db.query(`select distinct tenant_id from app_user where phone = any($1)`, [[DEMO_PHONE, MANAGER_PHONE, MANAGER_STAFF_PHONE]]);
+    for (const r of old.rows) await wipeTenant(db, r.tenant_id);
 
     const tenant = (await db.query(`insert into tenant (name, plan, billing_status) values ('Nimali Perera', 'pro', 'active') returning id`)).rows[0];
     await db.query(`insert into app_user (tenant_id, phone, email, name, role) values ($1, $2, 'owner@villalagoon.example', 'Nimali Perera', 'owner')`, [tenant.id, DEMO_PHONE]);
@@ -178,10 +181,11 @@ export async function seed(databaseUrl: string, log: (s: string) => void = conso
     );
 
     await seedRelease2(db, { tenantId: tenant.id, propertyId: property.id, roomIds, bookingIds, guestIds, today });
+    const r3 = await seedRelease3(db, { tenantId: tenant.id, propertyId: property.id }, today);
 
     await db.query('commit');
-    log(`seeded ${DEMO_SLUG}: 6 rooms, ${plans.length} rate plans, 3 bookings. Owner login ${DEMO_PHONE} (dev OTP from OTP_DEV_CODE).`);
-    return { propertyId: property.id, roomIds, tenantId: tenant.id };
+    log(`seeded ${DEMO_SLUG}: 6 rooms, ${plans.length} rate plans, 3 bookings. Owner login ${DEMO_PHONE} (dev OTP from OTP_DEV_CODE). Manager company ${MANAGER_PHONE}, limited manager ${MANAGER_STAFF_PHONE}, admin ${ADMIN_PHONE}.`);
+    return { propertyId: property.id, roomIds, tenantId: tenant.id, ...r3 };
   } catch (err) {
     await db.query('rollback');
     throw err;
@@ -311,20 +315,121 @@ async function seedRelease2(
 }
 
 /** Remove a tenant's data in dependency order (demo reset only — money triggers are bypassed by dropping rows as owner). */
+const APPEND_ONLY = [
+  ['payment', 'trg_payment_append_only'],
+  ['audit_log', 'trg_audit_append_only'],
+  ['invoice', 'trg_invoice_append_only'],
+  ['commission_ledger', 'trg_ledger_append_only'],
+  ['owner_statement', 'trg_owner_statement_append_only'],
+];
+
 async function wipeTenant(db: pg.Client, tenantId: string) {
-  await db.query(`alter table payment disable trigger trg_payment_append_only`);
-  await db.query(`alter table audit_log disable trigger trg_audit_append_only`);
-  for (const t of ['payment', 'night_inventory', 'sync_conflict', 'hold', 'booking_status_log', 'message', 'audit_log', 'add_on_order', 'review',
-                   'task', 'task_board_run', 'sequence_send', 'conversation', 'quick_reply', 'knowledge_entry', 'ai_usage', 'sequence']) {
+  for (const [table, trigger] of APPEND_ONLY) await db.query(`alter table ${table} disable trigger ${trigger}`);
+  for (const t of ['payment', 'utility_reading', 'owner_statement', 'commission_ledger', 'channel_ari_queue', 'channel_event', 'channel_connection',
+                   'night_inventory', 'sync_conflict', 'hold', 'booking_status_log', 'message', 'audit_log', 'add_on_order', 'review',
+                   'task', 'task_board_run', 'sequence_send', 'conversation', 'quick_reply', 'knowledge_entry', 'ai_usage', 'sequence',
+                   'invoice', 'invoice_counter', 'user_property', 'invite', 'ticket_message', 'support_ticket', 'feature_flag_override', 'subscription']) {
     await db.query(`delete from ${t} where tenant_id = $1`, [tenantId]);
   }
-  for (const t of ['booking', 'discount_code', 'guest', 'staff', 'add_on', 'provider', 'ical_source', 'rate_plan', 'room', 'property', 'app_user']) {
+  for (const t of ['booking', 'discount_code', 'guest', 'staff', 'add_on', 'provider', 'ical_source', 'rate_plan', 'room', 'property',
+                   'property_owner', 'app_user']) {
     await db.query(`delete from ${t} where tenant_id = $1`, [tenantId]);
   }
   await db.query(`delete from webhook_event where tenant_id = $1`, [tenantId]);
   await db.query(`delete from tenant where id = $1`, [tenantId]);
-  await db.query(`alter table payment enable trigger trg_payment_append_only`);
-  await db.query(`alter table audit_log enable trigger trg_audit_append_only`);
+  for (const [table, trigger] of APPEND_ONLY) await db.query(`alter table ${table} enable trigger ${trigger}`);
+}
+
+export const MANAGER_PHONE = '+94770000001';
+export const MANAGER_STAFF_PHONE = '+94770000002';
+export const ADMIN_PHONE = '+94770000099';
+
+/**
+ * Release 3 demo: a Manager-plan caretaker company with two absent owners and two properties,
+ * a manager limited to one property, a simulated OTA connection on Villa Lagoon, and a platform admin.
+ */
+async function seedRelease3(db: pg.Client, villa: { tenantId: string; propertyId: string }, today: string) {
+  await db.query(`insert into subscription (tenant_id, plan, billing_model, status) values ($1, 'pro', 'flat', 'active')`, [villa.tenantId]);
+  // Villa Lagoon pays for the direct OTA API (paid extra) and is connected through the simulated partner.
+  await db.query(`insert into feature_flag_override (tenant_id, key, enabled, updated_by) values ($1, 'ota_direct_api', true, 'seed')`, [villa.tenantId]);
+  const rooms = (await db.query(`select id, name from room where property_id = $1 order by sort_order`, [villa.propertyId])).rows;
+  const roomMap = Object.fromEntries(rooms.map((r, i) => [r.id, `R${i + 1}-${String(r.name).toUpperCase().replace(/[^A-Z0-9]+/g, '').slice(0, 10)}`]));
+  await db.query(
+    `insert into channel_connection (tenant_id, property_id, partner, external_property_id, room_map, channels, needs_full_push)
+     values ($1, $2, 'simulated', 'SD-villa-lagoon', $3, '{booking_com}', true)`,
+    [villa.tenantId, villa.propertyId, JSON.stringify(roomMap)],
+  );
+  await db.query(
+    `insert into rate_plan (tenant_id, property_id, name, kind, monthly_rate, min_stay_nights, utilities, deposit_pct, priority)
+     values ($1, $2, 'Nomad month', 'monthly', 1500, 28, 'metered', 30, 30)`,
+    [villa.tenantId, villa.propertyId],
+  );
+
+  await db.query(`insert into platform_admin (phone, name) values ($1, 'StayDirect Ops') on conflict (phone) do nothing`, [ADMIN_PHONE]);
+
+  const t = (await db.query(`insert into tenant (name, type, plan, billing_status) values ('Southern Coast Caretakers', 'manager_company', 'manager', 'active') returning id`)).rows[0];
+  await db.query(`insert into subscription (tenant_id, plan, billing_model, status) values ($1, 'manager', 'flat', 'active')`, [t.id]);
+  await db.query(`update tenant set brand = $2 where id = $1`, [
+    t.id,
+    JSON.stringify({ displayName: 'Southern Coast Stays', logoUrl: null, primaryColor: '#7c2d12', accentColor: '#0e7490', supportEmail: 'hello@southerncoast.example' }),
+  ]);
+  await db.query(`insert into app_user (tenant_id, phone, name, role) values ($1, $2, 'Dilan Jayasuriya', 'owner')`, [t.id, MANAGER_PHONE]);
+  const ayesha = (await db.query(
+    `insert into property_owner (tenant_id, name, email, phone, management_fee_pct) values ($1, 'Ayesha Fernando', 'ayesha@example.lk', '+94771234001', 20) returning id`,
+    [t.id],
+  )).rows[0];
+  const webers = (await db.query(
+    `insert into property_owner (tenant_id, name, email, phone, management_fee_pct) values ($1, 'Mark and Julia Weber', 'webers@example.de', '+491709990001', 18) returning id`,
+    [t.id],
+  )).rows[0];
+  const homes = [
+    { name: 'Tangalle Beach House', slug: 'tangalle-beach-house', owner: ayesha.id, area: 'Tangalle', theme: 'surf', rooms: [['Sea View Room', 95], ['Garden Room', 70], ['Family Suite', 130]] },
+    { name: 'Weligama Surf Lodge', slug: 'weligama-surf-lodge', owner: webers.id, area: 'Weligama', theme: 'jungle', rooms: [['Board Room', 45], ['Lodge Double', 60]] },
+  ] as const;
+  const propertyIds: string[] = [];
+  for (const h of homes) {
+    const p = (await db.query(
+      `insert into property (tenant_id, name, slug, type, description, address, area, base_currency, owner_id, theme, photos, host_name, whatsapp_number)
+       values ($1, $2, $3, 'villa', $4, $5, $6, 'USD', $7, $8, '{}', 'Dilan', '+94770000001') returning id`,
+      [t.id, h.name, h.slug, `${h.name}, managed by Southern Coast Stays.`, `${h.area}, Southern Province, Sri Lanka`, h.area, h.owner, h.theme],
+    )).rows[0];
+    propertyIds.push(p.id);
+    for (const [i, [name, rate]] of h.rooms.entries()) {
+      const room = (await db.query(
+        `insert into room (tenant_id, property_id, name, max_guests, base_rate, sort_order) values ($1, $2, $3, 3, $4, $5) returning id`,
+        [t.id, p.id, name, rate, i],
+      )).rows[0];
+      if (i === 0) {
+        // A confirmed direct stay this month for the statements, paid in full.
+        const g = (await db.query(`insert into guest (tenant_id, name, email, country) values ($1, $2, $3, 'GB') returning id`, [t.id, `Guest of ${h.area}`, `guest.${h.slug}@example.com`])).rows[0];
+        const from = `${today.slice(0, 8)}02`;
+        const to = `${today.slice(0, 8)}06`;
+        const b = (await db.query(
+          `insert into booking (tenant_id, property_id, room_id, guest_id, reference, from_date, to_date, guests, status, source, base_amount, total, currency, deposit_due)
+           values ($1, $2, $3, $4, $5, $6, $7, 2, 'checked_out', 'direct', $8, $8, 'USD', $8) returning id`,
+          [t.id, p.id, room.id, g.id, `SD-MGR${propertyIds.length}`, from, to, Number(rate) * 4],
+        )).rows[0];
+        await db.query(
+          `insert into night_inventory (tenant_id, room_id, date, status, source, booking_id)
+           select $1, $2, d::date, 'reserved', 'direct', $3 from generate_series($4::date, $5::date - 1, interval '1 day') d`,
+          [t.id, room.id, b.id, from, to],
+        );
+        await db.query(
+          `insert into payment (tenant_id, booking_id, amount, currency, base_amount, method, status, confirmed_by, confirmed_at)
+           values ($1, $2, $3, 'USD', $3, 'bank', 'confirmed', 'seed', now())`,
+          [t.id, b.id, Number(rate) * 4],
+        );
+      }
+    }
+    await db.query(
+      `insert into task (tenant_id, property_id, date, type, title, cost, status) values ($1, $2, $3, 'maintenance', 'Pool pump service', 40, 'done')`,
+      [t.id, p.id, `${today.slice(0, 8)}03`],
+    );
+  }
+  // Chaminda manages only the Weligama lodge.
+  const staff = (await db.query(`insert into app_user (tenant_id, phone, name, role) values ($1, $2, 'Chaminda Silva', 'manager') returning id`, [t.id, MANAGER_STAFF_PHONE])).rows[0];
+  await db.query(`insert into user_property (tenant_id, user_id, property_id) values ($1, $2, $3)`, [t.id, staff.id, propertyIds[1]]);
+  return { managerTenantId: t.id, managerPropertyIds: propertyIds };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

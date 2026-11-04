@@ -70,6 +70,15 @@ export class IcalService {
     );
     if (!src) throw new NotFoundException('Calendar import not found');
     const base = { sourceId, added: 0, released: 0, conflicts: 0 };
+    // A live two-way connection already brings this channel's bookings with guest details.
+    const live = await this.db.one(
+      `select 1 from channel_connection where property_id = $1 and status = 'active' and $2 = any(channels)`,
+      [src.property_id, src.channel],
+    );
+    if (live) {
+      await this.db.query(`update ical_source set last_fetch_at = now(), last_status = 'skipped_direct_api' where id = $1`, [sourceId]);
+      return { ...base, ok: true, skipped: true };
+    }
 
     let text: string;
     let events;
