@@ -14,6 +14,13 @@ export function StatusBadge({ status }: { status: string }) {
   return <span className={`pill ${tone}`}>{STATUS_LABEL[status] ?? status}</span>;
 }
 
+/** Money state in one glance: green paid, red anything still owed (spec Prompt 5 owner pass). */
+export function PaidPill({ status, balance, paid, currency }: { status: string; balance: number; paid: number; currency: string }) {
+  if (status === 'cancelled' || status === 'abandoned') return <span className="pill bg-surface-2 text-muted">{STATUS_LABEL[status]}</span>;
+  if (balance <= 0) return <span className="pill bg-ok-bg text-ok">Paid</span>;
+  return <span className="pill bg-bad-bg text-bad">{paid > 0 ? `Due ${money(balance, currency)}` : 'Unpaid'}</span>;
+}
+
 /** Compact, tappable booking rows: guest, room, dates, money state. */
 export function BookingList({ rows, empty = 'Nothing here.' }: { rows: OwnerBookingRow[]; empty?: string }) {
   if (rows.length === 0) return <p className="py-3 text-sm text-muted">{empty}</p>;
@@ -21,7 +28,7 @@ export function BookingList({ rows, empty = 'Nothing here.' }: { rows: OwnerBook
     <ul className="divide-y divide-line">
       {rows.map((b) => (
         <li key={b.id}>
-          <Link href={`/owner/bookings/${b.id}`} className="flex items-center gap-3 py-3 hover:bg-surface-2/60">
+          <Link href={`/owner/bookings/${b.id}`} className="flex min-h-14 items-center gap-3 py-3 hover:bg-surface-2/60">
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">
                 {b.guestName ?? SOURCE_LABEL[b.source] ?? 'Guest'} <span className="text-sm font-normal text-muted">· {b.roomName}</span>
@@ -33,15 +40,7 @@ export function BookingList({ rows, empty = 'Nothing here.' }: { rows: OwnerBook
             </div>
             <div className="flex flex-col items-end gap-1 text-right">
               <span className="text-sm font-semibold">{money(b.total, b.currency)}</span>
-              <span className={`pill ${b.status === 'cancelled' || b.status === 'abandoned' ? 'bg-surface-2 text-muted' : b.balance <= 0 ? 'bg-ok-bg text-ok' : b.paid > 0 ? 'bg-warn-bg text-warn' : 'bg-bad-bg text-bad'}`}>
-                {b.status === 'cancelled' || b.status === 'abandoned'
-                  ? STATUS_LABEL[b.status]
-                  : b.balance <= 0
-                    ? 'Paid'
-                    : b.paid > 0
-                      ? `Due ${money(b.balance, b.currency)}`
-                      : 'Unpaid'}
-              </span>
+              <PaidPill status={b.status} balance={b.balance} paid={b.paid} currency={b.currency} />
             </div>
           </Link>
         </li>

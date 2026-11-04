@@ -22,8 +22,8 @@ export type NavItem = { href: string; label: string; icon: typeof Home; exact?: 
 /** Everything, for the desktop sidebar and the "More" page. */
 export const NAV_ITEMS: NavItem[] = [
   { href: '/owner', label: 'Today', icon: Home, exact: true },
-  { href: '/owner/inbox', label: 'Inbox', icon: MessageCircle },
   { href: '/owner/bookings', label: 'Bookings', icon: ListChecks },
+  { href: '/owner/inbox', label: 'Inbox', icon: MessageCircle },
   { href: '/owner/tasks', label: 'Tasks', icon: ClipboardCheck },
   { href: '/owner/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/owner/add-ons', label: 'Add-ons', icon: Sparkles },

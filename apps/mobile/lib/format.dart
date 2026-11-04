@@ -30,3 +30,14 @@ String ago(DateTime t, [DateTime? now]) {
   if (diff.inDays < 1) return '${diff.inHours} h ago';
   return '${diff.inDays} d ago';
 }
+
+const _channelLabels = {
+  'airbnb': 'Airbnb',
+  'booking_com': 'Booking.com',
+  'agoda': 'Agoda',
+  'vrbo': 'Vrbo',
+  'other': 'Other calendar',
+};
+
+/// Human name for an OTA channel key from the API.
+String channelLabel(String? key) => _channelLabels[key] ?? key ?? 'Calendar';

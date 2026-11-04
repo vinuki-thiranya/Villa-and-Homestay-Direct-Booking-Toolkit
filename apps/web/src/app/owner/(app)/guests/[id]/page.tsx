@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ActionForm } from '@/components/owner/ActionForm';
-import { StatusBadge } from '@/components/owner/BookingList';
+import { PaidPill, StatusBadge } from '@/components/owner/BookingList';
 import { Stars } from '@/components/Stars';
 import { Section, TextArea } from '@/components/owner/fields';
 import { ApiError } from '@/lib/api';
@@ -63,6 +63,7 @@ export default async function GuestPage({ params }: { params: Promise<{ id: stri
                   {money(Number(b.paid), b.currency)} / {money(Number(b.total), b.currency)}
                 </span>
                 <StatusBadge status={b.status} />
+                <PaidPill status={b.status} balance={Number(b.total) - Number(b.paid)} paid={Number(b.paid)} currency={b.currency} />
               </Link>
             </li>
           ))}

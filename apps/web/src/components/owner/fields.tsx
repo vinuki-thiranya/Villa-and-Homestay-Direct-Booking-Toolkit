@@ -78,9 +78,9 @@ export function Check({ label, name, defaultChecked, value }: { label: string; n
   );
 }
 
-export function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+export function Section({ id, title, children, action }: { id?: string; title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <section className="card p-4 sm:p-5">
+    <section id={id} className="card scroll-mt-20 p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold">{title}</h2>
         {action}

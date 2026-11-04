@@ -7,6 +7,7 @@ import { OwnerNav } from '@/components/owner/OwnerNav';
 import { hiddenNav } from '@/components/owner/nav-items';
 import { getMe } from '@/lib/owner-r3';
 import { PropertyFields } from '@/components/owner/PropertyFields';
+import { SyncIndicator } from '@/components/owner/SyncIndicator';
 import { currentProperty, getToken, listProperties, ownerApi } from '@/lib/owner';
 import type { Conversation } from '@/lib/owner-types';
 import { createPropertyAction, logoutAction, selectPropertyAction } from '../actions';
@@ -37,26 +38,29 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
         </aside>
 
         <div className="min-w-0 flex-1 pb-24 md:pb-10">
-          <header className="flex items-center gap-3 border-b border-line px-4 py-3">
+          <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-bg/95 px-4 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] backdrop-blur">
             {properties.length > 1 && property ? (
-              <form action={selectPropertyAction} className="flex items-center gap-2">
+              <form action={selectPropertyAction} className="flex min-w-0 items-center gap-2">
                 <label htmlFor="prop" className="sr-only">
                   Property
                 </label>
-                <select id="prop" name="propertyId" defaultValue={property.id} className="field min-h-9 py-1 text-sm font-semibold">
+                <select id="prop" name="propertyId" defaultValue={property.id} className="field min-h-11 min-w-0 max-w-[11rem] truncate py-1 text-sm font-semibold sm:max-w-none">
                   {properties.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
                     </option>
                   ))}
                 </select>
-                <button className="btn-secondary min-h-9 px-3">Switch</button>
+                <button className="btn-secondary min-h-11 px-3">Switch</button>
               </form>
             ) : (
-              <p className="font-semibold">{property?.name ?? 'Welcome'}</p>
+              <p className="min-w-0 truncate font-semibold">{property?.name ?? 'Welcome'}</p>
             )}
-            <form action={logoutAction} className="ml-auto md:hidden">
-              <button className="flex min-h-9 items-center gap-1 text-sm text-muted" aria-label="Log out">
+            <div className="ml-auto flex items-center gap-1">
+              {property && <SyncIndicator propertyId={property.id} />}
+            </div>
+            <form action={logoutAction} className="md:hidden">
+              <button className="flex h-11 w-11 items-center justify-center text-sm text-muted" aria-label="Log out">
                 <LogOut aria-hidden className="h-4 w-4" />
               </button>
             </form>

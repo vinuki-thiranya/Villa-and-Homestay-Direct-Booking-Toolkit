@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { OwnerBookingRow } from '@staydirect/shared';
 import { ActionForm } from '@/components/owner/ActionForm';
-import { StatusBadge } from '@/components/owner/BookingList';
+import { PaidPill, StatusBadge } from '@/components/owner/BookingList';
 import { Check, Field, Section, Select } from '@/components/owner/fields';
 import { ApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime, METHOD_LABEL, money, SOURCE_LABEL, waLink } from '@/lib/format';
@@ -86,7 +86,10 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
               {b.roomName} · {fmtDate(b.from)} → {fmtDate(b.to)} · {b.guests} guest{b.guests === 1 ? '' : 's'}
             </p>
           </div>
-          <StatusBadge status={b.status} />
+          <div className="flex flex-col items-end gap-1.5">
+            <StatusBadge status={b.status} />
+            <PaidPill status={b.status} balance={b.balance} paid={b.paid} currency={b.currency} />
+          </div>
         </div>
         {b.needsRefund && (
           <p role="alert" className="mt-3 rounded-xl bg-bad-bg p-3 text-sm font-medium text-bad">
