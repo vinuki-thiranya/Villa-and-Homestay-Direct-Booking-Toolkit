@@ -4,6 +4,7 @@ import { AvailabilityQuerySchema, GuideSchema, isIsoDate, todayIn } from '@stayd
 import { DbService, type Row } from '../../common/db.service.js';
 import { CONFIG, type AppConfig } from '../../config.js';
 import { AvailabilityService } from '../availability/availability.service.js';
+import { FlagsService } from '../flags/flags.service.js';
 import { InboxService } from '../inbox/inbox.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { CatalogService, type PropertyBundle } from '../properties/catalog.service.js';
@@ -120,6 +121,7 @@ export class ConciergeService implements OnModuleInit {
     private readonly notify: NotificationsService,
     @Inject(CONFIG) private readonly config: AppConfig,
     @Inject(LLM_CLIENT) private readonly llm: LlmClient | null,
+    private readonly flags: FlagsService,
   ) {}
 
   onModuleInit(): void {
@@ -133,6 +135,7 @@ export class ConciergeService implements OnModuleInit {
     const bundle = await this.catalog.bundle(conv.property_id);
     if (!bundle?.property.concierge_enabled) return 'skipped';
     if (!this.llm) return 'skipped';
+    if (!(await this.flags.enabled(conv.tenant_id, 'ai_concierge'))) return 'skipped';
 
     if (await this.overBudget(conv.property_id)) {
       await this.escalate(conv, bundle, 'Monthly AI concierge budget reached; please reply to this guest yourself.', false);

@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
+import { requestContextMiddleware } from './common/request-context.js';
 import { loadConfig } from './config.js';
 import { LOCAL_UPLOAD_DIR } from './modules/storage/storage.service.js';
 import { startScheduler } from './scheduler.js';
@@ -12,6 +13,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: false, rawBody: true }); // rawBody: WhatsApp signatures
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
+  app.use(requestContextMiddleware);
   app.useBodyParser('json', { limit: '1mb' });
   app.useBodyParser('urlencoded', { extended: true, limit: '256kb' }); // PayHere notify
   // Guest sites live on many hostnames (subdomains + custom domains), so CORS for the public API is open;

@@ -61,6 +61,11 @@ export interface PublicProperty {
   fx: Record<string, number>;
   /** Subscription unpaid past grace: site shows "enquire on WhatsApp" instead of instant booking (spec §8). */
   bookingDisabled: boolean;
+  /** Manager plan: hide "Powered by StayDirect" and use the tenant brand. */
+  whiteLabel: boolean;
+  brand: { displayName: string; logoUrl: string | null; primaryColor: string | null; accentColor: string | null } | null;
+  /** CSS variable values from the admin theme editor for this property's theme. */
+  themeTokens: Record<string, string> | null;
 }
 
 export interface DisplayAmounts {
@@ -159,6 +164,8 @@ export interface SessionUser {
   phone: string;
   name: string;
   role: UserRole;
+  /** Properties a manager/staff user is limited to (null = all). Filled per request by AuthGuard. */
+  propertyIds?: string[] | null;
 }
 
 export interface AuthResult {

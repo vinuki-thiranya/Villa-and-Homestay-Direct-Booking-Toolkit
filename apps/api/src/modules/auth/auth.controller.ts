@@ -18,7 +18,14 @@ export class AuthController {
   @Post('otp/verify')
   @HttpCode(200)
   verify(@Body(new ZodPipe(OtpVerifySchema)) body: z.infer<typeof OtpVerifySchema>) {
-    return this.auth.verifyOtp(body.phone, body.code, body.name);
+    return this.auth.verifyOtp(body.phone, body.code, body.name, body.inviteToken);
+  }
+
+  /** Admin console sign-in (platform admins only). */
+  @Post('admin/verify')
+  @HttpCode(200)
+  adminVerify(@Body(new ZodPipe(OtpVerifySchema)) body: z.infer<typeof OtpVerifySchema>) {
+    return this.auth.verifyAdmin(body.phone, body.code);
   }
 
   @Get('me')

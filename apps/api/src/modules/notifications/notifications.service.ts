@@ -1,7 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { CANCELLATION_POLICY_TEXT, formatMoney, t, type MessageKey } from '@staydirect/shared';
+import { CANCELLATION_POLICY_TEXT, formatMoney, type MessageKey } from '@staydirect/shared';
 import { DbService, type Row } from '../../common/db.service.js';
 import { CONFIG, type AppConfig } from '../../config.js';
+import { BrandingService } from '../branding/branding.service.js';
 import { CatalogService } from '../properties/catalog.service.js';
 import { EmailChannel, WhatsAppChannel, type SendResult } from './channels.js';
 
@@ -22,6 +23,7 @@ export class NotificationsService {
     private readonly email: EmailChannel,
     private readonly whatsapp: WhatsAppChannel,
     @Inject(CONFIG) private readonly config: AppConfig,
+    private readonly branding: BrandingService,
   ) {}
 
   /** Fire-and-forget wrapper so callers never fail on messaging. */
@@ -127,48 +129,51 @@ ${link}`]);
     if (!b.guest_email) return;
     const lang = b.guest_language ?? 'en';
     const v = { name: b.guest_name, property: property.name, reference: b.reference };
-    const subject = t(lang, subjectKey, v);
+    const tr = await this.branding.translator(lang);
+    const brand = await this.branding.forTenant(property.tenant_id);
+    const footer = brand.whiteLabel ? brand.displayName || property.name : tr('footer', v);
+    const subject = tr(subjectKey, v);
     const balance = Math.max(0, b.total - paid);
     const maps = this.catalog.mapsUrl(property);
     const wa = property.whatsapp_number ? `https://wa.me/${property.whatsapp_number.replace(/\D/g, '')}` : null;
     const rows: [string, string][] = [
-      [t(lang, 'dates'), `${b.from_date} → ${b.to_date}`],
-      [t(lang, 'room'), b.room_name],
-      [t(lang, 'guests'), String(b.guests)],
-      [t(lang, 'paid'), formatMoney(paid, b.currency)],
+      [tr('dates'), `${b.from_date} → ${b.to_date}`],
+      [tr('room'), b.room_name],
+      [tr('guests'), String(b.guests)],
+      [tr('paid'), formatMoney(paid, b.currency)],
     ];
     if (balance > 0) {
-      rows.push([t(lang, 'balance'), `${formatMoney(balance, b.currency)} ${b.balance_due_date ? t(lang, 'balanceBy', { date: b.balance_due_date }) : ''}`]);
+      rows.push([tr('balance'), `${formatMoney(balance, b.currency)} ${b.balance_due_date ? tr('balanceBy', { date: b.balance_due_date }) : ''}`]);
     }
     const policy = b.cancellation_policy_snapshot?.policy as keyof typeof CANCELLATION_POLICY_TEXT | undefined;
     const lines = [
-      t(lang, 'greeting', v),
+      tr('greeting', v),
       '',
-      t(lang, introKey, v),
+      tr(introKey, v),
       '',
       ...rows.map(([k, val]) => `${k}: ${val}`),
-      t(lang, 'checkIn', { time: property.check_in }) + ' · ' + t(lang, 'checkOut', { time: property.check_out }),
+      tr('checkIn', { time: property.check_in }) + ' · ' + tr('checkOut', { time: property.check_out }),
       property.address,
-      maps ? `${t(lang, 'directions')}: ${maps}` : '',
-      wa ? `${t(lang, 'whatsappHost')}: ${wa}` : '',
-      policy ? `${t(lang, 'policy')}: ${CANCELLATION_POLICY_TEXT[policy]}` : '',
+      maps ? `${tr('directions')}: ${maps}` : '',
+      wa ? `${tr('whatsappHost')}: ${wa}` : '',
+      policy ? `${tr('policy')}: ${CANCELLATION_POLICY_TEXT[policy]}` : '',
       '',
       this.bookingUrl(property, b),
       '',
-      t(lang, 'footer', v),
+      footer,
     ].filter((l, i, a) => l !== '' || a[i - 1] !== '');
     const text = lines.join('\n');
     const html = `<!doctype html><html><body style="font-family:system-ui,sans-serif;color:#0f172a;max-width:560px;margin:auto;padding:24px">
 <h2 style="margin:0 0 4px">${esc(property.name)}</h2><p style="color:#64748b;margin:0 0 20px">${esc(b.reference)}</p>
-<p>${esc(t(lang, 'greeting', v))}</p><p>${esc(t(lang, introKey, v))}</p>
+<p>${esc(tr('greeting', v))}</p><p>${esc(tr(introKey, v))}</p>
 <table style="border-collapse:collapse;width:100%;margin:16px 0">${rows
       .map(([k, val]) => `<tr><td style="padding:6px 0;color:#64748b">${esc(k)}</td><td style="padding:6px 0;text-align:right"><strong>${esc(val)}</strong></td></tr>`)
       .join('')}</table>
-<p>${esc(t(lang, 'checkIn', { time: property.check_in }))} · ${esc(t(lang, 'checkOut', { time: property.check_out }))}<br>${esc(property.address)}</p>
-<p>${maps ? `<a href="${maps}">${esc(t(lang, 'directions'))}</a>` : ''}${wa ? ` · <a href="${wa}">${esc(t(lang, 'whatsappHost'))}</a>` : ''}</p>
-${policy ? `<p style="color:#475569;font-size:14px"><strong>${esc(t(lang, 'policy'))}:</strong> ${esc(CANCELLATION_POLICY_TEXT[policy])}</p>` : ''}
+<p>${esc(tr('checkIn', { time: property.check_in }))} · ${esc(tr('checkOut', { time: property.check_out }))}<br>${esc(property.address)}</p>
+<p>${maps ? `<a href="${maps}">${esc(tr('directions'))}</a>` : ''}${wa ? ` · <a href="${wa}">${esc(tr('whatsappHost'))}</a>` : ''}</p>
+${policy ? `<p style="color:#475569;font-size:14px"><strong>${esc(tr('policy'))}:</strong> ${esc(CANCELLATION_POLICY_TEXT[policy])}</p>` : ''}
 <p><a href="${this.bookingUrl(property, b)}">${esc(b.reference)}</a></p>
-<p style="color:#94a3b8;font-size:12px">${esc(t(lang, 'footer', v))}</p></body></html>`;
+<p style="color:#94a3b8;font-size:12px">${esc(footer)}</p></body></html>`;
     await this.logged(ctx, 'email', b.guest_email, subject, text, () =>
       this.email.send({ to: b.guest_email, subject, html, text, replyTo: property.email }),
     );

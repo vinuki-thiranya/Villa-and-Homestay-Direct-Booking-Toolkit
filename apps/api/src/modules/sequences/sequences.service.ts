@@ -12,6 +12,7 @@ import {
 } from '@staydirect/shared';
 import { randomInt } from 'node:crypto';
 import { DbService, isUniqueViolation, type Row } from '../../common/db.service.js';
+import { FlagsService } from '../flags/flags.service.js';
 import { windowOpen } from '../inbox/inbox.service.js';
 import { EmailChannel, WhatsAppChannel, type SendResult } from '../notifications/channels.js';
 import { CatalogService } from '../properties/catalog.service.js';
@@ -42,6 +43,7 @@ export class SequencesService {
     private readonly catalog: CatalogService,
     private readonly whatsapp: WhatsAppChannel,
     private readonly email: EmailChannel,
+    private readonly flags: FlagsService,
   ) {}
 
   /** Which bookings a trigger applies to on a given property-local date. */
@@ -175,6 +177,7 @@ export class SequencesService {
     );
     let created = 0;
     for (const c of candidates) {
+      if (!(await this.flags.enabled(c.tenant_id, 'guest_crm'))) continue;
       const p = (await this.db.one(`select * from property where id = $1`, [c.property_id]))!;
       const today = todayIn(p.timezone, now);
       if (diffDays(c.to_date, today) < REPEAT_GUEST_CODE_AFTER_DAYS) continue;

@@ -1,11 +1,12 @@
 import { Body, Controller, Get, Header, NotFoundException, Param, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { GuestAddOnOrderSchema, JobCardActionSchema, ReviewSubmitSchema, StaffTaskActionSchema } from '@staydirect/shared';
+import { AddOnRatingSchema, GuestAddOnOrderSchema, JobCardActionSchema, ReviewSubmitSchema, StaffTaskActionSchema } from '@staydirect/shared';
 import { z } from 'zod';
 import { ZodPipe } from '../../common/zod.pipe.js';
 import { AddOnsService } from '../addons/addons.service.js';
 import { GuestsService } from '../guests/guests.service.js';
 import { SetupService } from '../inbox/setup.service.js';
+import { InvoicesService } from '../invoices/invoices.service.js';
 import { OpsService } from '../ops/ops.service.js';
 import { CatalogService } from '../properties/catalog.service.js';
 
@@ -20,6 +21,7 @@ export class PublicR2Controller {
     private readonly guests: GuestsService,
     private readonly setup: SetupService,
     private readonly ops: OpsService,
+    private readonly invoices: InvoicesService,
   ) {}
 
   private async property(site: string) {
@@ -62,6 +64,18 @@ export class PublicR2Controller {
   @Post('bookings/:reference/add-ons')
   orderAddOn(@Param('reference') reference: string, @Body(new ZodPipe(GuestAddOnOrderSchema)) b: Body<typeof GuestAddOnOrderSchema>) {
     return this.addOns.guestOrder(reference, b);
+  }
+
+  @Get('bookings/:reference/invoices')
+  @Header('cache-control', 'no-store')
+  bookingInvoices(@Param('reference') reference: string, @Query('t') token: string) {
+    return this.invoices.publicInvoices(reference, token ?? '');
+  }
+
+  /** Rate an experience after it happened (provider ratings, spec §3.7). */
+  @Post('bookings/:reference/add-ons/:orderId/rating')
+  rateAddOn(@Param('reference') reference: string, @Param('orderId') orderId: string, @Body(new ZodPipe(AddOnRatingSchema)) b: Body<typeof AddOnRatingSchema>) {
+    return this.addOns.rateOrder(reference, orderId, b);
   }
 
   @Get('reviews/:reference')

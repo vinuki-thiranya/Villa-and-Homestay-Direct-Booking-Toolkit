@@ -70,6 +70,25 @@ describe('priceStay', () => {
     expect(q.total).toBe(441);
   });
 
+  it('prices a qualifying stay from the monthly plan, without stacking stay discounts', () => {
+    const plans = [
+      plan({ id: 'm', kind: 'monthly', monthlyRate: 900, minStayNights: 28, utilities: 'metered', depositPct: 50 }),
+      plan({ id: 'ls7', kind: 'long_stay', minStayNights: 7, adjustmentPct: -10 }),
+      plan({ id: 'high', kind: 'seasonal', rate: 150, priority: 50 }),
+    ];
+    const month = priceStay({ room, plans, defaults, from: '2027-02-01', to: '2027-03-03', guests: 2, today: '2027-01-01' });
+    expect(month.nightCount).toBe(30);
+    expect(month.roomSubtotal).toBe(900);
+    expect(month.discount).toBe(0);
+    expect(month.monthly).toEqual({ planId: 'm', name: 'm', utilities: 'metered' });
+    expect(month.depositPct).toBe(50);
+    // Too short for the monthly plan: the seasonal rate and the weekly discount apply instead.
+    const week = priceStay({ room, plans, defaults, from: '2027-02-01', to: '2027-02-08', guests: 2, today: '2027-01-01' });
+    expect(week.monthly).toBeNull();
+    expect(week.roomSubtotal).toBe(1050);
+    expect(week.discountPlanId).toBe('ls7');
+  });
+
   it('applies a discount code after the stay discount', () => {
     const plans = [plan({ id: 'ls7', kind: 'long_stay', minStayNights: 7, adjustmentPct: -10 })];
     const q = priceStay({ room, plans, defaults, from: '2027-05-01', to: '2027-05-08', guests: 2, today: '2027-01-01', promoPct: 10 });

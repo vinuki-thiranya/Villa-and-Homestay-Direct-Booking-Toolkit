@@ -1,6 +1,7 @@
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import pg from 'pg';
 import { CONFIG, type AppConfig } from '../config.js';
+import { requestContext } from './request-context.js';
 
 // Dates stay as 'YYYY-MM-DD' strings (no timezone shifts); numerics become JS numbers.
 pg.types.setTypeParser(1082, (v) => v);
@@ -47,6 +48,9 @@ export class DbService implements OnModuleDestroy {
       if (opts.tenantId) {
         await client.query('set local role staydirect_tenant');
         await client.query(`select set_config('app.tenant_id', $1, true)`, [opts.tenantId]);
+        // Managers/staff limited to some properties (user_property): RLS property_scope reads this.
+        const scope = requestContext.getStore()?.propertyIds;
+        if (scope?.length) await client.query(`select set_config('app.property_ids', $1, true)`, [scope.join(',')]);
       }
       const result = await fn(client);
       await client.query('commit');

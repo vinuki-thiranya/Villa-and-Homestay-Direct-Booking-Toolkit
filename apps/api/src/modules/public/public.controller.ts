@@ -24,6 +24,7 @@ import { z } from 'zod';
 import { ZodPipe } from '../../common/zod.pipe.js';
 import { AvailabilityService } from '../availability/availability.service.js';
 import { BookingsService } from '../bookings/bookings.service.js';
+import { BrandingService } from '../branding/branding.service.js';
 import { FxService } from '../fx/fx.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
 import { CatalogService } from '../properties/catalog.service.js';
@@ -40,6 +41,7 @@ export class PublicController {
     private readonly bookings: BookingsService,
     private readonly payments: PaymentsService,
     private readonly fx: FxService,
+    private readonly branding: BrandingService,
   ) {}
 
   @Get('sites/:site')
@@ -49,6 +51,7 @@ export class PublicController {
     if (!p) throw new NotFoundException('Property not found');
     const bundle = (await this.catalog.bundle(p.id))!;
     const cfg = this.catalog.gatewayConfig(p);
+    const brand = await this.branding.forTenant(p.tenant_id);
     return {
       id: p.id,
       slug: p.slug,
@@ -79,6 +82,11 @@ export class PublicController {
       rooms: bundle.rooms.map((r) => toPublicRoom(r, p)),
       fx: await this.fx.table(),
       bookingDisabled: !this.catalog.bookingEnabled(bundle.tenant),
+      whiteLabel: brand.whiteLabel,
+      brand: brand.whiteLabel
+        ? { displayName: brand.displayName, logoUrl: brand.logoUrl, primaryColor: brand.primaryColor, accentColor: brand.accentColor }
+        : null,
+      themeTokens: await this.branding.themeTokens(p.theme),
     };
   }
 

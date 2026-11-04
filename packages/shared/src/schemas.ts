@@ -51,6 +51,8 @@ export const OtpVerifySchema = z.object({
   phone: z.string().min(6).transform((p) => normalizePhone(p)).pipe(phone),
   code: z.string().regex(/^\d{6}$/),
   name: z.string().min(1).max(120).optional(),
+  /** Joining a team: the token from a manager/staff invite link. */
+  inviteToken: z.string().regex(/^[a-f0-9]{24,64}$/).optional(),
 });
 
 // ---------- property setup ----------
@@ -127,8 +129,11 @@ export const RatePlanUpsertSchema = z
     closedToDeparture: z.boolean().default(false),
     priority: z.coerce.number().int().min(0).max(100).default(10),
     active: z.boolean().default(true),
+    monthlyRate: money.nullable().default(null),
+    utilities: z.enum(['included', 'metered']).nullable().default(null),
   })
   .refine((p) => !(p.startDate && p.endDate) || p.startDate <= p.endDate, 'startDate must be on or before endDate')
+  .refine((p) => p.kind !== 'monthly' || p.monthlyRate != null, { message: 'Monthly plans need a monthlyRate' })
   .refine((p) => p.kind !== 'long_stay' || (p.minStayNights != null && p.adjustmentPct != null), {
     message: 'Long-stay plans need minStayNights and adjustmentPct',
   })
