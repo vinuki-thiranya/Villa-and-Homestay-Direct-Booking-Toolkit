@@ -25,6 +25,7 @@ interface GuestOrder {
   amount: number;
   currency: string;
   status: 'requested' | 'confirmed' | 'done' | 'cancelled';
+  rating?: number | null;
 }
 
 interface GuestAddOns {
@@ -32,6 +33,75 @@ interface GuestAddOns {
   stay: { from: string; to: string };
   catalogue: CatalogueItem[];
   orders: GuestOrder[];
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+/** Stars + comment for an experience that has happened (provider ratings, spec §3.7). */
+function RateOrder({ reference, token, orderId, name, onRated }: { reference: string; token: string; orderId: string; name: string; onRated: () => void }) {
+  const [rating, setRating] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!open) {
+    return (
+      <button type="button" className="min-h-11 text-sm font-medium text-brand underline-offset-2 hover:underline" onClick={() => setOpen(true)}>
+        Rate it
+      </button>
+    );
+  }
+  return (
+    <form
+      className="w-full space-y-2 pt-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!rating) return setError('Choose 1 to 5 stars');
+        setBusy(true);
+        setError(null);
+        try {
+          await publicApi(`/public/bookings/${encodeURIComponent(reference)}/add-ons/${orderId}/rating`, {
+            json: { token, rating, comment: String(new FormData(e.currentTarget).get('comment') ?? '') },
+          });
+          onRated();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Could not save your rating');
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <fieldset>
+        <legend className="text-sm font-medium">How was {name}?</legend>
+        <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={rating === n}
+              aria-label={`${n} star${n === 1 ? '' : 's'}`}
+              onClick={() => setRating(n)}
+              className={`h-11 w-11 text-2xl ${n <= rating ? 'text-accent' : 'text-line'}`}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <label htmlFor={`c-${orderId}`} className="sr-only">
+        Comment
+      </label>
+      <textarea id={`c-${orderId}`} name="comment" rows={2} maxLength={1000} className="field py-2" placeholder="Anything the host should know? (optional)" />
+      {error && (
+        <p role="alert" className="text-sm text-bad">
+          {error}
+        </p>
+      )}
+      <button type="submit" className="btn-primary" disabled={busy}>
+        {busy ? 'Sending…' : 'Send rating'}
+      </button>
+    </form>
+  );
 }
 
 const STATUS: Record<string, string> = { requested: 'Requested', confirmed: 'Confirmed', done: 'Done', cancelled: 'Cancelled' };
@@ -107,6 +177,14 @@ export function AddOnsPanel({ reference, token, onOrdered }: { reference: string
               <span className={`pill ${o.status === 'confirmed' || o.status === 'done' ? 'bg-ok-bg text-ok' : o.status === 'cancelled' ? 'bg-bad-bg text-bad' : 'bg-warn-bg text-warn'}`}>
                 {STATUS[o.status]}
               </span>
+              {o.rating != null && (
+                <span className="text-xs text-muted" aria-label={`You rated ${o.rating} of 5`}>
+                  {'★'.repeat(o.rating)}
+                </span>
+              )}
+              {o.rating == null && (o.status === 'done' || (o.status === 'confirmed' && o.date <= today())) && (
+                <RateOrder reference={reference} token={token} orderId={o.id} name={o.addOnName ?? 'this experience'} onRated={load} />
+              )}
             </li>
           ))}
         </ul>

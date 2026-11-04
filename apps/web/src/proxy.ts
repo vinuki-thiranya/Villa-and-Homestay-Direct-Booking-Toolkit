@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Host routing (docs/plan.md §4):
  *   staydirect.lk, www.staydirect.lk  → marketing (/)
  *   app.staydirect.lk                 → /owner/*
+ *   admin.staydirect.lk               → /admin/* (StayDirect staff console)
  *   {slug}.staydirect.lk              → /s/{slug}/*
  *   any other host (custom domain)    → /s/{host}/*
  *   {slug}.localhost:3000             → /s/{slug}/* (dev)
@@ -13,6 +14,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  */
 const ROOT_DOMAIN = (process.env.ROOT_DOMAIN ?? 'staydirect.lk').toLowerCase();
 const OWNER_HOST = (process.env.OWNER_HOST ?? `app.${ROOT_DOMAIN}`).toLowerCase();
+const ADMIN_HOST = (process.env.ADMIN_HOST ?? `admin.${ROOT_DOMAIN}`).toLowerCase();
 
 export function proxy(request: NextRequest) {
   const host = (request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? '').toLowerCase().split(':')[0]!;
@@ -33,6 +35,13 @@ export function proxy(request: NextRequest) {
     if (pathname.startsWith('/owner')) return NextResponse.next();
     const url = request.nextUrl.clone();
     url.pathname = `/owner${pathname === '/' ? '' : pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
+  if (host === ADMIN_HOST) {
+    if (pathname.startsWith('/admin')) return NextResponse.next();
+    const url = request.nextUrl.clone();
+    url.pathname = `/admin${pathname === '/' ? '' : pathname}`;
     return NextResponse.rewrite(url);
   }
 

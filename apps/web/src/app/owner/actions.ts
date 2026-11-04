@@ -58,7 +58,7 @@ export async function loginAction(prev: LoginState, fd: FormData): Promise<Login
   try {
     const res = await apiFetch<{ token: string }>('/auth/otp/verify', {
       method: 'POST',
-      body: { phone, code: str(fd, 'code'), name: optStr(fd, 'name') ?? undefined },
+      body: { phone, code: str(fd, 'code'), name: optStr(fd, 'name') ?? undefined, inviteToken: optStr(fd, 'inviteToken') ?? undefined },
     });
     token = res.token;
   } catch (err) {
@@ -205,7 +205,7 @@ export async function createRatePlanAction(propertyId: string, _: Prev, fd: Form
     weekdayMask: days.length ? days.reduce((m, d) => m | (1 << d), 0) : 127,
     rate: optNum(fd, 'rate'),
     adjustmentPct: optNum(fd, 'adjustmentPct'),
-    minStayNights: kind === 'long_stay' ? optNum(fd, 'minStayNights') : null,
+    minStayNights: kind === 'long_stay' ? optNum(fd, 'minStayNights') : kind === 'monthly' ? (optNum(fd, 'monthlyMinNights') ?? 28) : null,
     withinDays: kind === 'last_minute' ? optNum(fd, 'withinDays') : null,
     depositPct: optNum(fd, 'depositPct'),
     cancellationPolicy: optStr(fd, 'cancellationPolicy'),
@@ -214,6 +214,8 @@ export async function createRatePlanAction(propertyId: string, _: Prev, fd: Form
     closedToDeparture: bool(fd, 'closedToDeparture'),
     priority: num(fd, 'priority') ?? 10,
     active: true,
+    monthlyRate: kind === 'monthly' ? optNum(fd, 'monthlyRate') : null,
+    utilities: kind === 'monthly' ? optStr(fd, 'utilities') : null,
   };
   return attempt(() => ownerApi(`/properties/${propertyId}/rate-plans`, { method: 'POST', body }), 'Rate plan added');
 }

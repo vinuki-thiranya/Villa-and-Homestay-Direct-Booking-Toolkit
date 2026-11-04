@@ -10,7 +10,7 @@ const BOTTOM: NavItem[] = [...NAV_ITEMS.slice(0, 4), { href: '/owner/more', labe
 const MORE_PATHS = NAV_ITEMS.slice(4).map((i) => i.href);
 
 /** Bottom tab bar on phones (one-thumb), sidebar links on desktop. */
-export function OwnerNav({ variant, badges = {} }: { variant: 'bottom' | 'side'; badges?: Record<string, number> }) {
+export function OwnerNav({ variant, badges = {}, hidden = [] }: { variant: 'bottom' | 'side'; badges?: Record<string, number>; hidden?: string[] }) {
   const path = usePathname();
   const isActive = (href: string, exact?: boolean) => {
     if (href === '/owner/more') return path === href || MORE_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
@@ -49,7 +49,7 @@ export function OwnerNav({ variant, badges = {} }: { variant: 'bottom' | 'side';
 
   return (
     <nav aria-label="Owner" className="space-y-1">
-      {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
+      {NAV_ITEMS.filter((i) => !hidden.includes(i.href)).map(({ href, label, icon: Icon, exact }) => {
         const active = isActive(href, exact);
         return (
           <Link

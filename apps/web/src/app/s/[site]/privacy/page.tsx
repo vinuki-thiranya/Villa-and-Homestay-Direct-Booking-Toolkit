@@ -15,7 +15,7 @@ export default async function PrivacyPage({ params }: Props) {
       <h1 className="font-display text-3xl font-semibold">Privacy notice</h1>
       <p className="mt-4">
         {p.name} ({p.address}) is the controller of the personal data you give when you book. The booking system is
-        provided by StayDirect LK, which processes the data on {p.name}&apos;s behalf, on servers in Singapore.
+        provided by {p.whiteLabel ? 'a technology provider' : 'StayDirect LK'}, which processes the data on {p.name}&apos;s behalf, on servers in Singapore.
       </p>
       <h2 className="mt-6 text-lg font-semibold">What we collect and why</h2>
       <p className="mt-2">

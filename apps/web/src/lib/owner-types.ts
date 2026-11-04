@@ -109,6 +109,8 @@ export interface Provider {
   rating: number | null;
   ratingCount: number;
   active: boolean;
+  removedAt?: string | null;
+  removedReason?: string | null;
 }
 
 export interface OwnerAddOn {
