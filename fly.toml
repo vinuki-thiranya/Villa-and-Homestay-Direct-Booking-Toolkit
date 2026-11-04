@@ -1,0 +1,40 @@
+# Fly.io (Singapore). Deploy from the repo root: fly deploy
+# Secrets: fly secrets set DATABASE_URL=... REDIS_URL=... JWT_SECRET=... ENCRYPTION_KEY=... RESEND_API_KEY=... ...
+app = "staydirect-api"
+primary_region = "sin"
+
+[build]
+  dockerfile = "apps/api/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "4000"
+  ROOT_DOMAIN = "staydirect.lk"
+  PUBLIC_API_URL = "https://api.staydirect.lk"
+  OWNER_APP_URL = "https://app.staydirect.lk"
+  PAYHERE_SANDBOX = "false"
+  PAYPAL_SANDBOX = "false"
+  SMS_PROVIDER = "notifylk"
+
+[deploy]
+  release_command = "node dist/scripts/migrate.js"
+
+[processes]
+  app = "node --enable-source-maps dist/src/main.js"
+  worker = "node --enable-source-maps dist/src/worker.js"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = "off"
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    path = "/health"
+    interval = "15s"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
