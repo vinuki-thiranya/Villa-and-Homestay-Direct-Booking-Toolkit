@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { OwnerI18nProvider } from '@/components/owner/I18n';
 import { LanguageSwitch } from '@/components/owner/LanguageSwitch';
 import { LoginForm } from '@/components/owner/LoginForm';
-import { Sandakada } from '@/components/owner/motifs';
 import { getT } from '@/lib/owner-i18n';
 import { FONT_VARIABLES } from '@/themes/fonts';
 import '../owner.css';
@@ -22,7 +21,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <div className="mb-3 flex justify-end">
             <LanguageSwitch lang={t.lang} compact />
           </div>
-          <Sandakada lang={t.lang} className="mx-auto mb-[-1px]" />
           <div className="card w-full p-6 shadow-sm">
             <p className="font-display text-xl font-semibold">
               StayDirect <span className="text-brand">LK</span>

@@ -4,7 +4,6 @@ import type { Holiday, OwnerDashboard } from '@staydirect/shared';
 import { BookingList } from '@/components/owner/BookingList';
 import { Section } from '@/components/owner/fields';
 import { tLabel } from '@/components/owner/labels';
-import { PalaPethi } from '@/components/owner/motifs';
 import type { Translator } from '@/i18n/owner/t';
 import { money } from '@/lib/format';
 import { currentProperty, ownerApi } from '@/lib/owner';
@@ -94,7 +93,6 @@ export default async function DashboardPage() {
         />
       </nav>
 
-      <PalaPethi lang={t.lang} />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Section id="arriving" title={t('today.arrivingToday', { n: d.arrivalsToday.length })}>
@@ -127,7 +125,6 @@ export default async function DashboardPage() {
         </Section>
       </div>
 
-      <PalaPethi lang={t.lang} />
 
       <Section title={t('today.thisMonth', { month: monthLabel })}>
         <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">

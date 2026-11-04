@@ -41,7 +41,8 @@ export type UserRole = (typeof USER_ROLES)[number];
 export const PROPERTY_TYPES = ['villa', 'guesthouse', 'homestay', 'surf_camp', 'boutique_hotel', 'bungalow'] as const;
 export type PropertyType = (typeof PROPERTY_TYPES)[number];
 
-export const LANGUAGES = ['en', 'de', 'fr', 'hi'] as const;
+/** Guest languages: guest site text (en, si) and guest emails/WhatsApp (all). */
+export const LANGUAGES = ['en', 'de', 'fr', 'hi', 'si'] as const;
 export type Language = (typeof LANGUAGES)[number];
 
 export const BASE_CURRENCIES = ['USD', 'LKR'] as const;

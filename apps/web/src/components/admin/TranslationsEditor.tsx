@@ -10,6 +10,7 @@ const LANGS = [
   { code: 'de', label: 'German' },
   { code: 'fr', label: 'French' },
   { code: 'hi', label: 'Hindi' },
+  { code: 'si', label: 'Sinhala' },
 ] as const;
 
 export function TranslationsEditor({ rows }: { rows: TranslationRow[] }) {

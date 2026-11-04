@@ -73,4 +73,5 @@ export const LANGUAGES: [string, string][] = [
   ['de', 'Deutsch'],
   ['fr', 'Français'],
   ['hi', 'हिन्दी'],
+  ['si', 'සිංහල'],
 ];

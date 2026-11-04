@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { Menu, MessageCircle } from 'lucide-react';
 import { CurrencySwitcher } from '@/components/guest/CurrencySwitcher';
+import { GuestI18nProvider, GuestLanguageSwitch } from '@/components/guest/GuestI18n';
 import { waLink } from '@/lib/format';
 import { siteContext, siteThemeCss } from '@/lib/site';
 import { FONT_VARIABLES } from '@/themes/fonts';
 
 export default async function SiteLayout({ children, params }: { children: React.ReactNode; params: Promise<{ site: string }> }) {
   const { site } = await params;
-  const { property: p, base, currency, theme } = await siteContext(site);
+  const { property: p, base, currency, theme, lang } = await siteContext(site);
   const wa = waLink(p.whatsappNumber, `Hello ${p.name}, I have a question about a stay.`);
   const nav = [
     { href: `${base}/rooms`, label: 'Rooms' },
@@ -17,7 +18,8 @@ export default async function SiteLayout({ children, params }: { children: React
   ];
 
   return (
-    <div data-theme={theme.key} className={`g-site ${FONT_VARIABLES} flex min-h-dvh flex-col bg-bg text-fg`}>
+    <GuestI18nProvider lang={lang}>
+    <div data-theme={theme.key} lang={lang} className={`g-site ${FONT_VARIABLES} flex min-h-dvh flex-col bg-bg text-fg`}>
       {/* Validated colours and fixed font stacks only (themes/registry.ts themeCss). */}
       <style dangerouslySetInnerHTML={{ __html: siteThemeCss(p, theme) }} />
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-surface focus:px-4 focus:py-2">
@@ -36,6 +38,7 @@ export default async function SiteLayout({ children, params }: { children: React
             ))}
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-1.5 md:ml-0">
+            <GuestLanguageSwitch />
             <CurrencySwitcher current={currency} />
             <Link href={`${base}/book`} className="g-cta hidden min-h-10 px-4 md:inline-flex">
               Book
@@ -121,5 +124,6 @@ export default async function SiteLayout({ children, params }: { children: React
         </a>
       )}
     </div>
+    </GuestI18nProvider>
   );
 }

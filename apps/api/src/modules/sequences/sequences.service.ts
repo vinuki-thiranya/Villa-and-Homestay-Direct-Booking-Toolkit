@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   addDays,
   diffDays,
+  LANGUAGES,
   REPEAT_GUEST_CODE_AFTER_DAYS,
   REPEAT_GUEST_CODE_VALID_DAYS,
   t,
@@ -104,7 +105,7 @@ export class SequencesService {
       if (isUniqueViolation(err)) return false; // another run got it
       throw err;
     }
-    const lang = (['en', 'de', 'fr', 'hi'].includes(b.guest_language) ? b.guest_language : 'en') as Language;
+    const lang = ((LANGUAGES as readonly string[]).includes(b.guest_language) ? b.guest_language : 'en') as Language;
     const vars = this.vars(p, b);
     const text = t(lang, step.key, vars);
 
@@ -194,7 +195,7 @@ export class SequencesService {
         throw err;
       }
       created++;
-      const lang = (['en', 'de', 'fr', 'hi'].includes(c.language) ? c.language : 'en') as Language;
+      const lang = ((LANGUAGES as readonly string[]).includes(c.language) ? c.language : 'en') as Language;
       const vars = { property: p.name, pct: String(Math.round(c.pct)), code, date: expires, link: `${this.catalog.siteUrl(p)}/book?code=${code}` };
       const text = t(lang, 'repeatCode', vars);
       let res: SendResult = { ok: false, status: 'failed' };

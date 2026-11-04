@@ -1,20 +1,8 @@
 /*
- * Sinhala owner app (lang="si" on .owner). English is untouched. Palette from Kandyan temple murals:
- * lacquer brown-black for actions, kumkuma vermilion for headings, kaha (turmeric ochre) for ornament.
- * Paid/unpaid keep their green/red so a state never changes meaning between languages.
- * Type: Abhaya Libre (FM Abhaya's letterforms) for headings, Noto Sans Sinhala for everything else.
- *
- * Tokens are unlayered on purpose: globals.css sets the owner's dark tokens unlayered on .owner, and
- * these must win over them (higher specificity, same origin).
+ * Sinhala owner app (lang="si" on .owner): same look as English, Sinhala fonts and room for the script.
+ * Abhaya Libre for headings, Noto Sans Sinhala for everything else (both load only for Sinhala text).
  */
 .owner[lang='si'] {
-  --brand: #3b2a1e;
-  --brand-strong: #241812;
-  --brand-fg: #ffffff;
-  --fg: #2b1d14;
-  --si-vermilion: #9e2a1e;
-  --si-ochre: #c98a24;
-  --ring: #9e2a1e;
   /* Tailwind's font-sans / font-display read these (globals.css @theme). */
   --g-sans: var(--f-sinhala), ui-sans-serif, system-ui, sans-serif;
   --g-display: var(--f-abhaya), var(--f-sinhala), ui-serif, serif;
@@ -22,18 +10,6 @@
   /* Vowel signs sit above and below the letters: give lines room and never squeeze letters. */
   line-height: 1.7;
   letter-spacing: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .owner[lang='si'] {
-    --brand: #e5a640;
-    --brand-strong: #f0bb5f;
-    --brand-fg: #2b1d14;
-    --fg: #f1e9df;
-    --si-vermilion: #f08f72;
-    --si-ochre: #e5a640;
-    --ring: #e5a640;
-  }
 }
 
 /* Sinhala text reads best a step larger: 17 px instead of 16 (every rem size follows). */
@@ -45,8 +21,6 @@ html:has(.owner[lang='si']) {
 @layer components {
   .owner[lang='si'] :is(h1, h2, h3) {
     font-family: var(--g-display);
-    font-weight: 700;
-    color: var(--si-vermilion);
     line-height: 1.35;
   }
 
@@ -54,9 +28,5 @@ html:has(.owner[lang='si']) {
   .owner[lang='si'] :is(button, .pill, label) {
     white-space: normal;
     line-height: 1.45;
-  }
-
-  .owner[lang='si'] :focus-visible {
-    outline-color: var(--ring);
   }
 }

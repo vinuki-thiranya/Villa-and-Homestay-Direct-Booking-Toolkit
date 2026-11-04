@@ -2,6 +2,7 @@ import type { PublicProperty } from '@staydirect/shared';
 import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
+import { isGuestLang, makeGuestT, type GuestLang, type GuestTranslator } from '@/i18n/guest/t';
 import { FONT_STACK } from '@/themes/fonts';
 import { isThemeKey, themeCss, THEMES, type GuestTheme } from '@/themes/registry';
 import { getSite } from './api';
@@ -9,6 +10,8 @@ import { isCurrency, type Currency } from './format';
 import { guessCurrency } from './guest-locale';
 
 export const CURRENCY_COOKIE = 'sd_cur';
+/** The guest's chosen site language (en | si). */
+export const GUEST_LANG_COOKIE = 'sd_glang';
 /** Set by proxy.ts from ?previewTheme= (dev, or ALLOW_THEME_PREVIEW=1), for screenshots of every theme. */
 export const PREVIEW_THEME_HEADER = 'x-sd-preview-theme';
 
@@ -19,6 +22,9 @@ export interface SiteContext {
   currency: Currency;
   siteKey: string;
   theme: GuestTheme;
+  lang: GuestLang;
+  /** Guest-site translator for server components. */
+  t: GuestTranslator;
 }
 
 /** Per-request site context; memoised so layout and page share one fetch. */
@@ -28,12 +34,16 @@ export const siteContext = cache(async (rawSite: string): Promise<SiteContext> =
   if (!property) notFound();
   const h = await headers();
   const base = h.get('x-sd-base') === '' ? '' : `/s/${encodeURIComponent(site)}`;
-  const c = (await cookies()).get(CURRENCY_COOKIE)?.value;
+  const jar = await cookies();
+  const c = jar.get(CURRENCY_COOKIE)?.value;
+  const lc = jar.get(GUEST_LANG_COOKIE)?.value;
+  // Chosen language, else a browser set to Sinhala, else English.
+  const lang: GuestLang = isGuestLang(lc) ? lc : /^si\b/i.test(h.get('accept-language') ?? '') ? 'si' : 'en';
   const currency: Currency = isCurrency(c) ? c : (guessCurrency(h) ?? (isCurrency(property.baseCurrency) ? property.baseCurrency : 'USD'));
   // proxy.ts only sets the header when previews are allowed and strips any copy sent by the client.
   const preview = h.get(PREVIEW_THEME_HEADER);
   const key = isThemeKey(preview) ? preview : isThemeKey(property.theme) ? property.theme : 'lagoon';
-  return { property, base, currency, siteKey: site, theme: THEMES[key] };
+  return { property, base, currency, siteKey: site, theme: THEMES[key], lang, t: makeGuestT(lang) };
 });
 
 /** Lowest base rate across rooms, for "from" prices. */

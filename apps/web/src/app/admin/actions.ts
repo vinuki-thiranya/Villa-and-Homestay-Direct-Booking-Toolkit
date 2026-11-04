@@ -171,13 +171,13 @@ export async function saveThemeAction(input: {
 }
 
 export async function saveTranslationAction(lang: string, key: string, value: string): Promise<AdminResult> {
-  if (!['en', 'de', 'fr', 'hi'].includes(lang)) return { ok: false, message: 'Invalid language' };
+  if (!['en', 'de', 'fr', 'hi', 'si'].includes(lang)) return { ok: false, message: 'Invalid language' };
   if (!value.trim()) return { ok: false, message: 'Empty text: use Reset to go back to the default' };
   return attempt(() => adminApi('/admin/translations', { method: 'PUT', body: { lang, key, value: value.trim() } }), 'Saved', ['/admin/translations']);
 }
 
 export async function resetTranslationAction(lang: string, key: string): Promise<AdminResult> {
-  if (!['en', 'de', 'fr', 'hi'].includes(lang)) return { ok: false, message: 'Invalid language' };
+  if (!['en', 'de', 'fr', 'hi', 'si'].includes(lang)) return { ok: false, message: 'Invalid language' };
   return attempt(() => adminApi(`/admin/translations/${lang}/${encodeURIComponent(key)}`, { method: 'DELETE' }), 'Back to default', ['/admin/translations']);
 }
 

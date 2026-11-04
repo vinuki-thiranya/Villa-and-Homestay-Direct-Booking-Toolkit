@@ -3,7 +3,6 @@ import type { ConflictRow } from '@staydirect/shared';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { Empty, Section } from '@/components/owner/fields';
 import { tLabel } from '@/components/owner/labels';
-import { Sandakada } from '@/components/owner/motifs';
 import { currentProperty, ownerApi } from '@/lib/owner';
 import { getT } from '@/lib/owner-i18n';
 import { resolveConflictAction } from '../../actions';
@@ -20,7 +19,6 @@ export default async function ConflictsPage() {
       <Section title={t('conflicts.open', { n: rows.length })}>
         {rows.length === 0 ? (
           <>
-            <Sandakada lang={t.lang} className="mx-auto mb-2" />
             <Empty>{t('conflicts.none')}</Empty>
           </>
         ) : (

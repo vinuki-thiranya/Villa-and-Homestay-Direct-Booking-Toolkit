@@ -27,11 +27,14 @@ const abhaya = Abhaya_Libre({ subsets: ['sinhala'], weight: ['700', '800'], disp
 /** Class names that define every --f-* variable; a font file is only fetched once text uses it. */
 export const FONT_VARIABLES = [cormorant, manrope, lora, workSans, barlowCondensed, barlow, notoSinhala, abhaya].map((f) => f.variable).join(' ');
 
-/** Each Latin face falls back to Noto Sans Sinhala for Sinhala characters (per glyph). */
+/**
+ * Each Latin face falls back per glyph for Sinhala characters: serif faces to Abhaya Libre (a serif
+ * Sinhala), sans faces to Noto Sans Sinhala. So every theme keeps its look and only the font changes.
+ */
 export const FONT_STACK: Record<ThemeFont, string> = {
-  cormorant: 'var(--f-cormorant), var(--f-sinhala), ui-serif, Georgia, serif',
+  cormorant: 'var(--f-cormorant), var(--f-abhaya), var(--f-sinhala), ui-serif, Georgia, serif',
   manrope: 'var(--f-manrope), var(--f-sinhala), ui-sans-serif, system-ui, sans-serif',
-  lora: 'var(--f-lora), var(--f-sinhala), ui-serif, Georgia, serif',
+  lora: 'var(--f-lora), var(--f-abhaya), var(--f-sinhala), ui-serif, Georgia, serif',
   'work-sans': 'var(--f-work-sans), var(--f-sinhala), ui-sans-serif, system-ui, sans-serif',
   'barlow-condensed': 'var(--f-barlow-condensed), var(--f-sinhala), ui-sans-serif, system-ui, sans-serif',
   barlow: 'var(--f-barlow), var(--f-sinhala), ui-sans-serif, system-ui, sans-serif',

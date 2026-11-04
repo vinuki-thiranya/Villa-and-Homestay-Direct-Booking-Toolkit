@@ -6,6 +6,13 @@
  */
 import { LANGUAGES, t, type Language, type MessageKey } from '@staydirect/shared';
 
+/**
+ * Languages with Meta-approved guest templates. Sinhala is not submitted yet: until it is, Sinhala
+ * guests get Sinhala free text inside the 24-hour window and the English template outside it
+ * (WhatsAppChannel.sendNamedTemplate falls back to 'en'). Add 'si' here once Meta approves it.
+ */
+const APPROVED: Language[] = LANGUAGES.filter((l) => l !== 'si');
+
 export interface TemplateDef {
   name: string;
   category: 'UTILITY' | 'MARKETING';
@@ -16,13 +23,13 @@ export interface TemplateDef {
 }
 
 export const TEMPLATES: TemplateDef[] = [
-  { name: 'sd_booking_confirmed', key: 'seqBookingConfirmed', category: 'UTILITY', languages: [...LANGUAGES] },
-  { name: 'sd_pre_arrival_7d', key: 'seqPreArrival7d', category: 'UTILITY', languages: [...LANGUAGES] },
-  { name: 'sd_pre_arrival_1d', key: 'seqPreArrival1d', category: 'UTILITY', languages: [...LANGUAGES] },
-  { name: 'sd_arrival_guide', key: 'seqArrival', category: 'UTILITY', languages: [...LANGUAGES] },
-  { name: 'sd_mid_stay_addons', key: 'seqMidStay', category: 'MARKETING', languages: [...LANGUAGES] },
-  { name: 'sd_checkout_review', key: 'seqCheckOut', category: 'UTILITY', languages: [...LANGUAGES] },
-  { name: 'sd_repeat_guest_code', key: 'repeatCode', category: 'MARKETING', languages: [...LANGUAGES] },
+  { name: 'sd_booking_confirmed', key: 'seqBookingConfirmed', category: 'UTILITY', languages: [...APPROVED] },
+  { name: 'sd_pre_arrival_7d', key: 'seqPreArrival7d', category: 'UTILITY', languages: [...APPROVED] },
+  { name: 'sd_pre_arrival_1d', key: 'seqPreArrival1d', category: 'UTILITY', languages: [...APPROVED] },
+  { name: 'sd_arrival_guide', key: 'seqArrival', category: 'UTILITY', languages: [...APPROVED] },
+  { name: 'sd_mid_stay_addons', key: 'seqMidStay', category: 'MARKETING', languages: [...APPROVED] },
+  { name: 'sd_checkout_review', key: 'seqCheckOut', category: 'UTILITY', languages: [...APPROVED] },
+  { name: 'sd_repeat_guest_code', key: 'repeatCode', category: 'MARKETING', languages: [...APPROVED] },
   { name: 'owner_alert', text: 'StayDirect alert for {property}: {text} — open the owner app to act.', category: 'UTILITY', languages: ['en'] },
   {
     name: 'sd_cleaner_tasks',
@@ -77,7 +84,7 @@ export function templateByName(name: string): TemplateDef {
 }
 
 /** Meta language codes for our four guest languages. */
-export const META_LANG: Record<Language, string> = { en: 'en', de: 'de', fr: 'fr', hi: 'hi' };
+export const META_LANG: Record<Language, string> = { en: 'en', de: 'de', fr: 'fr', hi: 'hi', si: 'si' };
 
 const EXAMPLES: Record<string, string> = {
   property: 'Villa Lagoon Mirissa',
