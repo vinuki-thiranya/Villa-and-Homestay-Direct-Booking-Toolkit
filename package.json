@@ -1,0 +1,30 @@
+{
+  "name": "staydirect",
+  "private": true,
+  "version": "0.1.0",
+  "description": "StayDirect LK — direct-booking and operations toolkit for villas and homestays",
+  "workspaces": [
+    "packages/*",
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build -w @staydirect/shared && npm run build -w @staydirect/api && npm run build -w @staydirect/web",
+    "build:shared": "npm run build -w @staydirect/shared",
+    "dev:api": "npm run dev -w @staydirect/api",
+    "dev:worker": "npm run dev:worker -w @staydirect/api",
+    "dev:web": "npm run dev -w @staydirect/web",
+    "db:local": "npm run db:local -w @staydirect/api",
+    "db:migrate": "npm run db:migrate -w @staydirect/api",
+    "db:seed": "npm run db:seed -w @staydirect/api",
+    "test": "npm test -w @staydirect/shared && npm test -w @staydirect/api",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "allowScripts": {
+    "@swc/core@1.16.21": true,
+    "@embedded-postgres/windows-x64@17.11.0-beta.19": true
+  }
+}
