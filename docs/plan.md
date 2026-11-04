@@ -125,8 +125,10 @@ DTO interfaces for every public/owner endpoint, zod request schemas, and pure fu
 Cloudflare Pages is the fallback if Vercel Pro is not wanted (free wildcards via Workers routes).
 
 **Cache strategy for guest pages:**
-- Property content pages are statically rendered per site and cached with `revalidate: 300` and the
-  tag `property:{id}`; the API calls `/api/revalidate` on any owner edit, so changes show within seconds.
+- Property data is fetched through Next's data cache (`revalidate: 300`, tags `site:{slug}` /
+  `site:{custom_domain}`); the API calls `/api/revalidate` on any owner edit, so changes show within seconds.
+  Phase 1 renders guest pages per request from that cache; full static prerendering per site (plus
+  `generateStaticParams` for live sites) is part of the Prompt 6 performance pass.
 - Availability and prices are never in the page HTML: the client calls the API, which caches a
   search for 60 s keyed by (room set, dates, guests) and invalidates on any inventory write.
 - Images: Next `<Image>` with R2 origin, AVIF/WebP, max 150 KB; fonts self-hosted via `next/font`.
