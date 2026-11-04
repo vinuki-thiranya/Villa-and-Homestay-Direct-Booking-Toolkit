@@ -4,7 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect, unstable_rethrow } from 'next/navigation';
 import { ApiError, apiFetch } from '@/lib/api';
+import type { OwnerKey } from '@/i18n/owner/t';
 import { ownerApi, PROPERTY_COOKIE, TOKEN_COOKIE } from '@/lib/owner';
+import { errorMsg, msg } from './action-messages';
 
 export interface ActionResult {
   ok: boolean;
@@ -25,15 +27,15 @@ const list = (fd: FormData, k: string, sep: RegExp = /[\n,]/) =>
     .filter(Boolean);
 
 /** Run an owner API call, turning API errors into a form message. Redirects pass through. */
-async function attempt(fn: () => Promise<unknown>, success: string, paths: string[] = ['/owner']): Promise<ActionResult> {
+async function attempt(fn: () => Promise<unknown>, success: OwnerKey | '', paths: string[] = ['/owner']): Promise<ActionResult> {
   try {
     await fn();
   } catch (err) {
     unstable_rethrow(err);
-    return { ok: false, message: err instanceof Error ? err.message : 'Something went wrong' };
+    return { ok: false, message: await errorMsg(err) };
   }
   for (const p of paths) revalidatePath(p, 'layout');
-  return { ok: true, message: success };
+  return { ok: true, message: success ? await msg(success) : '' };
 }
 
 // ---------------------------------------------------------------- auth
@@ -49,9 +51,13 @@ export async function loginAction(prev: LoginState, fd: FormData): Promise<Login
   if (prev.step === 'phone' || fd.get('resend')) {
     try {
       await apiFetch('/auth/otp/request', { method: 'POST', body: { phone } });
-      return { step: 'code', phone, message: 'We sent a 6-digit code by SMS.' };
+      return { step: 'code', phone, message: await msg('actions.codeSent') };
     } catch (err) {
-      return { step: 'phone', phone, message: err instanceof Error ? err.message : 'Could not send the code' };
+      return {
+        step: 'phone',
+        phone,
+        message: err instanceof ApiError && err.status === 429 ? await msg('actions.tooManyCodes') : err instanceof Error ? err.message : await msg('actions.codeNotSent'),
+      };
     }
   }
   let token: string;
@@ -62,7 +68,16 @@ export async function loginAction(prev: LoginState, fd: FormData): Promise<Login
     });
     token = res.token;
   } catch (err) {
-    return { step: 'code', phone, message: err instanceof ApiError ? err.message : 'Could not verify the code' };
+    return {
+      step: 'code',
+      phone,
+      message:
+        err instanceof ApiError && (err.status === 400 || err.status === 401)
+          ? await msg('actions.wrongCode')
+          : err instanceof ApiError
+            ? err.message
+            : await msg('actions.codeNotVerified'),
+    };
   }
   (await cookies()).set(TOKEN_COOKIE, token, {
     httpOnly: true,
@@ -126,7 +141,7 @@ export async function createPropertyAction(_: Prev, fd: FormData): Promise<Actio
   const res = await attempt(async () => {
     const p = await ownerApi<{ id: string }>('/properties', { method: 'POST', body: propertyBody(fd) });
     id = p.id;
-  }, 'Property created');
+  }, 'actions.propertyCreated');
   if (res.ok) {
     (await cookies()).set(PROPERTY_COOKIE, id, { path: '/', sameSite: 'lax', maxAge: 60 * 60 * 24 * 365 });
     redirect('/owner/setup/rooms');
@@ -135,7 +150,7 @@ export async function createPropertyAction(_: Prev, fd: FormData): Promise<Actio
 }
 
 export async function updatePropertyAction(id: string, _: Prev, fd: FormData): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/properties/${id}`, { method: 'PATCH', body: propertyBody(fd) }), 'Saved');
+  return attempt(() => ownerApi(`/properties/${id}`, { method: 'PATCH', body: propertyBody(fd) }), 'actions.saved');
 }
 
 export async function saveGatewaysAction(id: string, _: Prev, fd: FormData): Promise<ActionResult> {
@@ -162,7 +177,7 @@ export async function saveGatewaysAction(id: string, _: Prev, fd: FormData): Pro
     };
   }
   if (bool(fd, 'bankRemove')) body.bank = null;
-  return attempt(() => ownerApi(`/properties/${id}/gateways`, { method: 'PUT', body }), 'Payment methods saved');
+  return attempt(() => ownerApi(`/properties/${id}/gateways`, { method: 'PUT', body }), 'actions.paymentMethodsSaved');
 }
 
 function roomBody(fd: FormData) {
@@ -187,11 +202,11 @@ function roomBody(fd: FormData) {
 }
 
 export async function createRoomAction(propertyId: string, _: Prev, fd: FormData): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/properties/${propertyId}/rooms`, { method: 'POST', body: roomBody(fd) }), 'Room added');
+  return attempt(() => ownerApi(`/properties/${propertyId}/rooms`, { method: 'POST', body: roomBody(fd) }), 'actions.roomAdded');
 }
 
 export async function updateRoomAction(roomId: string, _: Prev, fd: FormData): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/rooms/${roomId}`, { method: 'PATCH', body: roomBody(fd) }), 'Room saved');
+  return attempt(() => ownerApi(`/rooms/${roomId}`, { method: 'PATCH', body: roomBody(fd) }), 'actions.roomSaved');
 }
 
 export async function createRatePlanAction(propertyId: string, _: Prev, fd: FormData): Promise<ActionResult> {
@@ -218,11 +233,11 @@ export async function createRatePlanAction(propertyId: string, _: Prev, fd: Form
     monthlyRate: kind === 'monthly' ? optNum(fd, 'monthlyRate') : null,
     utilities: kind === 'monthly' ? optStr(fd, 'utilities') : null,
   };
-  return attempt(() => ownerApi(`/properties/${propertyId}/rate-plans`, { method: 'POST', body }), 'Rate plan added');
+  return attempt(() => ownerApi(`/properties/${propertyId}/rate-plans`, { method: 'POST', body }), 'actions.ratePlanAdded');
 }
 
 export async function deactivateRatePlanAction(planId: string, _: Prev): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/rate-plans/${planId}`, { method: 'DELETE' }), 'Rate plan switched off');
+  return attempt(() => ownerApi(`/rate-plans/${planId}`, { method: 'DELETE' }), 'actions.ratePlanOff');
 }
 
 // ---------------------------------------------------------------- calendar & channels
@@ -233,19 +248,19 @@ export async function blockAction(_: Prev, fd: FormData): Promise<ActionResult> 
   const release = fd.get('intent') === 'release';
   return attempt(
     () => ownerApi(`/rooms/${roomId}/blocks${release ? '/release' : ''}`, { method: 'POST', body }),
-    release ? 'Nights released' : 'Nights blocked',
+    release ? 'actions.nightsReleased' : 'actions.nightsBlocked',
   );
 }
 
 export async function addIcalSourceAction(_: Prev, fd: FormData): Promise<ActionResult> {
   return attempt(
     () => ownerApi(`/rooms/${str(fd, 'roomId')}/ical-sources`, { method: 'POST', body: { url: str(fd, 'url'), channel: str(fd, 'channel') } }),
-    'Calendar added — press "Sync now" to import it',
+    'actions.calendarAdded',
   );
 }
 
 export async function removeIcalSourceAction(sourceId: string, _: Prev): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/ical-sources/${sourceId}`, { method: 'DELETE' }), 'Calendar removed');
+  return attempt(() => ownerApi(`/ical-sources/${sourceId}`, { method: 'DELETE' }), 'actions.calendarRemoved');
 }
 
 export async function syncNowAction(propertyId: string, _: Prev): Promise<ActionResult> {
@@ -258,41 +273,49 @@ export async function syncNowAction(propertyId: string, _: Prev): Promise<Action
     const failed = out.filter((o) => !o.ok).length;
     const added = out.reduce((s, o) => s + o.added, 0);
     const conflicts = out.reduce((s, o) => s + o.conflicts, 0);
-    summary = `${out.length} calendar(s) synced · ${added} night(s) added${failed ? ` · ${failed} failed` : ''}${conflicts ? ` · ${conflicts} CONFLICT(S)` : ''}`;
+    summary = [
+      await msg('actions.syncSummary', { calendars: out.length, nights: added }),
+      failed ? await msg('actions.syncFailed', { n: failed }) : '',
+      conflicts ? await msg('actions.syncConflicts', { n: conflicts }) : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    if (!out.length) summary = '';
   }, '');
-  return res.ok ? { ok: true, message: summary || 'No calendars to sync' } : res;
+  return res.ok ? { ok: true, message: summary || (await msg('actions.nothingToSync')) } : res;
 }
 
 export async function resolveConflictAction(id: string, _: Prev, fd: FormData): Promise<ActionResult> {
   return attempt(
     () => ownerApi(`/conflicts/${id}/resolve`, { method: 'POST', body: { resolution: str(fd, 'resolution'), note: str(fd, 'note') } }),
-    'Conflict resolved',
+    'actions.conflictResolved',
   );
 }
 
 // ---------------------------------------------------------------- bookings & payments
 
 export async function bookingAction(id: string, op: 'approve' | 'no-show' | 'check-in' | 'check-out', _: Prev): Promise<ActionResult> {
-  const label = { approve: 'Approved — payment link sent', 'no-show': 'Marked as no-show', 'check-in': 'Checked in', 'check-out': 'Checked out' }[op];
+  const label = ({ approve: 'actions.approved', 'no-show': 'actions.markedNoShow', 'check-in': 'actions.checkedIn', 'check-out': 'actions.checkedOut' } as const)[op];
   return attempt(() => ownerApi(`/bookings/${id}/${op}`, { method: 'POST' }), label);
 }
 
 export async function declineAction(id: string, _: Prev, fd: FormData): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/bookings/${id}/decline`, { method: 'POST', body: { reason: str(fd, 'reason') } }), 'Request declined');
+  return attempt(() => ownerApi(`/bookings/${id}/decline`, { method: 'POST', body: { reason: str(fd, 'reason') } }), 'actions.requestDeclined');
 }
 
 export async function cancelAction(id: string, _: Prev, fd: FormData): Promise<ActionResult> {
-  let msg = 'Cancelled';
+  let message = '';
   const res = await attempt(async () => {
     const out = await ownerApi<{ refundDue: number; refund: { status: string; method: string } | null }>(`/bookings/${id}/cancel`, {
       method: 'POST',
       body: { reason: str(fd, 'reason'), refund: bool(fd, 'refund') },
     });
-    msg = out.refundDue > 0
-      ? `Cancelled. Refund of ${out.refundDue} ${out.refund?.status === 'confirmed' ? 'sent' : 'recorded — pay it back and mark it done'}.`
-      : 'Cancelled. No refund due under the policy.';
+    message =
+      out.refundDue > 0
+        ? await msg(out.refund?.status === 'confirmed' ? 'actions.cancelledRefundSent' : 'actions.cancelledRefundRecorded', { amount: out.refundDue })
+        : await msg('actions.cancelledNoRefund');
   }, '');
-  return res.ok ? { ok: true, message: msg } : res;
+  return res.ok ? { ok: true, message } : res;
 }
 
 export async function recordPaymentAction(id: string, _: Prev, fd: FormData): Promise<ActionResult> {
@@ -302,7 +325,7 @@ export async function recordPaymentAction(id: string, _: Prev, fd: FormData): Pr
         method: 'POST',
         body: { method: str(fd, 'method'), amount: num(fd, 'amount'), currency: optStr(fd, 'currency') ?? undefined, reference: str(fd, 'reference') },
       }),
-    'Payment recorded',
+    'actions.paymentRecorded',
   );
 }
 
@@ -310,20 +333,20 @@ export async function reviewSlipAction(paymentId: string, approve: boolean, _: P
   const amount = num(fd, 'amount');
   return attempt(
     () => ownerApi(`/payments/${paymentId}/review`, { method: 'POST', body: { approve, ...(approve && amount ? { amount } : {}) } }),
-    approve ? 'Slip confirmed' : 'Slip rejected',
+    approve ? 'actions.slipConfirmed' : 'actions.slipRejected',
   );
 }
 
 export async function refundAction(id: string, _: Prev, fd: FormData): Promise<ActionResult> {
   return attempt(
     () => ownerApi(`/bookings/${id}/refunds`, { method: 'POST', body: { amount: num(fd, 'amount'), reason: str(fd, 'reason') } }),
-    'Refund recorded',
+    'actions.refundRecorded',
   );
 }
 
 export async function completeRefundAction(paymentId: string, _: Prev, fd: FormData): Promise<ActionResult> {
   return attempt(
     () => ownerApi(`/payments/${paymentId}/complete-refund`, { method: 'POST', body: { reference: str(fd, 'reference') } }),
-    'Refund marked as paid',
+    'actions.refundPaid',
   );
 }

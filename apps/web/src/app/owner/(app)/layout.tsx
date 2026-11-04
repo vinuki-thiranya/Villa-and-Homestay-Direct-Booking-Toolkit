@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { LogOut } from 'lucide-react';
+import { ArrowLeftRight, LogOut } from 'lucide-react';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { OwnerI18nProvider } from '@/components/owner/I18n';
 import { LanguageSwitch } from '@/components/owner/LanguageSwitch';
@@ -39,7 +39,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
           {property && <OwnerNav variant="side" badges={badges} hidden={hidden} />}
           <form action={logoutAction} className="mt-auto">
             <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted hover:bg-surface-2">
-              <LogOut aria-hidden className="h-5 w-5" /> Log out
+              <LogOut aria-hidden className="h-5 w-5" /> {t('common.logOut')}
             </button>
           </form>
         </aside>
@@ -49,7 +49,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
             {properties.length > 1 && property ? (
               <form action={selectPropertyAction} className="flex min-w-0 items-center gap-2">
                 <label htmlFor="prop" className="sr-only">
-                  Property
+                  {t('common.property')}
                 </label>
                 <select id="prop" name="propertyId" defaultValue={property.id} className="field min-h-11 min-w-0 max-w-[11rem] truncate py-1 text-sm font-semibold sm:max-w-none">
                   {properties.map((p) => (
@@ -58,17 +58,20 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
                     </option>
                   ))}
                 </select>
-                <button className="btn-secondary min-h-11 px-3">Switch</button>
+                {/* An icon button: a word here (Switch / මාරු කරන්න) crowds the phone header. */}
+                <button className="btn-secondary min-h-11 w-11 shrink-0 px-0" aria-label={t('common.switchProperty')} title={t('common.switchProperty')}>
+                  <ArrowLeftRight aria-hidden className="h-4 w-4" />
+                </button>
               </form>
             ) : (
-              <p className="min-w-0 truncate font-semibold">{property?.name ?? 'Welcome'}</p>
+              <p className="min-w-0 truncate font-semibold">{property?.name ?? t('common.welcome')}</p>
             )}
             <div className="ml-auto flex items-center gap-1.5">
               {property && <SyncIndicator propertyId={property.id} />}
               <LanguageSwitch lang={t.lang} compact />
             </div>
             <form action={logoutAction} className="md:hidden">
-              <button className="flex h-11 w-11 items-center justify-center text-sm text-muted" aria-label="Log out">
+              <button className="flex h-11 w-11 items-center justify-center text-sm text-muted" aria-label={t('common.logOut')}>
                 <LogOut aria-hidden className="h-4 w-4" />
               </button>
             </form>
@@ -79,10 +82,10 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
               children
             ) : (
               <div className="mx-auto max-w-3xl space-y-4">
-                <h1 className="text-2xl font-semibold">Set up your property</h1>
-                <p className="text-muted">About 10 minutes. You can change everything later; rooms and rates come next.</p>
+                <h1 className="text-2xl font-semibold">{t('shared.setupTitle')}</h1>
+                <p className="text-muted">{t('shared.setupIntro')}</p>
                 <div className="card p-5">
-                  <ActionForm action={createPropertyAction} submitLabel="Create property">
+                  <ActionForm action={createPropertyAction} submitLabel={t('shared.createProperty')}>
                     <PropertyFields />
                   </ActionForm>
                 </div>

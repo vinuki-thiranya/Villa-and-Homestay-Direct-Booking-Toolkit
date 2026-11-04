@@ -1,4 +1,34 @@
 import type { Dict } from '../t';
 import type { addons as en } from '../en/addons';
 
-export const addons: Dict<typeof en> = {};
+export const addons: Dict<typeof en> = {
+  title: 'අමතර සේවා',
+  catalogue: 'නාමාවලිය හා සේවා සපයන්නන්',
+  commissions: 'කොමිස් මුදල්: {month}',
+  month: 'මාසය',
+  show: 'පෙන්වන්න',
+  noSales: 'මේ මාසයේ තහවුරු කළ අමතර සේවා විකුණුම් නැත.',
+  currency: 'මුදල් වර්ගය',
+  orders: 'ඇණවුම්',
+  sales: 'විකුණුම්',
+  earned: 'ඔබ උපයා ගත්',
+  providers: 'සේවා සපයන්නන්',
+  platformFee: 'StayDirect ගාස්තුව',
+  feeNote: 'StayDirect ගාස්තුව ඔබගේ දායකත්වය සමඟ මාසිකව ඉන්වොයිස් කෙරේ.',
+  ordersTitle: 'ඇණවුම් ({n})',
+  from: 'සිට',
+  to: 'දක්වා',
+  filter: 'පෙරන්න',
+  clear: 'ඉවත් කරන්න',
+  empty: 'තවම අමතර සේවා ඇණවුම් නැත. අමුත්තන් ඔවුන්ගේ වෙන්කිරීම් පිටුවෙන් ඇණවුම් කරති; නැතහොත් වෙන්කිරීමක් තුළින් ඔබට ඔවුන් වෙනුවෙන් ඇණවුම් කළ හැක.',
+  noProvider: 'සේවා සපයන්නෙක් නැත',
+  split: '{amount}: ඔබට {own}, සේවා සපයන්නාට {provider}',
+  jobCardSent: 'රැකියා පත {when} යැව්වා',
+  jobCardNotSent: 'රැකියා පත යවා නැත',
+  accepted: '{when} පිළිගත්තා',
+  confirm: 'තහවුරු කරන්න',
+  markDone: 'අවසන් ලෙස සලකුණු කරන්න',
+  resend: 'රැකියා පත නැවත යවන්න',
+  cancel: 'අවලංගු කරන්න',
+  cancelConfirm: 'මෙම ඇණවුම අවලංගු කරන්නද? මුදල අමුත්තාගේ ඉතිරි මුදලින් ඉවත් කෙරේ.',
+};

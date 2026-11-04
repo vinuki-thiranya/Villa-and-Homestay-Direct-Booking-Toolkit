@@ -2,8 +2,10 @@ import Link from 'next/link';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { CopyButton } from '@/components/owner/CopyButton';
 import { Check, Empty, Field, Section, Select, TextArea } from '@/components/owner/fields';
+import type { OwnerKey, Translator } from '@/i18n/owner/t';
 import { money } from '@/lib/format';
 import { currentProperty, ownerApi } from '@/lib/owner';
+import { getT } from '@/lib/owner-i18n';
 import {
   LANGUAGE_LABEL,
   PLACE_KINDS,
@@ -24,14 +26,24 @@ import {
   saveSequenceAction,
 } from '../../../actions-r2';
 
-export const metadata = { title: 'Concierge setup' };
+export async function generateMetadata() {
+  return { title: (await getT())('setup.concierge.metaTitle') };
+}
 
 const LANG_OPTIONS = Object.entries(LANGUAGE_LABEL) as [string, string][];
-const CHANNELS: [string, string][] = [
-  ['auto', 'WhatsApp, email if no phone'],
-  ['whatsapp', 'WhatsApp only'],
-  ['email', 'Email only'],
-];
+const CHANNELS = [
+  ['auto', 'channelAuto'],
+  ['whatsapp', 'channelWhatsapp'],
+  ['email', 'channelEmail'],
+] as const;
+
+/** Translated trigger title and timing, falling back to the English labels for unknown triggers. */
+function triggerText(t: Translator, trigger: string): { title: string; when: string } {
+  const key = `setup.concierge.trigger.${trigger}` as OwnerKey;
+  const title = t(key);
+  if (title === key) return { title: TRIGGER_LABEL[trigger]?.title ?? trigger, when: TRIGGER_LABEL[trigger]?.when ?? '' };
+  return { title, when: t(`${key}_when` as OwnerKey) };
+}
 
 export default async function ConciergeSetupPage({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const property = await currentProperty();
@@ -45,76 +57,79 @@ export default async function ConciergeSetupPage({ searchParams }: { searchParam
     ownerApi<SequenceSetting[]>(`/properties/${pid}/sequences`),
   ]);
   const g = s.guide;
+  const t = await getT();
 
   return (
     <div className="space-y-5">
-      <Section title="AI concierge on WhatsApp">
-        <p className="mb-4 text-sm text-muted">
-          The concierge answers guests from your house guide and knowledge base, checks availability and prices, and sends booking links. It never
-          confirms a booking — only a paid deposit does. Complaints, refunds, changes and anything it is unsure about are handed to you in the
-          inbox.
-        </p>
-        <ActionForm action={saveConciergeAction.bind(null, pid)} submitLabel="Save">
-          <Check label="Let the AI concierge answer guests" name="conciergeEnabled" defaultChecked={s.conciergeEnabled} />
+      <Section title={t('setup.concierge.aiTitle')}>
+        <p className="mb-4 text-sm text-muted">{t('setup.concierge.aiIntro')}</p>
+        <ActionForm action={saveConciergeAction.bind(null, pid)} submitLabel={t('common.save')}>
+          <Check label={t('setup.concierge.enable')} name="conciergeEnabled" defaultChecked={s.conciergeEnabled} />
           <div className="grid gap-3 sm:grid-cols-3">
             <Field
-              label="WhatsApp phone number ID"
+              label={t('setup.concierge.phoneId')}
               name="whatsappPhoneNumberId"
               defaultValue={s.whatsappPhoneNumberId ?? ''}
-              hint="From Meta's WhatsApp Manager. Leave empty to use the StayDirect number."
+              hint={t('setup.concierge.phoneIdHint')}
             />
-            <Field label="Google review link" name="googleReviewUrl" type="url" defaultValue={s.googleReviewUrl ?? ''} hint="Happy guests are sent here." />
             <Field
-              label="Repeat-guest discount (%)"
+              label={t('setup.concierge.googleReview')}
+              name="googleReviewUrl"
+              type="url"
+              defaultValue={s.googleReviewUrl ?? ''}
+              hint={t('setup.concierge.googleReviewHint')}
+            />
+            <Field
+              label={t('setup.concierge.repeatDiscount')}
               name="repeatGuestDiscountPct"
               type="number"
               min={0}
               max={50}
               step="0.5"
               defaultValue={s.repeatGuestDiscountPct}
-              hint="Code sent 11 months after a stay. 0 = off."
+              hint={t('setup.concierge.repeatDiscountHint')}
             />
           </div>
         </ActionForm>
         <p className="mt-4 text-sm text-muted">
-          This month ({s.aiUsage.month}): {s.aiUsage.requests} AI replies · {money(Number(s.aiUsage.costUsd), 'USD')} of the monthly budget.
+          {t('setup.concierge.usage', { month: s.aiUsage.month, requests: s.aiUsage.requests, cost: money(Number(s.aiUsage.costUsd), 'USD') })}
         </p>
       </Section>
 
-      <Section title="House guide" action={<CopyButton text={s.guideUrl} label="Copy guide link" />}>
+      <Section title={t('setup.concierge.guideTitle')} action={<CopyButton text={s.guideUrl} label={t('setup.concierge.copyGuide')} />}>
         <p className="mb-4 text-sm text-muted">
-          Sent to guests on arrival day and used by the concierge. Guests open it from a private link:{' '}
+          {t('setup.concierge.guideIntro')}{' '}
           <a href={s.guideUrl} target="_blank" rel="noopener noreferrer" className="break-all text-brand underline-offset-2 hover:underline">
             {s.guideUrl}
           </a>
         </p>
-        <ActionForm action={saveGuideAction.bind(null, pid)} submitLabel="Save house guide">
+        <ActionForm action={saveGuideAction.bind(null, pid)} submitLabel={t('setup.concierge.saveGuide')}>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Wi-Fi network" name="wifiName" defaultValue={g.wifiName} />
-            <Field label="Wi-Fi password" name="wifiPassword" defaultValue={g.wifiPassword} />
+            <Field label={t('setup.concierge.wifiName')} name="wifiName" defaultValue={g.wifiName} />
+            <Field label={t('setup.concierge.wifiPassword')} name="wifiPassword" defaultValue={g.wifiPassword} />
           </div>
-          <TextArea label="Arrival instructions" name="arrival" defaultValue={g.arrival} rows={3} />
-          <TextArea label="House rules" name="rules" defaultValue={g.rules} rows={3} />
-          <TextArea label="Check-out notes" name="checkoutNotes" defaultValue={g.checkoutNotes} rows={2} />
+          <TextArea label={t('setup.concierge.arrival')} name="arrival" defaultValue={g.arrival} rows={3} />
+          <TextArea label={t('setup.concierge.rules')} name="rules" defaultValue={g.rules} rows={3} />
+          <TextArea label={t('setup.concierge.checkout')} name="checkoutNotes" defaultValue={g.checkoutNotes} rows={2} />
           <TextArea
-            label="Emergency numbers"
+            label={t('setup.concierge.emergency')}
             name="emergency"
             rows={4}
             defaultValue={g.emergency.map((e) => `${e.label} | ${e.phone}`).join('\n')}
-            hint="One per line: Label | phone"
+            hint={t('setup.concierge.emergencyHint')}
           />
           <TextArea
-            label="Places nearby"
+            label={t('setup.concierge.places')}
             name="places"
             rows={5}
             defaultValue={g.places.map((p) => [p.name, p.kind, p.note, p.mapsUrl ?? ''].join(' | ')).join('\n')}
-            hint={`One per line: Name | kind | note | Google Maps link (optional). Kinds: ${PLACE_KINDS.join(', ')}`}
+            hint={t('setup.concierge.placesHint', { kinds: PLACE_KINDS.join(', ') })}
           />
         </ActionForm>
       </Section>
 
-      <Section title={`Knowledge base (${knowledge.length})`}>
-        <p className="mb-3 text-sm text-muted">Facts the concierge may use: breakfast, transfers, pets, laundry, surf boards… Write them as you would tell a guest.</p>
+      <Section title={t('setup.concierge.knowledgeTitle', { n: knowledge.length })}>
+        <p className="mb-3 text-sm text-muted">{t('setup.concierge.knowledgeIntro')}</p>
         <div className="space-y-3">
           {knowledge.map((k) => (
             <details key={k.id} className="rounded-xl border border-line p-3">
@@ -122,26 +137,34 @@ export default async function ConciergeSetupPage({ searchParams }: { searchParam
                 {k.title} <span className="text-sm font-normal text-muted">· {LANGUAGE_LABEL[k.language] ?? k.language}</span>
               </summary>
               <div className="mt-3 space-y-3">
-                <ActionForm action={saveKnowledgeAction.bind(null, pid, k.id)} submitLabel="Save">
-                  <KnowledgeFields entry={k} idPrefix={k.id} />
+                <ActionForm action={saveKnowledgeAction.bind(null, pid, k.id)} submitLabel={t('common.save')}>
+                  <KnowledgeFields entry={k} idPrefix={k.id} t={t} />
                 </ActionForm>
-                <ActionForm action={deleteKnowledgeAction.bind(null, k.id)} submitLabel="Delete" variant="danger" confirm={`Delete "${k.title}"?`} />
+                <ActionForm
+                  action={deleteKnowledgeAction.bind(null, k.id)}
+                  submitLabel={t('common.delete')}
+                  variant="danger"
+                  confirm={t('setup.concierge.deleteConfirm', { title: k.title })}
+                />
               </div>
             </details>
           ))}
           <details className="rounded-xl border border-dashed border-line p-3">
-            <summary className="cursor-pointer font-medium text-brand">Add an entry</summary>
+            <summary className="cursor-pointer font-medium text-brand">{t('setup.concierge.addEntry')}</summary>
             <div className="mt-3">
-              <ActionForm action={saveKnowledgeAction.bind(null, pid, null)} submitLabel="Add">
-                <KnowledgeFields idPrefix="new" />
+              <ActionForm action={saveKnowledgeAction.bind(null, pid, null)} submitLabel={t('common.add')}>
+                <KnowledgeFields idPrefix="new" t={t} />
               </ActionForm>
             </div>
           </details>
         </div>
       </Section>
 
-      <Section title="Quick replies" action={<ActionForm action={loadQuickRepliesAction.bind(null, pid)} submitLabel="Load 30 defaults" variant="secondary" inline />}>
-        <nav aria-label="Language" className="mb-3 flex gap-2 overflow-x-auto">
+      <Section
+        title={t('setup.concierge.quickTitle')}
+        action={<ActionForm action={loadQuickRepliesAction.bind(null, pid)} submitLabel={t('setup.concierge.loadDefaults')} variant="secondary" inline />}
+      >
+        <nav aria-label={t('setup.concierge.language')} className="mb-3 flex gap-2 overflow-x-auto">
           {LANG_OPTIONS.map(([code, label]) => (
             <Link
               key={code}
@@ -154,7 +177,7 @@ export default async function ConciergeSetupPage({ searchParams }: { searchParam
           ))}
         </nav>
         {replies.length === 0 ? (
-          <Empty>No quick replies in {LANGUAGE_LABEL[lang] ?? lang} yet. “Load 30 defaults” adds the most common guest questions in all four languages.</Empty>
+          <Empty>{t('setup.concierge.quickEmpty', { lang: LANGUAGE_LABEL[lang] ?? lang })}</Empty>
         ) : (
           <ul className="space-y-2">
             {replies.map((q) => (
@@ -164,10 +187,15 @@ export default async function ConciergeSetupPage({ searchParams }: { searchParam
                     <span className="font-medium">{q.title}</span> <span className="text-sm text-muted">· {q.topic}</span>
                   </summary>
                   <div className="mt-3 space-y-3">
-                    <ActionForm action={saveQuickReplyAction.bind(null, pid)} submitLabel="Save">
-                      <QuickReplyFields reply={q} idPrefix={q.id} />
+                    <ActionForm action={saveQuickReplyAction.bind(null, pid)} submitLabel={t('common.save')}>
+                      <QuickReplyFields reply={q} idPrefix={q.id} t={t} />
                     </ActionForm>
-                    <ActionForm action={deleteQuickReplyAction.bind(null, q.id)} submitLabel="Delete" variant="danger" confirm="Delete this quick reply?" />
+                    <ActionForm
+                      action={deleteQuickReplyAction.bind(null, q.id)}
+                      submitLabel={t('common.delete')}
+                      variant="danger"
+                      confirm={t('setup.concierge.deleteQuickConfirm')}
+                    />
                   </div>
                 </details>
               </li>
@@ -175,66 +203,77 @@ export default async function ConciergeSetupPage({ searchParams }: { searchParam
           </ul>
         )}
         <details className="mt-3 rounded-xl border border-dashed border-line p-3">
-          <summary className="cursor-pointer font-medium text-brand">Add a quick reply</summary>
+          <summary className="cursor-pointer font-medium text-brand">{t('setup.concierge.addQuick')}</summary>
           <div className="mt-3">
-            <ActionForm action={saveQuickReplyAction.bind(null, pid)} submitLabel="Add">
-              <QuickReplyFields idPrefix="new-qr" language={lang} />
+            <ActionForm action={saveQuickReplyAction.bind(null, pid)} submitLabel={t('common.add')}>
+              <QuickReplyFields idPrefix="new-qr" language={lang} t={t} />
             </ActionForm>
           </div>
         </details>
       </Section>
 
-      <Section title="Automated messages">
-        <p className="mb-3 text-sm text-muted">Sent between 8 am and 9 pm property time, in the guest&apos;s language. Each one goes out once per booking.</p>
+      <Section title={t('setup.concierge.autoTitle')}>
+        <p className="mb-3 text-sm text-muted">{t('setup.concierge.autoIntro')}</p>
         <ul className="divide-y divide-line">
-          {sequences.map((seq) => (
+          {sequences.map((seq) => {
+            const text = triggerText(t, seq.trigger);
+            return (
             <li key={seq.trigger} className="py-3">
-              <ActionForm action={saveSequenceAction.bind(null, pid, seq.trigger)} submitLabel="Save" variant="secondary" inline>
-                <div className="min-w-48 flex-1">
-                  <p className="font-medium">{TRIGGER_LABEL[seq.trigger]?.title ?? seq.trigger}</p>
-                  <p className="text-sm text-muted">{TRIGGER_LABEL[seq.trigger]?.when}</p>
+              <ActionForm action={saveSequenceAction.bind(null, pid, seq.trigger)} submitLabel={t('common.save')} variant="secondary" inline className="w-full">
+                <div className="min-w-0 basis-full sm:min-w-48 sm:flex-1 sm:basis-auto">
+                  <p className="font-medium">{text.title}</p>
+                  <p className="text-sm text-muted">{text.when}</p>
                 </div>
-                <Check label="On" name="enabled" defaultChecked={seq.enabled} />
+                <Check label={t('setup.concierge.on')} name="enabled" defaultChecked={seq.enabled} />
                 <label htmlFor={`ch-${seq.trigger}`} className="sr-only">
-                  Channel
+                  {t('setup.concierge.channel')}
                 </label>
-                <select id={`ch-${seq.trigger}`} name="channel" defaultValue={seq.channel} className="field w-auto min-w-52">
+                <select id={`ch-${seq.trigger}`} name="channel" defaultValue={seq.channel} className="field w-full max-w-full sm:w-auto sm:min-w-52">
                   {CHANNELS.map(([v, l]) => (
                     <option key={v} value={v}>
-                      {l}
+                      {t(`setup.concierge.${l}`)}
                     </option>
                   ))}
                 </select>
               </ActionForm>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </Section>
     </div>
   );
 }
 
-function KnowledgeFields({ entry, idPrefix }: { entry?: KnowledgeEntry; idPrefix: string }) {
+function KnowledgeFields({ entry, idPrefix, t }: { entry?: KnowledgeEntry; idPrefix: string; t: Translator }) {
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
-        <Field label="Title" name="title" id={`${idPrefix}-title`} required minLength={2} defaultValue={entry?.title} />
-        <Select label="Language" name="language" id={`${idPrefix}-lang`} options={LANG_OPTIONS} defaultValue={entry?.language ?? 'en'} />
+        <Field label={t('setup.concierge.title')} name="title" id={`${idPrefix}-title`} required minLength={2} defaultValue={entry?.title} />
+        <Select label={t('setup.concierge.language')} name="language" id={`${idPrefix}-lang`} options={LANG_OPTIONS} defaultValue={entry?.language ?? 'en'} />
       </div>
-      <TextArea label="What guests should know" name="body" id={`${idPrefix}-body`} required minLength={2} rows={4} defaultValue={entry?.body} />
+      <TextArea label={t('setup.concierge.knowledgeBody')} name="body" id={`${idPrefix}-body`} required minLength={2} rows={4} defaultValue={entry?.body} />
     </>
   );
 }
 
-function QuickReplyFields({ reply, idPrefix, language }: { reply?: QuickReply; idPrefix: string; language?: string }) {
+function QuickReplyFields({ reply, idPrefix, language, t }: { reply?: QuickReply; idPrefix: string; language?: string; t: Translator }) {
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="Title" name="title" id={`${idPrefix}-title`} required defaultValue={reply?.title} />
-        <Field label="Topic key" name="topic" id={`${idPrefix}-topic`} required pattern="[a-z0-9_]+" defaultValue={reply?.topic} hint="e.g. wifi, breakfast" />
-        <Select label="Language" name="language" id={`${idPrefix}-lang`} options={LANG_OPTIONS} defaultValue={reply?.language ?? language ?? 'en'} />
+        <Field label={t('setup.concierge.title')} name="title" id={`${idPrefix}-title`} required defaultValue={reply?.title} />
+        <Field
+          label={t('setup.concierge.topic')}
+          name="topic"
+          id={`${idPrefix}-topic`}
+          required
+          pattern="[a-z0-9_]+"
+          defaultValue={reply?.topic}
+          hint={t('setup.concierge.topicHint')}
+        />
+        <Select label={t('setup.concierge.language')} name="language" id={`${idPrefix}-lang`} options={LANG_OPTIONS} defaultValue={reply?.language ?? language ?? 'en'} />
       </div>
-      <TextArea label="Message" name="body" id={`${idPrefix}-body`} required rows={3} defaultValue={reply?.body} />
+      <TextArea label={t('setup.concierge.message')} name="body" id={`${idPrefix}-body`} required rows={3} defaultValue={reply?.body} />
       <input type="hidden" name="sortOrder" value={reply?.sortOrder ?? 0} />
     </>
   );

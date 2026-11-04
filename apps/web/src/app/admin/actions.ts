@@ -180,3 +180,32 @@ export async function resetTranslationAction(lang: string, key: string): Promise
   if (!['en', 'de', 'fr', 'hi'].includes(lang)) return { ok: false, message: 'Invalid language' };
   return attempt(() => adminApi(`/admin/translations/${lang}/${encodeURIComponent(key)}`, { method: 'DELETE' }), 'Back to default', ['/admin/translations']);
 }
+
+// ---------------------------------------------------------------- public holidays (Poya days)
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const HOLIDAY_TYPES = ['public', 'bank', 'mercantile'];
+
+/** Add or correct a holiday (keyed by date + English name) after a gazette change. */
+export async function saveHolidayAction(_prev: Prev, fd: FormData): Promise<AdminResult> {
+  const date = str(fd, 'date');
+  const nameEn = str(fd, 'nameEn');
+  const nameSi = str(fd, 'nameSi');
+  const types = fd.getAll('types').map(String).filter((t) => HOLIDAY_TYPES.includes(t));
+  if (!ISO_DATE.test(date)) return { ok: false, message: 'Pick a date' };
+  if (nameEn.length < 2 || nameSi.length < 2) return { ok: false, message: 'Enter the English and Sinhala names' };
+  if (types.length === 0) return { ok: false, message: 'Tick at least one holiday type' };
+  return attempt(
+    () => adminApi('/admin/holidays', { method: 'PUT', body: { date, nameEn, nameSi, isPoya: fd.get('isPoya') === 'on', types } }),
+    `Saved: ${nameEn}, ${date}`,
+    ['/admin/holidays'],
+  );
+}
+
+export async function deleteHolidayAction(date: string, nameEn: string): Promise<AdminResult> {
+  if (!ISO_DATE.test(date) || !nameEn) return { ok: false, message: 'Invalid holiday' };
+  return attempt(
+    () => adminApi(`/admin/holidays/${date}/${encodeURIComponent(nameEn)}`, { method: 'DELETE' }),
+    `Deleted: ${nameEn}`,
+    ['/admin/holidays'],
+  );
+}

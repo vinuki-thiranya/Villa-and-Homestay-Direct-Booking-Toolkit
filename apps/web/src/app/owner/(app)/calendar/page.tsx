@@ -1,9 +1,10 @@
 import Link from 'next/link';
-import type { CalendarNight } from '@staydirect/shared';
+import type { CalendarNight, Holiday } from '@staydirect/shared';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { Field, Section, Select } from '@/components/owner/fields';
-import { fmtShort, fmtWeekday, SOURCE_LABEL } from '@/lib/format';
+import { tLabel } from '@/components/owner/labels';
 import { currentProperty, ownerApi } from '@/lib/owner';
+import { getHolidays, getT } from '@/lib/owner-i18n';
 import { blockAction } from '../../actions';
 
 const DAYS = 30;
@@ -31,25 +32,31 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const today = new Date().toISOString().slice(0, 10);
   const start = q.start && /^\d{4}-\d{2}-\d{2}$/.test(q.start) ? q.start : today;
   const end = addDays(start, DAYS);
-  const cal = await ownerApi<{ rooms: { id: string; name: string }[]; nights: CalendarNight[] }>(
-    `/properties/${property.id}/calendar?from=${start}&to=${end}`,
-  );
+  const [cal, t, holidayList] = await Promise.all([
+    ownerApi<{ rooms: { id: string; name: string }[]; nights: CalendarNight[] }>(`/properties/${property.id}/calendar?from=${start}&to=${end}`),
+    getT(),
+    getHolidays(start, end),
+  ]);
+  const holidays = new Map<string, Holiday[]>();
+  for (const h of holidayList) holidays.set(h.date, [...(holidays.get(h.date) ?? []), h]);
+  const holidayName = (h: Holiday) => (t.lang === 'si' ? h.nameSi : h.nameEn);
+  const wd = new Intl.DateTimeFormat(t.locale, { weekday: 'short', timeZone: 'UTC' });
   const dates = Array.from({ length: DAYS }, (_, i) => addDays(start, i));
   const byKey = new Map(cal.nights.map((n) => [`${n.roomId}|${n.date}`, n]));
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Calendar</h1>
-        <nav aria-label="Calendar dates" className="flex items-center gap-2">
+        <h1 className="text-2xl font-semibold">{t('calendar.title')}</h1>
+        <nav aria-label={t('calendar.datesNav')} className="flex items-center gap-2">
           <Link className="btn-secondary min-h-9 px-3" href={`/owner/calendar?start=${addDays(start, -7)}`}>
-            ← Week
+            {t('calendar.prevWeek')}
           </Link>
           <Link className="btn-secondary min-h-9 px-3" href="/owner/calendar">
-            Today
+            {t('calendar.today')}
           </Link>
           <Link className="btn-secondary min-h-9 px-3" href={`/owner/calendar?start=${addDays(start, 7)}`}>
-            Week →
+            {t('calendar.nextWeek')}
           </Link>
         </nav>
       </div>
@@ -57,19 +64,36 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       <div className="card overflow-x-auto">
         <table className="w-max border-collapse text-xs">
           <caption className="sr-only">
-            Room availability from {start} for {DAYS} days
+            {t('calendar.caption', { start: t.date(start), days: DAYS })}
           </caption>
           <thead>
             <tr>
               <th scope="col" className="sticky left-0 z-10 min-w-32 bg-surface p-2 text-left font-semibold">
-                Room
+                {t('calendar.room')}
               </th>
-              {dates.map((d) => (
-                <th key={d} scope="col" className={`w-11 p-1 text-center font-medium ${d === today ? 'text-brand' : 'text-muted'}`}>
-                  <span className="block">{fmtWeekday(d)}</span>
-                  <span className="block">{fmtShort(d).split(' ')[0]}</span>
-                </th>
-              ))}
+              {dates.map((d) => {
+                const hs = holidays.get(d) ?? [];
+                const poya = hs.some((h) => h.isPoya);
+                const names = hs.map(holidayName).join(', ');
+                return (
+                  <th
+                    key={d}
+                    scope="col"
+                    title={names || undefined}
+                    className={`w-11 p-1 text-center font-medium ${d === today ? 'text-brand' : 'text-muted'} ${hs.length ? 'bg-warn-bg/60' : ''}`}
+                  >
+                    <span className="block">{wd.format(new Date(`${d}T00:00:00Z`))}</span>
+                    <span className="block">{Number(d.slice(8))}</span>
+                    {hs.length > 0 && (
+                      <span
+                        className={`mx-auto mt-0.5 block h-2 w-2 rounded-full ${poya ? 'bg-warn' : 'border border-warn'}`}
+                        role="img"
+                        aria-label={`${poya ? t('calendar.legendPoya') : t('calendar.legendHoliday')}: ${names}`}
+                      />
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -80,10 +104,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                 </th>
                 {dates.map((d) => {
                   const n = byKey.get(`${r.id}|${d}`);
-                  if (!n) return <td key={d} className="h-10 border-l border-line" aria-label={`${r.name} ${d} free`} />;
+                  if (!n) return <td key={d} className="h-10 border-l border-line" aria-label={t('calendar.free', { room: r.name, date: t.short(d) })} />;
                   const tone = n.status === 'held' ? 'bg-amber-300 text-amber-950' : (CELL[n.source] ?? CELL.other);
-                  const label = n.status === 'held' ? 'Hold' : n.status === 'blocked' ? 'Block' : SOURCE_LABEL[n.source];
-                  const title = `${r.name} · ${d} · ${label}${n.bookingReference ? ` · ${n.bookingReference}` : ''}${n.note ? ` · ${n.note}` : ''}`;
+                  const label = n.status === 'held' ? t('calendar.hold') : n.status === 'blocked' ? t('calendar.block') : tLabel(t, 'source', n.source);
+                  const title = `${r.name} · ${t.short(d)} · ${label}${n.bookingReference ? ` · ${n.bookingReference}` : ''}${n.note ? ` · ${n.note}` : ''}`;
                   return (
                     <td key={d} className="h-10 border-l border-line p-0.5">
                       {n.bookingId ? (
@@ -103,13 +127,15 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           </tbody>
         </table>
       </div>
-      <ul className="flex flex-wrap gap-3 text-xs" aria-label="Legend">
+      <ul className="flex flex-wrap gap-3 text-xs" aria-label={t('calendar.legend')}>
         {[
-          ['Direct', CELL.direct],
+          [tLabel(t, 'source', 'direct'), CELL.direct],
           ['Airbnb', CELL.airbnb],
           ['Booking.com', CELL.booking_com],
-          ['Hold (checkout in progress)', 'bg-amber-300 text-amber-950'],
-          ['Blocked', CELL.manual],
+          [t('calendar.legendHold'), 'bg-amber-300 text-amber-950'],
+          [t('calendar.legendBlocked'), CELL.manual],
+          [t('calendar.legendPoya'), 'rounded-full bg-warn'],
+          [t('calendar.legendHoliday'), 'rounded-full border border-warn'],
         ].map(([l, c]) => (
           <li key={l} className="flex items-center gap-1.5">
             <span className={`h-3 w-3 rounded ${c}`} aria-hidden /> {l}
@@ -117,25 +143,25 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         ))}
       </ul>
 
-      <Section title="Block or release nights">
-        <ActionForm action={blockAction} submitLabel="Block nights">
+      <Section title={t('calendar.blockTitle')}>
+        <ActionForm action={blockAction} submitLabel={t('calendar.blockSubmit')}>
           <div className="grid gap-3 sm:grid-cols-4">
-            <Select label="Room" name="roomId" options={cal.rooms.map((r) => [r.id, r.name])} />
-            <Field label="From" name="from" type="date" required defaultValue={today} />
-            <Field label="To (check-out)" name="to" type="date" required defaultValue={addDays(today, 1)} />
-            <Field label="Note" name="note" placeholder="Maintenance" />
+            <Select label={t('calendar.room')} name="roomId" options={cal.rooms.map((r) => [r.id, r.name])} />
+            <Field label={t('calendar.from')} name="from" type="date" required defaultValue={today} />
+            <Field label={t('calendar.to')} name="to" type="date" required defaultValue={addDays(today, 1)} />
+            <Field label={t('calendar.note')} name="note" placeholder={t('calendar.notePlaceholder')} />
           </div>
           <Select
-            label="Action"
+            label={t('calendar.action')}
             name="intent"
             options={[
-              ['block', 'Block these nights'],
-              ['release', 'Release my blocks on these nights'],
+              ['block', t('calendar.blockThese')],
+              ['release', t('calendar.releaseThese')],
             ]}
             className="max-w-xs"
           />
         </ActionForm>
-        <p className="mt-2 text-xs text-muted">Blocks show on Airbnb and Booking.com through your calendar export within 15 minutes.</p>
+        <p className="mt-2 text-xs text-muted">{t('calendar.blockNote')}</p>
       </Section>
     </div>
   );

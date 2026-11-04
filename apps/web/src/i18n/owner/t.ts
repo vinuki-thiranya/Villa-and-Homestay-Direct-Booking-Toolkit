@@ -34,6 +34,14 @@ type Vars = Record<string, string | number>;
 const DICTS: Record<OwnerLang, Dict<typeof en>> = { en, si };
 const LOCALE: Record<OwnerLang, string> = { en: 'en-GB', si: 'si-LK' };
 
+/*
+ * Sinhala months by hand: ICU's si locale prints the traditional names (දුරුතු, නවම්, … ඉල්), which are
+ * also the Poya names. Next to Poya markers that misleads, and Sri Lankan business and banking use the
+ * modern names. Same names as the Flutter app (intl's si locale).
+ */
+const SI_MONTHS = ['ජනවාරි', 'පෙබරවාරි', 'මාර්තු', 'අප්‍රේල්', 'මැයි', 'ජූනි', 'ජූලි', 'අගෝස්තු', 'සැප්තැම්බර්', 'ඔක්තෝබර්', 'නොවැම්බර්', 'දෙසැම්බර්'];
+const SI_MONTHS_SHORT = ['ජන', 'පෙබ', 'මාර්තු', 'අප්‍රේල්', 'මැයි', 'ජූනි', 'ජූලි', 'අගෝ', 'සැප්', 'ඔක්', 'නොවැ', 'දෙසැ'];
+
 function lookup(dict: unknown, key: string): string | undefined {
   let cur = dict;
   for (const part of key.split('.')) {
@@ -59,6 +67,8 @@ export interface Translator {
   dateTime(iso: string | null | undefined): string;
   /** Monday */
   weekday(iso: string): string;
+  /** November 2026 (long) or Nov (short) */
+  month(iso: string, style?: 'long' | 'short'): string;
   lang: OwnerLang;
   locale: string;
 }
@@ -70,18 +80,26 @@ export function makeT(lang: OwnerLang): Translator {
   if (hit) return hit;
   const dict = DICTS[lang];
   const locale = LOCALE[lang];
-  const dateFmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
-  const shortFmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' });
   const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' });
-  const dtFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Colombo' });
+  const timeFmt = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'Asia/Colombo' });
+  const colomboDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo' });
   const day = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`);
+  const enMonth = { long: new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'UTC' }), short: new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC' }) };
+  const monthName = (d: Date, style: 'long' | 'short') =>
+    lang === 'si' ? (style === 'long' ? SI_MONTHS : SI_MONTHS_SHORT)[d.getUTCMonth()]! : enMonth[style].format(d);
+  // "14 Dec 2026" in both languages (day, month, year; Western digits).
+  const fmtDay = (d: Date, year: boolean) => `${d.getUTCDate()} ${monthName(d, 'short')}${year ? ` ${d.getUTCFullYear()}` : ''}`;
 
   const t = ((key: OwnerKey, vars?: Vars) => fill(lookup(dict, key) ?? lookup(en, key) ?? key, vars)) as Translator;
   t.n = (key, n, vars) => t(`${key}_${n === 1 ? 'one' : 'other'}` as OwnerKey, { n, ...vars });
-  t.date = (iso) => (iso ? dateFmt.format(day(iso)) : '—');
-  t.short = (iso) => shortFmt.format(day(iso));
-  t.dateTime = (iso) => (iso ? dtFmt.format(new Date(iso)) : '—');
+  t.date = (iso) => (iso ? fmtDay(day(iso), true) : '—');
+  t.short = (iso) => fmtDay(day(iso), false);
+  t.dateTime = (iso) => (iso ? `${fmtDay(day(colomboDay.format(new Date(iso))), true)}, ${timeFmt.format(new Date(iso))}` : '—');
   t.weekday = (iso) => weekdayFmt.format(day(iso));
+  t.month = (iso, style = 'long') => {
+    const d = day(iso.length === 7 ? `${iso}-01` : iso);
+    return style === 'long' ? `${monthName(d, 'long')} ${d.getUTCFullYear()}` : monthName(d, 'short');
+  };
   t.lang = lang;
   t.locale = locale;
   cache.set(lang, t);

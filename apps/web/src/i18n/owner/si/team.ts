@@ -1,4 +1,33 @@
 import type { Dict } from '../t';
 import type { team as en } from '../en/team';
 
-export const team: Dict<typeof en> = {};
+export const team: Dict<typeof en> = {
+  title: 'කණ්ඩායම',
+  people: 'සාමාජිකයින් ({n})',
+  roles: { owner: 'හිමිකරු', manager: 'කළමනාකරු', staff: 'කාර්ය මණ්ඩලය' },
+  roleManager: 'කළමනාකරු: වෙන්කිරීම්, ගෙවීම්, අමුත්තන්',
+  roleStaff: 'කාර්ය මණ්ඩලය: කාර්යයන් හා පණිවිඩ',
+  allProperties: 'සියලු දේපළ',
+  property: 'දේපළ',
+  everything: 'සියල්ල',
+  changeAccess: 'ප්‍රවේශය වෙනස් කරන්න',
+  role: 'භූමිකාව',
+  saveAccess: 'ප්‍රවේශය සුරකින්න',
+  remove: 'කණ්ඩායමෙන් ඉවත් කරන්න',
+  removeConfirm: '{name} ඔබගේ කණ්ඩායමෙන් ඉවත් කරන්නද?',
+  invitesTitle: 'පොරොත්තුවෙන් ඇති ආරාධනා',
+  expires: '{access}, {date} දින කල් ඉකුත් වේ',
+  copyLink: 'සබැඳිය පිටපත් කරන්න',
+  revoke: 'අවලංගු කරන්න',
+  inviteTitle: 'කෙනෙකුට ආරාධනා කරන්න',
+  inviteIntro: 'ඔවුන්ට WhatsApp හෝ SMS මඟින් සබැඳියක් ලැබෙන අතර ඔවුන්ගේම දුරකථන අංකයෙන් ඇතුළු වෙති. මුරපදයක් අවශ්‍ය නැත.',
+  sendInvite: 'ආරාධනාව යවන්න',
+  name: 'නම',
+  mobile: 'ජංගම දුරකථන අංකය',
+  ownerOnly: 'පුද්ගලයින්ට ආරාධනා කිරීමට හෝ ප්‍රවේශය වෙනස් කිරීමට හැක්කේ හිමිකරුට පමණි.',
+  propertiesLegend: 'දේපළ (කිසිවක් තෝරා නැත්නම් සියල්ල)',
+  inviteSent: 'ආරාධනාව WhatsApp/SMS මඟින් යැව්වා. සබැඳිය: {url}',
+  inviteRevoked: 'ආරාධනාව අවලංගු කළා',
+  accessSaved: 'ප්‍රවේශය සුරැකිණි',
+  removed: 'කණ්ඩායමෙන් ඉවත් කළා',
+};

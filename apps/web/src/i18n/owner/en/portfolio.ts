@@ -1,2 +1,35 @@
-// Owner app text: portfolio. Filled during the Sinhala translation (Agent B).
-export const portfolio = {};
+// Owner app text: all properties (portfolio) and the all-properties calendar.
+export const portfolio = {
+  title: 'All properties',
+  calendarForAll: 'Calendar for all',
+  empty: 'No properties yet.',
+  open: 'Open {name}',
+  needsYou_one: '{n} needs you',
+  needsYou_other: '{n} need you',
+  arrive: 'Arrive',
+  leave: 'Leave',
+  tonight: 'Tonight',
+  roomsHint: '{occupied}/{rooms} rooms',
+  tasks: 'Tasks',
+  unpaid: 'Unpaid',
+  none: 'None',
+  replies: 'Replies',
+  conflicts_one: '{n} double-booking conflict',
+  conflicts_other: '{n} double-booking conflicts',
+  syncFailing_one: '{n} calendar not syncing',
+  syncFailing_other: '{n} calendars not syncing',
+  toApprove_one: '{n} request to approve',
+  toApprove_other: '{n} requests to approve',
+  // calendar
+  calendarTitle: 'Calendar: all properties',
+  datesNav: 'Calendar dates',
+  prevWeek: '← Week',
+  today: 'Today',
+  nextWeek: 'Week →',
+  caption: 'All rooms of all properties from {start} for {days} days',
+  room: 'Room',
+  free: 'free',
+  hold: 'Hold',
+  blocked: 'Blocked',
+  footnote: 'Booking links open in the property they belong to; switch property at the top to act on them.',
+};

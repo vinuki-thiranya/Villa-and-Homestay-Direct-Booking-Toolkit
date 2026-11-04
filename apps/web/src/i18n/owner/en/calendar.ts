@@ -1,2 +1,28 @@
-// Owner app text: calendar. Filled during the Sinhala translation (Agent A).
-export const calendar = {};
+// Owner app text: room calendar (and holiday marks on it).
+export const calendar = {
+  title: 'Calendar',
+  datesNav: 'Calendar dates',
+  prevWeek: '← Week',
+  today: 'Today',
+  nextWeek: 'Week →',
+  caption: 'Room availability from {start} for {days} days',
+  room: 'Room',
+  free: '{room} {date} free',
+  hold: 'Hold',
+  block: 'Block',
+  legend: 'Legend',
+  legendHold: 'Hold (checkout in progress)',
+  legendBlocked: 'Blocked',
+  legendPoya: 'Poya day',
+  legendHoliday: 'Public holiday',
+  blockTitle: 'Block or release nights',
+  blockSubmit: 'Block nights',
+  from: 'From',
+  to: 'To (check-out)',
+  note: 'Note',
+  notePlaceholder: 'Maintenance',
+  action: 'Action',
+  blockThese: 'Block these nights',
+  releaseThese: 'Release my blocks on these nights',
+  blockNote: 'Blocks show on Airbnb and Booking.com through your calendar export within 15 minutes.',
+};

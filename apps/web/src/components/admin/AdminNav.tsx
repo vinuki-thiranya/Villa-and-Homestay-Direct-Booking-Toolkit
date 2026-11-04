@@ -1,6 +1,6 @@
 'use client';
 
-import { BookUser, Flag, Gauge, Languages, LifeBuoy, Palette, ReceiptText } from 'lucide-react';
+import { BookUser, CalendarDays, Flag, Gauge, Languages, LifeBuoy, Palette, ReceiptText } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -12,6 +12,7 @@ const ITEMS = [
   { href: '/admin/flags', label: 'Feature flags', icon: Flag },
   { href: '/admin/themes', label: 'Themes', icon: Palette },
   { href: '/admin/translations', label: 'Translations', icon: Languages },
+  { href: '/admin/holidays', label: 'Holidays', icon: CalendarDays },
 ];
 
 export function AdminNav() {

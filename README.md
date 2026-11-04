@@ -55,6 +55,7 @@ commission ledger, admin console) in [§8](docs/plan.md).
 Demo logins (dev OTP `123456`): owner `0770000000` (Villa Lagoon, Pro, simulated OTA connection), caretaker company
 `0770000001` (Manager plan, two owners and properties, white label), limited manager `0770000002`, StayDirect admin
 `0770000099` at `/admin`.
+The owner web and app also run in Sinhala: tap **සිං** in the owner header (or More → Language); the choice follows the user to the Flutter app.
 Set `ANTHROPIC_API_KEY` and switch the concierge on under *Setup → Concierge* to try it; without a key, guest messages land in the inbox only.
 
 ## Tests

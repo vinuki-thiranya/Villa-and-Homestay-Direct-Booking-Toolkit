@@ -1,2 +1,32 @@
-// Owner app text: team. Filled during the Sinhala translation (Agent B).
-export const team = {};
+// Owner app text: team members, property access and invites.
+export const team = {
+  title: 'Team',
+  people: 'People ({n})',
+  roles: { owner: 'Owner', manager: 'Manager', staff: 'Staff' },
+  roleManager: 'Manager: bookings, payments, guests',
+  roleStaff: 'Staff: tasks and inbox',
+  allProperties: 'All properties',
+  property: 'Property',
+  everything: 'Everything',
+  changeAccess: 'Change access',
+  role: 'Role',
+  saveAccess: 'Save access',
+  remove: 'Remove from team',
+  removeConfirm: 'Remove {name} from your team?',
+  invitesTitle: 'Invites waiting',
+  expires: '{access}, expires {date}',
+  copyLink: 'Copy link',
+  revoke: 'Revoke',
+  inviteTitle: 'Invite someone',
+  inviteIntro: 'They get a link by WhatsApp or SMS and sign in with their own phone number. No password.',
+  sendInvite: 'Send invite',
+  name: 'Name',
+  mobile: 'Mobile number',
+  ownerOnly: 'Only the owner can invite people or change access.',
+  propertiesLegend: 'Properties (none ticked = all)',
+  // action messages
+  inviteSent: 'Invite sent by WhatsApp/SMS. Link: {url}',
+  inviteRevoked: 'Invite revoked',
+  accessSaved: 'Access saved',
+  removed: 'Removed from the team',
+};

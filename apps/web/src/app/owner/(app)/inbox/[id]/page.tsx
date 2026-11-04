@@ -6,34 +6,43 @@ import { AutoRefresh } from '@/components/owner/AutoRefresh';
 import { StatusBadge } from '@/components/owner/BookingList';
 import { Composer } from '@/components/owner/Composer';
 import { ApiError } from '@/lib/api';
-import { fmtDateTime, fmtShort, waLink } from '@/lib/format';
+import type { OwnerKey } from '@/i18n/owner/t';
+import { waLink } from '@/lib/format';
 import { currentProperty, ownerApi } from '@/lib/owner';
+import { getT } from '@/lib/owner-i18n';
 import { LANGUAGE_LABEL, type QuickReply, type Thread } from '@/lib/owner-types';
 import { updateConversationAction } from '../../../actions-r2';
 
-export const metadata = { title: 'Conversation' };
+export async function generateMetadata() {
+  return { title: (await getT())('inbox.thread.title') };
+}
 
 export default async function ThreadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const property = await currentProperty();
   if (!property) return null;
-  let t: Thread;
+  const t = await getT();
+  let thread: Thread;
   try {
-    t = await ownerApi<Thread>(`/conversations/${id}`);
+    thread = await ownerApi<Thread>(`/conversations/${id}`);
   } catch (err) {
     if (err instanceof ApiError && (err.status === 404 || err.status === 400)) notFound();
     throw err;
   }
-  const c = t.conversation;
+  const c = thread.conversation;
   let replies = await ownerApi<QuickReply[]>(`/properties/${property.id}/quick-replies?language=${c.language}`);
   if (replies.length === 0 && c.language !== 'en') replies = await ownerApi<QuickReply[]>(`/properties/${property.id}/quick-replies?language=en`);
   const wa = waLink(c.contact);
+  const statusLabel = (s: string) => {
+    const key = `inbox.thread.status.${s}` as OwnerKey;
+    return t(key) === key ? s : t(key);
+  };
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <AutoRefresh seconds={10} />
       <Link href="/owner/inbox" className="text-sm text-brand">
-        ← Inbox
+        {t('inbox.thread.back')}
       </Link>
 
       <header className="card p-4">
@@ -46,7 +55,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
                 <>
                   {' · '}
                   <a href={wa} target="_blank" rel="noopener noreferrer" className="text-brand underline-offset-2 hover:underline">
-                    Open in WhatsApp
+                    {t('inbox.thread.openWhatsapp')}
                   </a>
                 </>
               )}
@@ -55,31 +64,29 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
           <div className="flex flex-wrap gap-2">
             <ActionForm
               action={updateConversationAction.bind(null, c.id, { aiPaused: !c.aiPaused })}
-              submitLabel={c.aiPaused ? 'Resume AI' : 'Pause AI'}
+              submitLabel={c.aiPaused ? t('inbox.thread.resumeAi') : t('inbox.thread.pauseAi')}
               variant="secondary"
               inline
             />
             {c.status === 'closed' ? (
-              <ActionForm action={updateConversationAction.bind(null, c.id, { status: 'open' })} submitLabel="Reopen" variant="secondary" inline />
+              <ActionForm action={updateConversationAction.bind(null, c.id, { status: 'open' })} submitLabel={t('inbox.thread.reopen')} variant="secondary" inline />
             ) : (
-              <ActionForm action={updateConversationAction.bind(null, c.id, { status: 'closed' })} submitLabel="Mark resolved" inline />
+              <ActionForm action={updateConversationAction.bind(null, c.id, { status: 'closed' })} submitLabel={t('inbox.thread.markResolved')} inline />
             )}
           </div>
         </div>
         {c.status === 'needs_human' && c.escalationSummary && (
           <p role="alert" className="mt-3 flex gap-2 rounded-xl bg-bad-bg p-3 text-sm font-medium text-bad">
             <AlertTriangle aria-hidden className="h-5 w-5 shrink-0" />
-            <span>
-              The concierge handed this to you: {c.escalationSummary}
-            </span>
+            <span>{t('inbox.thread.handedOver', { summary: c.escalationSummary })}</span>
           </p>
         )}
-        {t.bookings.length > 0 && (
+        {thread.bookings.length > 0 && (
           <ul className="mt-3 flex flex-wrap gap-2 text-sm">
-            {t.bookings.map((b) => (
+            {thread.bookings.map((b) => (
               <li key={b.id}>
                 <Link href={`/owner/bookings/${b.id}`} className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1 hover:bg-surface-2">
-                  {b.reference} · {b.roomName} · {fmtShort(b.from)}–{fmtShort(b.to)} <StatusBadge status={b.status} />
+                  {b.reference} · {b.roomName} · {t.short(b.from)}–{t.short(b.to)} <StatusBadge status={b.status} />
                 </Link>
               </li>
             ))}
@@ -87,8 +94,8 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
         )}
       </header>
 
-      <ol aria-label="Messages" className="flex flex-col gap-2">
-        {t.messages.map((m) => {
+      <ol aria-label={t('inbox.thread.messages')} className="flex flex-col gap-2">
+        {thread.messages.map((m) => {
           const mine = m.direction === 'out';
           return (
             <li key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
@@ -98,14 +105,14 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
                   {m.aiGenerated && (
                     <>
                       <Bot aria-hidden className="h-3 w-3" />
-                      <span>AI ·</span>
+                      <span>{t('inbox.thread.ai')}</span>
                     </>
                   )}
-                  {m.sentBy === 'system' && <span>Automated ·</span>}
-                  {fmtDateTime(m.createdAt)}
-                  {mine && <span>· {m.status}</span>}
+                  {m.sentBy === 'system' && <span>{t('inbox.thread.automated')}</span>}
+                  {t.dateTime(m.createdAt)}
+                  {mine && <span>· {statusLabel(m.status)}</span>}
                 </p>
-                {m.error && <p className="mt-1 text-[11px] font-semibold">Failed: {m.error}</p>}
+                {m.error && <p className="mt-1 text-[11px] font-semibold">{t('inbox.thread.failed', { error: m.error })}</p>}
               </div>
             </li>
           );

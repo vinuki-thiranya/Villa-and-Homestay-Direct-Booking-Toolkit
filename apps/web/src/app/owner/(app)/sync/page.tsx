@@ -3,8 +3,9 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { CopyButton } from '@/components/owner/CopyButton';
 import { Empty, Field, Section, Select } from '@/components/owner/fields';
-import { fmtDateTime, SOURCE_LABEL } from '@/lib/format';
+import { tLabel } from '@/components/owner/labels';
 import { currentProperty, ownerApi } from '@/lib/owner';
+import { getT } from '@/lib/owner-i18n';
 import { addIcalSourceAction, removeIcalSourceAction, syncNowAction } from '../../actions';
 
 interface IcalSources {
@@ -23,79 +24,77 @@ interface IcalSources {
   }[];
 }
 
-const CHANNELS: [string, string][] = [
-  ['airbnb', 'Airbnb'],
-  ['booking_com', 'Booking.com'],
-  ['agoda', 'Agoda'],
-  ['vrbo', 'Vrbo'],
-  ['other', 'Other'],
-];
+const CHANNELS = ['airbnb', 'booking_com', 'agoda', 'vrbo', 'other'] as const;
 
 export default async function SyncPage() {
   const property = await currentProperty();
   if (!property) return null;
-  const data = await ownerApi<IcalSources>(`/properties/${property.id}/ical-sources`);
+  const [data, t] = await Promise.all([ownerApi<IcalSources>(`/properties/${property.id}/ical-sources`), getT()]);
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Channels</h1>
+        <h1 className="text-2xl font-semibold">{t('sync.title')}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/owner/sync/live" className="btn-secondary">
-            Live connection
+            {t('sync.liveLink')}
           </Link>
-          <ActionForm action={syncNowAction.bind(null, property.id)} submitLabel="Sync now" pendingLabel="Syncing…" inline />
+          <ActionForm action={syncNowAction.bind(null, property.id)} submitLabel={t('sync.syncNow')} pendingLabel={t('sync.syncing')} inline />
         </div>
       </div>
-      <p className="text-sm text-muted">
-        Calendars sync every 15 minutes. iCal never includes guest names, and Airbnb or Booking.com may take up to their own refresh time to pick up a change —
-        a double booking is still possible in that window, and you&apos;ll get a WhatsApp alert if it happens.
-      </p>
+      <p className="text-sm text-muted">{t('sync.intro')}</p>
 
-      <Section title="1. Paste these links into Airbnb and Booking.com">
+      <Section title={t('sync.step1')}>
         <ul className="space-y-3">
           {data.exports.map((e) => (
             <li key={e.roomId}>
               <p className="text-sm font-medium">{e.roomName}</p>
               <div className="mt-1 flex gap-2">
-                <input readOnly value={e.url} aria-label={`Export link for ${e.roomName}`} className="field min-h-9 font-mono text-xs" />
+                <input readOnly value={e.url} aria-label={t('sync.exportLink', { room: e.roomName })} className="field min-h-9 font-mono text-xs" />
                 <CopyButton text={e.url} />
               </div>
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-xs text-muted">Airbnb: Calendar → Availability → Connect calendars → Import. Booking.com: Rates & Availability → Sync calendars.</p>
+        {/* Airbnb's and Booking.com's own (English) menu names, so owners can find them: marked as English. */}
+        <p className="mt-3 text-xs text-muted" lang="en">
+          {t('sync.howTo')}
+        </p>
       </Section>
 
-      <Section title="2. Import their calendars here">
+      <Section title={t('sync.step2')}>
         {data.sources.length === 0 ? (
-          <Empty>No calendars imported yet.</Empty>
+          <Empty>{t('sync.noImports')}</Empty>
         ) : (
           <ul className="divide-y divide-line">
             {data.sources.map((s) => {
               const bad = s.consecutiveFailures > 0 || s.lastStatus === 'error';
               return (
                 <li key={s.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
-                  {bad ? <XCircle aria-label="Failing" className="h-5 w-5 text-bad" /> : <CheckCircle2 aria-label="Healthy" className="h-5 w-5 text-ok" />}
+                  {bad ? (
+                    <XCircle aria-label={t('sync.failing')} className="h-5 w-5 text-bad" />
+                  ) : (
+                    <CheckCircle2 aria-label={t('sync.healthy')} className="h-5 w-5 text-ok" />
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">
-                      {s.roomName} · {SOURCE_LABEL[s.channel]}
+                      {s.roomName} · {tLabel(t, 'source', s.channel)}
                     </p>
                     <p className="truncate text-xs text-muted">{s.url}</p>
                     <p className={`text-xs ${bad ? 'text-bad' : 'text-muted'}`}>
                       {bad
-                        ? `${s.consecutiveFailures} failed fetch(es): ${s.lastError ?? 'unknown error'}`
+                        ? t('sync.failedFetches', { n: s.consecutiveFailures, error: s.lastError ?? t('sync.unknownError') })
                         : s.lastSuccessAt
-                          ? `Last synced ${fmtDateTime(s.lastSuccessAt)}`
-                          : 'Not synced yet'}
+                          ? t('sync.lastSynced', { time: t.dateTime(s.lastSuccessAt) })
+                          : t('sync.notSynced')}
                     </p>
                   </div>
                   <ActionForm
                     action={removeIcalSourceAction.bind(null, s.id)}
-                    submitLabel="Remove"
+                    submitLabel={t('sync.remove')}
                     variant="danger"
                     inline
-                    confirm="Remove this calendar? Nights it imported will be released."
+                    confirm={t('sync.removeConfirm')}
                   />
                 </li>
               );
@@ -103,11 +102,11 @@ export default async function SyncPage() {
           </ul>
         )}
         <div className="mt-4 border-t border-line pt-4">
-          <ActionForm action={addIcalSourceAction} submitLabel="Add calendar">
+          <ActionForm action={addIcalSourceAction} submitLabel={t('sync.addCalendar')}>
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_2fr]">
-              <Select label="Room" name="roomId" options={data.exports.map((e) => [e.roomId, e.roomName])} />
-              <Select label="Channel" name="channel" options={CHANNELS} />
-              <Field label="iCal URL from the OTA" name="url" type="url" required placeholder="https://www.airbnb.com/calendar/ical/…" />
+              <Select label={t('sync.room')} name="roomId" options={data.exports.map((e) => [e.roomId, e.roomName])} />
+              <Select label={t('sync.channel')} name="channel" options={CHANNELS.map((c) => [c, c === 'other' ? t('sync.other') : tLabel(t, 'source', c)] as [string, string])} />
+              <Field label={t('sync.icalUrl')} name="url" type="url" required placeholder="https://www.airbnb.com/calendar/ical/…" />
             </div>
           </ActionForm>
         </div>

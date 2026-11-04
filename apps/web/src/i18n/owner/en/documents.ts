@@ -1,2 +1,35 @@
-// Owner app text: documents. Filled during the Sinhala translation (Agent B).
-export const documents = {};
+// Owner app text: booking invoices, long-stay utility readings and the visa-invoice passport digits.
+export const documents = {
+  invoices: 'Invoices',
+  invoicesLongStay: 'Invoices (long stay)',
+  longStayNote: '{plan}, utilities {utilities}. Long-stay invoices carry the residence wording immigration asks for when guests renew a Digital Nomad Visa.',
+  utilitiesIncluded: 'included',
+  utilitiesMetered: 'metered',
+  empty: 'No invoices yet.',
+  issue: 'Issue invoice',
+  issuing: 'Issuing…',
+  periodFrom: 'Period from (optional)',
+  periodTo: 'Period to',
+  periodHint: 'Leave both empty to invoice the whole stay',
+  readings: 'Utility readings',
+  includedNote: 'Utilities are included in this plan; add readings only for extra charges.',
+  readingsEmpty: 'No readings yet. Add the meter readings at the end of each month.',
+  invoiced: 'Invoiced',
+  deleteReading: 'Delete this reading?',
+  addReading: 'Add reading',
+  meter: 'Meter',
+  meters: { electricity: 'Electricity', water: 'Water', gas: 'Gas', other: 'Other' },
+  from: 'From',
+  to: 'To',
+  startReading: 'Start reading',
+  endReading: 'End reading',
+  unitPrice: 'Price per unit ({currency})',
+  identity: 'Guest identity for the visa invoice',
+  passport: 'Last 4 characters of the passport number',
+  passportHint: 'We store only these 4 characters (GDPR: minimal data).',
+  // action messages
+  issued: 'Invoice issued',
+  readingAdded: 'Reading added',
+  readingDeleted: 'Reading deleted',
+  saved: 'Saved',
+};

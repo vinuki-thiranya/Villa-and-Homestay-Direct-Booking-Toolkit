@@ -237,3 +237,14 @@ Built on branch `phase-4-guest-site`; schema change in [0004_guest_site.sql](../
 | Owner pass | Today-first owner dashboard, mobile bottom navigation, consistent green/red paid states, a sync-health chip in the header, dark mode checked. Flutter: tuned dark theme, sync banner on Today, status colours, 48 dp targets. |
 
 **Measuring.** `npm run screenshots` (apps/web) books in every theme and captures each step. `npm run lighthouse` runs Lighthouse mobile (simulated slow 4G) on the home page and checkout per theme: median of several runs, the image budget, and minimum scores. CI job `guest-site` runs both on a seeded stack and uploads the results; its performance floor is 85 because shared runners are slow and noisy. Results from this machine are in `docs/lighthouse/summary.json`.
+
+### Sinhala owner apps (branch `sinhala-owner-app`)
+
+| Area | How it works |
+|---|---|
+| Language | `app_user.language` (`en`, `si`), set with `PATCH /auth/me` from either app; the web also keeps `sd_lang` so the login page opens in the last language. The switch is in the owner header (labelled in the other language) and on More. |
+| Text | Web: typed dictionaries per area (`apps/web/src/i18n/owner/{en,si}`), `getT()` in server code, `useT()` in client code, dates with Sinhala month names (`si-LK`). Flutter: gen-l10n ARB files. Terms fixed in `GLOSSARY.md`. Needs native-speaker review before launch. |
+| Type | Abhaya Libre (FM Abhaya revival) for headings, Noto Sans Sinhala for text; Sinhala unicode range only, so English pages never download them. 17 px base, line height 1.7, labels wrap. Every guest theme falls back to Noto Sans Sinhala for owner-written Sinhala. |
+| Look (Sinhala mode only) | Kandyan mural palette (lacquer, vermilion, ochre) on the owner tokens; liyawela band under the header, pala pethi dividers on Today, sandakada pahana on login and empty states. Paid/unpaid colours unchanged. |
+| Holidays | `public_holiday` (platform data, no tenant): 2026–2027 public, bank and mercantile holidays seeded from the Central Bank list that follows Extraordinary Gazettes 2438/22 and 2493/05; Poya days marked. Admin console → Holidays to correct or add years. Owner calendar marks them; Today warns on Poya days (no alcohol sold or served). |
+| Not translated | API error messages beyond the common ones, PDFs (pdfkit cannot shape Sinhala conjuncts), owner WhatsApp alerts (need Meta-approved Sinhala templates). |

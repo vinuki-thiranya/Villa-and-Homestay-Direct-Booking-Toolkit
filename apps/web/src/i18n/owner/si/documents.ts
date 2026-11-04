@@ -1,4 +1,36 @@
 import type { Dict } from '../t';
 import type { documents as en } from '../en/documents';
 
-export const documents: Dict<typeof en> = {};
+export const documents: Dict<typeof en> = {
+  invoices: 'ඉන්වොයිසි',
+  invoicesLongStay: 'ඉන්වොයිසි (දිගු නවාතැන)',
+  longStayNote: '{plan}, බිල් {utilities}. අමුත්තන් Digital Nomad Visa අලුත් කරන විට ආගමන දෙපාර්තමේන්තුව ඉල්ලන පදිංචි වාක්‍යය දිගු නවාතැන් ඉන්වොයිසිවල ඇතුළත් වේ.',
+  utilitiesIncluded: 'ඇතුළත්',
+  utilitiesMetered: 'මීටරයෙන්',
+  empty: 'තවම ඉන්වොයිසි නැත.',
+  issue: 'ඉන්වොයිසිය නිකුත් කරන්න',
+  issuing: 'නිකුත් කරමින්…',
+  periodFrom: 'කාලය සිට (අත්‍යවශ්‍ය නැත)',
+  periodTo: 'කාලය දක්වා',
+  periodHint: 'මුළු නවාතැනටම ඉන්වොයිස් කිරීමට දෙකම හිස්ව තබන්න',
+  readings: 'විදුලි/ජල මීටර් කියවීම්',
+  includedNote: 'මෙම සැලැස්මේ බිල් ඇතුළත්; අමතර ගාස්තු සඳහා පමණක් කියවීම් එක් කරන්න.',
+  readingsEmpty: 'තවම කියවීම් නැත. සෑම මාසය අවසානයේම මීටර් කියවීම් එක් කරන්න.',
+  invoiced: 'ඉන්වොයිස් කළා',
+  deleteReading: 'මෙම කියවීම මකන්නද?',
+  addReading: 'කියවීම එක් කරන්න',
+  meter: 'මීටරය',
+  meters: { electricity: 'විදුලිය', water: 'ජලය', gas: 'ගෑස්', other: 'වෙනත්' },
+  from: 'සිට',
+  to: 'දක්වා',
+  startReading: 'ආරම්භක කියවීම',
+  endReading: 'අවසාන කියවීම',
+  unitPrice: 'ඒකකයක මිල ({currency})',
+  identity: 'වීසා ඉන්වොයිසිය සඳහා අමුත්තාගේ හැඳුනුම',
+  passport: 'ගමන් බලපත්‍ර අංකයේ අවසන් අක්ෂර 4',
+  passportHint: 'අපි ගබඩා කරන්නේ මෙම අක්ෂර 4 පමණි (GDPR: අවම දත්ත).',
+  issued: 'ඉන්වොයිසිය නිකුත් කළා',
+  readingAdded: 'කියවීම එක් කළා',
+  readingDeleted: 'කියවීම මැකුවා',
+  saved: 'සුරැකිණි',
+};

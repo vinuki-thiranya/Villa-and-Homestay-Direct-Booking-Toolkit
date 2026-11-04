@@ -1,4 +1,30 @@
 import type { Dict } from '../t';
 import type { calendar as en } from '../en/calendar';
 
-export const calendar: Dict<typeof en> = {};
+export const calendar: Dict<typeof en> = {
+  title: 'දින දර්ශනය',
+  datesNav: 'දින දර්ශනයේ දින',
+  prevWeek: '← පෙර සතිය',
+  today: 'අද',
+  nextWeek: 'ඊළඟ සතිය →',
+  caption: '{start} සිට දින {days} ක කාමර ලබා ගත හැකි බව',
+  room: 'කාමරය',
+  free: '{room} {date} හිස්',
+  hold: 'රඳවා ඇත',
+  block: 'අවහිර',
+  legend: 'සංකේත',
+  legendHold: 'රඳවා ඇත (ගෙවීම සිදු වෙමින්)',
+  legendBlocked: 'අවහිර කළ',
+  legendPoya: 'පොහොය දිනය',
+  legendHoliday: 'රජයේ නිවාඩු දිනය',
+  blockTitle: 'රාත්‍රී අවහිර කිරීම හෝ නිදහස් කිරීම',
+  blockSubmit: 'රාත්‍රී අවහිර කරන්න',
+  from: 'සිට',
+  to: 'දක්වා (පිටවන දිනය)',
+  note: 'සටහන',
+  notePlaceholder: 'නඩත්තුව',
+  action: 'ක්‍රියාව',
+  blockThese: 'මෙම රාත්‍රී අවහිර කරන්න',
+  releaseThese: 'මෙම රාත්‍රීවල මගේ අවහිර කිරීම් ඉවත් කරන්න',
+  blockNote: 'අවහිර කිරීම් විනාඩි 15ක් ඇතුළත ඔබගේ දින දර්ශන අපනයනය හරහා Airbnb හා Booking.com හි පෙන්වයි.',
+};
