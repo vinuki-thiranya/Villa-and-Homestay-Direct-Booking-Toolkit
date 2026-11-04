@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Clock, MapPin, MessageCircle } from 'lucide-react';
+import { CheckCheck, Clock, Map as MapIcon, MapPin, MessageCircle } from 'lucide-react';
 import type { PublicBooking } from '@staydirect/shared';
 import { publicApi } from '@/lib/client-api';
 import { fmtDate, formatMoney, nightsLabel, waLink } from '@/lib/format';
+import type { GuestRegion } from '@/lib/guest-locale';
 import { AddOnsPanel } from './AddOnsPanel';
 import { GuestInvoices } from './GuestInvoices';
 import { PaymentPanel } from './PaymentPanel';
@@ -18,9 +19,12 @@ interface Props {
   returnedFromPayment: boolean;
   propertyName: string;
   paypalClientId: string | null;
+  region: GuestRegion;
+  /** lat,lng or address for the tap-to-load map. */
+  mapQuery: string | null;
 }
 
-export function BookingView({ reference, token, base, returnedFromPayment, propertyName }: Props) {
+export function BookingView({ reference, token, base, returnedFromPayment, propertyName, region, mapQuery }: Props) {
   const [booking, setBooking] = useState<PublicBooking | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +69,7 @@ export function BookingView({ reference, token, base, returnedFromPayment, prope
   const b = booking;
   const confirmed = ['confirmed', 'checked_in', 'checked_out'].includes(b.status);
 
-  if (confirmed) return <Confirmation b={b} reference={reference} token={token} onPaid={load} />;
+  if (confirmed) return <Confirmation b={b} reference={reference} token={token} onPaid={load} region={region} mapQuery={mapQuery} />;
 
   if (b.status === 'abandoned' || b.status === 'cancelled' || b.status === 'no_show') {
     return (
@@ -88,9 +92,9 @@ export function BookingView({ reference, token, base, returnedFromPayment, prope
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-sm text-muted">Reference {b.reference}</p>
-            <h1 className="font-display text-2xl font-semibold">{b.roomName}</h1>
+            <h1 className="g-display text-3xl">{b.roomName}</h1>
             <p className="text-muted">
-              {fmtDate(b.from)} → {fmtDate(b.to)} · {b.guests} guest{b.guests === 1 ? '' : 's'}
+              {fmtDate(b.from)} to {fmtDate(b.to)}, {b.guests} guest{b.guests === 1 ? '' : 's'}
             </p>
           </div>
           {b.holdExpiresAt && !b.awaitingApproval && <Countdown until={b.holdExpiresAt} onExpire={load} />}
@@ -119,7 +123,7 @@ export function BookingView({ reference, token, base, returnedFromPayment, prope
           <p className="mt-2 text-muted">This usually takes a few seconds. You can keep this page open.</p>
         </div>
       ) : (
-        <PaymentPanel booking={b} reference={reference} token={token} onPaid={load} />
+        <PaymentPanel booking={b} reference={reference} token={token} onPaid={load} region={region} />
       )}
     </div>
   );
@@ -158,49 +162,110 @@ function Countdown({ until, onExpire }: { until: string; onExpire: () => void })
   );
 }
 
-/** Mirrors the confirmation email/WhatsApp message. */
-function Confirmation({ b, reference, token, onPaid }: { b: PublicBooking; reference: string; token: string; onPaid: () => void }) {
+/** Confirmed: the same words the guest just got on WhatsApp, then how to get there. */
+function Confirmation({
+  b,
+  reference,
+  token,
+  onPaid,
+  region,
+  mapQuery,
+}: {
+  b: PublicBooking;
+  reference: string;
+  token: string;
+  onPaid: () => void;
+  region: GuestRegion;
+  mapQuery: string | null;
+}) {
   const wa = waLink(b.hostWhatsapp, `Hello, this is ${b.guestName} — booking ${b.reference}.`);
   const nights = Math.round((new Date(`${b.to}T00:00:00Z`).getTime() - new Date(`${b.from}T00:00:00Z`).getTime()) / 86_400_000);
+  const [map, setMap] = useState(false);
   return (
     <div className="space-y-6">
-      <div className="card p-6">
-        <CheckCircle2 aria-hidden className="h-10 w-10 text-ok" />
-        <h1 className="mt-3 font-display text-2xl font-semibold">Your stay at {b.propertyName} is confirmed</h1>
-        <p className="mt-1 text-muted">
-          Thank you for booking direct, {b.guestName.split(' ')[0]}. We&apos;ve emailed you the details. Reference <strong className="text-fg">{b.reference}</strong>.
+      <div>
+        <h1 className="g-display text-3xl leading-tight sm:text-4xl">You&apos;re booked at {b.propertyName}</h1>
+        <p className="mt-2 text-muted">
+          Thank you for booking direct, {b.guestName.split(' ')[0]}. Reference <strong className="text-fg">{b.reference}</strong>. The same message is on its
+          way to your WhatsApp and email.
         </p>
-        <dl className="mt-5 grid gap-3 border-t border-line pt-4 text-sm sm:grid-cols-2">
-          <Fact label="Dates" value={`${fmtDate(b.from)} → ${fmtDate(b.to)} (${nightsLabel(nights)})`} />
-          <Fact label="Room" value={`${b.roomName} · ${b.guests} guest${b.guests === 1 ? '' : 's'}`} />
-          <Fact label="Paid" value={formatMoney(b.paid, b.currency)} />
-          <Fact label="Balance due" value={b.balance > 0 ? `${formatMoney(b.balance, b.currency)} by ${fmtDate(b.balanceDueDate)}` : 'Nothing — fully paid'} />
-          <Fact label="Check-in / out" value={`from ${b.checkIn} · by ${b.checkOut}`} />
-          <Fact label="Address" value={b.address} />
-        </dl>
-        <div className="mt-5 flex flex-wrap gap-3">
-          {b.mapsUrl && (
-            <a href={b.mapsUrl} target="_blank" rel="noopener noreferrer" className="btn-primary">
-              <MapPin aria-hidden className="h-4 w-4" /> Directions
-            </a>
-          )}
-          {wa && (
-            <a href={wa} target="_blank" rel="noopener noreferrer" className="btn-secondary">
-              <MessageCircle aria-hidden className="h-4 w-4" /> WhatsApp the host
-            </a>
-          )}
+      </div>
+
+      <figure className="g-chat overflow-hidden rounded-card border border-line p-4">
+        <figcaption className="mb-3 flex items-center gap-2 text-xs font-medium text-muted">
+          <MessageCircle aria-hidden className="h-4 w-4 text-[#1f9d55]" /> WhatsApp from {b.propertyName}
+        </figcaption>
+        <div className="g-bubble ml-2 max-w-[34rem] px-4 py-3 shadow-sm">
+          <p className="whitespace-pre-line break-words text-[0.95rem] leading-relaxed">{linkify(b.confirmationMessage)}</p>
+          <p className="mt-1 flex items-center justify-end gap-1 text-[0.7rem] text-muted">
+            <CheckCheck aria-hidden className="h-3.5 w-3.5 text-[#34b7f1]" /> Sent
+          </p>
         </div>
-        <p className="mt-5 text-sm text-muted">
+      </figure>
+
+      <div className="card p-5">
+        <dl className="grid gap-4 text-sm sm:grid-cols-2">
+          <Fact label="Dates" value={`${fmtDate(b.from)} to ${fmtDate(b.to)}, ${nightsLabel(nights)}`} />
+          <Fact label="Room" value={`${b.roomName}, ${b.guests} guest${b.guests === 1 ? '' : 's'}`} />
+          <Fact label="Paid" value={formatMoney(b.paid, b.currency)} />
+          <Fact
+            label="Still to pay"
+            value={b.balance > 0 ? `${formatMoney(b.balance, b.currency)} by ${fmtDate(b.balanceDueDate)}` : 'Nothing, fully paid'}
+            strong={b.balance > 0}
+          />
+          <Fact label="Check-in" value={`From ${b.checkIn}`} />
+          <Fact label="Check-out" value={`By ${b.checkOut}`} />
+        </dl>
+        <p className="mt-4 border-t border-line pt-4 text-sm text-muted">
           <strong className="text-fg">Cancellation policy:</strong> {b.cancellationPolicyText}
         </p>
       </div>
+
+      <section className="card overflow-hidden" aria-labelledby="getting-there">
+        <div className="p-5">
+          <h2 id="getting-there" className="g-display text-2xl">
+            Getting there
+          </h2>
+          <p className="mt-1 text-sm text-muted">{b.address}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {b.mapsUrl && (
+              <a href={b.mapsUrl} target="_blank" rel="noopener noreferrer" className="g-cta">
+                <MapPin aria-hidden className="h-4 w-4" /> Directions
+              </a>
+            )}
+            {wa && (
+              <a href={wa} target="_blank" rel="noopener noreferrer" className="btn-secondary">
+                <MessageCircle aria-hidden className="h-4 w-4" /> WhatsApp the host
+              </a>
+            )}
+          </div>
+        </div>
+        {mapQuery &&
+          (map ? (
+            <iframe
+              title={`Map of ${b.propertyName}`}
+              src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=14&output=embed`}
+              className="aspect-[4/3] w-full border-0 sm:aspect-[16/9]"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMap(true)}
+              className="flex min-h-14 w-full items-center justify-center gap-2 border-t border-line bg-surface-2 text-sm font-semibold hover:bg-surface-2/70"
+            >
+              <MapIcon aria-hidden className="h-4 w-4" /> Show the map
+            </button>
+          ))}
+      </section>
+
       {['confirmed', 'checked_in', 'checked_out'].includes(b.status) && <GuestInvoices reference={reference} token={token} />}
       {(b.status === 'confirmed' || b.status === 'checked_in') && <AddOnsPanel reference={reference} token={token} onOrdered={onPaid} />}
       {b.balance > 0 && b.status !== 'checked_out' && b.paymentMethods.length > 0 && (
         <details className="card p-5">
           <summary className="cursor-pointer font-semibold">Pay the balance now</summary>
           <div className="mt-4">
-            <PaymentPanel booking={b} reference={reference} token={token} onPaid={onPaid} />
+            <PaymentPanel booking={b} reference={reference} token={token} onPaid={onPaid} region={region} />
           </div>
         </details>
       )}
@@ -208,3 +273,15 @@ function Confirmation({ b, reference, token, onPaid }: { b: PublicBooking; refer
   );
 }
 
+/** Make the booking-page link in the WhatsApp text tappable, as it is in WhatsApp. */
+function linkify(text: string): React.ReactNode[] {
+  return text.split(/(https?:\/\/\S+)/g).map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a key={i} href={part} className="break-all text-[#027eb5] underline underline-offset-2">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}

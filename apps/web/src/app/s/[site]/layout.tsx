@@ -1,12 +1,13 @@
 import Link from 'next/link';
-import { MessageCircle } from 'lucide-react';
+import { Menu, MessageCircle } from 'lucide-react';
 import { CurrencySwitcher } from '@/components/guest/CurrencySwitcher';
 import { waLink } from '@/lib/format';
-import { siteContext, themeStyle } from '@/lib/site';
+import { siteContext, siteThemeCss } from '@/lib/site';
+import { FONT_VARIABLES } from '@/themes/fonts';
 
 export default async function SiteLayout({ children, params }: { children: React.ReactNode; params: Promise<{ site: string }> }) {
   const { site } = await params;
-  const { property: p, base, currency } = await siteContext(site);
+  const { property: p, base, currency, theme } = await siteContext(site);
   const wa = waLink(p.whatsappNumber, `Hello ${p.name}, I have a question about a stay.`);
   const nav = [
     { href: `${base}/rooms`, label: 'Rooms' },
@@ -16,13 +17,15 @@ export default async function SiteLayout({ children, params }: { children: React
   ];
 
   return (
-    <div data-theme={p.theme} style={themeStyle(p)} className="flex min-h-dvh flex-col bg-bg text-fg">
+    <div data-theme={theme.key} className={`g-site ${FONT_VARIABLES} flex min-h-dvh flex-col bg-bg text-fg`}>
+      {/* Validated colours and fixed font stacks only (themes/registry.ts themeCss). */}
+      <style dangerouslySetInnerHTML={{ __html: siteThemeCss(p, theme) }} />
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-surface focus:px-4 focus:py-2">
         Skip to content
       </a>
-      <header className="sticky top-0 z-30 border-b border-line/70 bg-bg/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
-          <Link href={base || '/'} className="font-display text-lg font-semibold tracking-tight">
+      <header className="sticky top-0 z-30 border-b border-line/70 bg-bg">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:h-16">
+          <Link href={base || '/'} className="g-display min-w-0 truncate text-xl leading-none">
             {p.name}
           </Link>
           <nav aria-label="Main" className="ml-auto hidden items-center gap-6 text-sm font-medium md:flex">
@@ -32,37 +35,42 @@ export default async function SiteLayout({ children, params }: { children: React
               </Link>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-2 md:ml-0">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 md:ml-0">
             <CurrencySwitcher current={currency} />
-            <Link href={`${base}/book`} className="btn-primary min-h-9 px-4">
+            <Link href={`${base}/book`} className="g-cta hidden min-h-10 px-4 md:inline-flex">
               Book
             </Link>
+            {/* No-JS menu for phones: keeps the first screen free for the photo and the date search. */}
+            <details className="relative md:hidden">
+              <summary className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full hover:bg-surface-2 [&::-webkit-details-marker]:hidden" aria-label="Menu">
+                <Menu aria-hidden className="h-5 w-5" />
+              </summary>
+              <nav aria-label="Site" className="absolute right-0 top-12 w-52 rounded-card border border-line bg-surface p-2 shadow-xl">
+                {[...nav, { href: `${base}/book`, label: 'Book your stay' }].map((n) => (
+                  <Link key={n.href} href={n.href} className="flex min-h-11 items-center rounded-lg px-3 font-medium hover:bg-surface-2">
+                    {n.label}
+                  </Link>
+                ))}
+              </nav>
+            </details>
           </div>
         </div>
-        <nav aria-label="Sections" className="mx-auto flex max-w-6xl gap-5 overflow-x-auto px-4 pb-2 text-sm font-medium md:hidden">
-          {nav.map((n) => (
-            <Link key={n.href} href={n.href} className="whitespace-nowrap text-muted hover:text-brand">
-              {n.label}
-            </Link>
-          ))}
-        </nav>
       </header>
 
       <main id="main" className="flex-1">
         {children}
       </main>
 
-      <footer className="border-t border-line bg-surface-2/60">
+      <footer className="border-t border-line bg-surface-2/60 pb-24 md:pb-0">
         <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 text-sm text-muted sm:grid-cols-3">
           <div>
-            <p className="font-display text-base font-semibold text-fg">{p.name}</p>
+            <p className="g-display text-lg text-fg">{p.name}</p>
             <p className="mt-1">{p.address}</p>
             {p.sltdaNumber && <p className="mt-1">SLTDA registration {p.sltdaNumber}</p>}
           </div>
           <div className="space-y-1">
-            <p>
-              Check-in from {p.checkIn} · Check-out by {p.checkOut}
-            </p>
+            <p>Check-in from {p.checkIn}</p>
+            <p>Check-out by {p.checkOut}</p>
             {p.email && (
               <p>
                 <a className="underline-offset-2 hover:underline" href={`mailto:${p.email}`}>
@@ -106,7 +114,7 @@ export default async function SiteLayout({ children, params }: { children: React
           href={wa}
           target="_blank"
           rel="noopener noreferrer"
-          className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-lg md:bottom-6"
+          className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-[#063b1b] shadow-lg md:bottom-6"
           aria-label={`Message ${p.name} on WhatsApp`}
         >
           <MessageCircle aria-hidden className="h-7 w-7" />

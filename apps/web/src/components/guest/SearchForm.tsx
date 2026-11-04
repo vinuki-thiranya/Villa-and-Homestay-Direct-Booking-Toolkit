@@ -1,55 +1,48 @@
+import { StayDates } from './StayDates';
+
 /**
- * Date + guests search. A plain GET form to the book page: works without JavaScript and adds
- * nothing to the guest bundle.
+ * Date + guests search: a plain GET form to the book page, so it works without JavaScript. Only the
+ * date fields hydrate (to open the availability calendar).
  */
 export function SearchForm({
   action,
+  site,
   from,
   to,
   guests = 2,
   maxGuests = 6,
-  compact = false,
+  roomId,
+  stacked = false,
 }: {
   action: string;
+  site: string;
   from?: string;
   to?: string;
   guests?: number;
   maxGuests?: number;
-  compact?: boolean;
+  /** Pre-select this room on the book page. */
+  roomId?: string;
+  /** Two columns at every width (narrow sidebars). */
+  stacked?: boolean;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
   return (
-    <form
-      action={action}
-      method="get"
-      className={`grid grid-cols-2 gap-3 ${compact ? 'sm:grid-cols-[1fr_1fr_7rem_auto]' : 'sm:grid-cols-[1fr_1fr_8rem_auto]'} items-end`}
-    >
+    <form action={action} method="get" className={`grid grid-cols-2 items-end gap-3 ${stacked ? '' : 'lg:grid-cols-[1fr_1fr_8.5rem_auto]'}`}>
+      {roomId && <input type="hidden" name="room" value={roomId} />}
+      <StayDates site={site} idPrefix="search" defaultValue={{ from, to }} />
       <div>
-        <label htmlFor="from" className="label">
-          Check-in
-        </label>
-        <input id="from" name="from" type="date" required min={today} defaultValue={from} className="field" />
-      </div>
-      <div>
-        <label htmlFor="to" className="label">
-          Check-out
-        </label>
-        <input id="to" name="to" type="date" required min={today} defaultValue={to} className="field" />
-      </div>
-      <div>
-        <label htmlFor="guests" className="label">
+        <label htmlFor="search-guests" className="label">
           Guests
         </label>
-        <select id="guests" name="guests" defaultValue={guests} className="field">
+        <select id="search-guests" name="guests" defaultValue={guests} className="field">
           {Array.from({ length: Math.max(1, maxGuests) }, (_, i) => i + 1).map((n) => (
             <option key={n} value={n}>
-              {n}
+              {n} {n === 1 ? 'guest' : 'guests'}
             </option>
           ))}
         </select>
       </div>
-      <button type="submit" className="btn-primary h-11">
-        Check availability
+      <button type="submit" className={`g-cta h-11 w-full ${stacked ? '' : 'lg:w-auto'}`}>
+        See prices
       </button>
     </form>
   );

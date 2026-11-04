@@ -1,11 +1,16 @@
 import type { PublicProperty } from '@staydirect/shared';
 import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { cache, type CSSProperties } from 'react';
+import { cache } from 'react';
+import { FONT_STACK } from '@/themes/fonts';
+import { isThemeKey, themeCss, THEMES, type GuestTheme } from '@/themes/registry';
 import { getSite } from './api';
 import { isCurrency, type Currency } from './format';
+import { guessCurrency } from './guest-locale';
 
 export const CURRENCY_COOKIE = 'sd_cur';
+/** Set by proxy.ts from ?previewTheme= (dev, or ALLOW_THEME_PREVIEW=1), for screenshots of every theme. */
+export const PREVIEW_THEME_HEADER = 'x-sd-preview-theme';
 
 export interface SiteContext {
   property: PublicProperty;
@@ -13,6 +18,7 @@ export interface SiteContext {
   base: string;
   currency: Currency;
   siteKey: string;
+  theme: GuestTheme;
 }
 
 /** Per-request site context; memoised so layout and page share one fetch. */
@@ -23,8 +29,11 @@ export const siteContext = cache(async (rawSite: string): Promise<SiteContext> =
   const h = await headers();
   const base = h.get('x-sd-base') === '' ? '' : `/s/${encodeURIComponent(site)}`;
   const c = (await cookies()).get(CURRENCY_COOKIE)?.value;
-  const currency: Currency = isCurrency(c) ? c : isCurrency(property.baseCurrency) ? property.baseCurrency : 'USD';
-  return { property, base, currency, siteKey: site };
+  const currency: Currency = isCurrency(c) ? c : (guessCurrency(h) ?? (isCurrency(property.baseCurrency) ? property.baseCurrency : 'USD'));
+  // proxy.ts only sets the header when previews are allowed and strips any copy sent by the client.
+  const preview = h.get(PREVIEW_THEME_HEADER);
+  const key = isThemeKey(preview) ? preview : isThemeKey(property.theme) ? property.theme : 'lagoon';
+  return { property, base, currency, siteKey: site, theme: THEMES[key] };
 });
 
 /** Lowest base rate across rooms, for "from" prices. */
@@ -39,34 +48,25 @@ export function canonicalUrl(p: PublicProperty, path = ''): string {
   return `https://${host}${path}`;
 }
 
-const HEX = /^#[0-9a-fA-F]{6}$/;
-const TOKEN_VARS: Record<string, string> = {
-  brand: '--brand',
-  brandStrong: '--brand-strong',
-  accent: '--accent',
-  bg: '--bg',
-  surface2: '--surface-2',
-  radius: '--radius',
-};
-
 /**
- * CSS variables for a guest site: the admin theme editor's tokens on top of the data-theme defaults,
- * then the white-label brand colours (Manager plan). Only well-formed values are applied.
+ * CSS variables for a guest site: the theme's palettes, the admin theme editor's tokens on top (when
+ * the site shows its own theme, not a preview), then the white-label brand colours (Manager plan).
  */
-export function themeStyle(p: PublicProperty): CSSProperties {
-  const style: Record<string, string> = {};
-  for (const [key, cssVar] of Object.entries(TOKEN_VARS)) {
-    const v = p.themeTokens?.[key];
-    if (v && (HEX.test(v) || (key === 'radius' && /^\d{1,2}px$/.test(v)))) style[cssVar] = v;
-  }
-  const font = p.themeTokens?.fontSans;
-  if (font && /^[\w\s,'"-]{2,120}$/.test(font)) style.fontFamily = font;
-  if (p.whiteLabel && p.brand) {
-    if (p.brand.primaryColor && HEX.test(p.brand.primaryColor)) {
-      style['--brand'] = p.brand.primaryColor;
-      style['--brand-strong'] = p.brand.primaryColor;
-    }
-    if (p.brand.accentColor && HEX.test(p.brand.accentColor)) style['--accent'] = p.brand.accentColor;
-  }
-  return style as CSSProperties;
+export function siteThemeCss(p: PublicProperty, theme: GuestTheme): string {
+  const own = theme.key === p.theme;
+  return themeCss(
+    theme,
+    { tokens: own ? p.themeTokens : null, brand: p.whiteLabel ? p.brand : null },
+    (f) => FONT_STACK[f],
+  );
+}
+
+/** "Usually replies within …" from the median first-reply time. */
+export function responseTimeText(minutes: number | null): string | null {
+  if (minutes == null) return null;
+  if (minutes <= 15) return 'Usually replies within 15 minutes';
+  if (minutes <= 60) return 'Usually replies within an hour';
+  if (minutes <= 180) return 'Usually replies within a few hours';
+  if (minutes <= 24 * 60) return 'Usually replies within a day';
+  return null;
 }

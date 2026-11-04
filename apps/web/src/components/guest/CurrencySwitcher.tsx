@@ -11,7 +11,7 @@ export function CurrencySwitcher({ current }: { current: string }) {
     <label className="flex items-center gap-1 text-sm">
       <span className="sr-only">Currency</span>
       <select
-        className="min-h-9 rounded-full border border-line bg-surface px-2 text-sm font-medium"
+        className="min-h-11 rounded-[var(--btn-radius,9999px)] border border-line bg-surface px-2 text-sm font-medium"
         value={current}
         disabled={pending}
         onChange={(e) => {

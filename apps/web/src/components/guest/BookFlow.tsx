@@ -1,8 +1,9 @@
 'use client';
 
 import Image from 'next/image';
+import { AnimatePresence, m } from 'motion/react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   AvailabilityResult,
   CreateBookingResult,
@@ -11,8 +12,11 @@ import type {
   RoomAvailability,
 } from '@staydirect/shared';
 import { ClientApiError, publicApi } from '@/lib/client-api';
-import { formatMoney, METHOD_LABEL, nightsLabel } from '@/lib/format';
+import { addDaysIso } from '@/lib/calendar';
+import { fmtDate, formatMoney, METHOD_LABEL, nightsLabel } from '@/lib/format';
 import { COUNTRIES, LANGUAGES, POLICY_TEXT, violationText } from '@/lib/guest-copy';
+import { GuestMotion } from './GuestMotion';
+import { StayDates } from './StayDates';
 import { Steps } from './Steps';
 
 interface Props {
@@ -28,27 +32,32 @@ interface Props {
     paymentMethods: PaymentMethod[];
   };
   initial: { from?: string; to?: string; guests: number; roomId?: string; code?: string };
+  /** Availability for `initial` fetched on the server, so step 1 arrives with prices (no layout shift). */
+  initialResult?: (AvailabilityResult & { promo: { code: string; pct: number } | null }) | null;
 }
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
-function plusDays(iso: string, n: number) {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
+
+/** Same rule as balanceDueDate in packages/shared/src/pricing.ts: 7 days before arrival, or arrival day when flexible. */
+function balanceDue(from: string, policy: string): string {
+  const due = policy === 'flexible' ? from : addDaysIso(from, -7);
+  return due < todayIso() ? todayIso() : due;
 }
 
-export function BookFlow({ site, base, currency, property, initial }: Props) {
+export function BookFlow({ site, base, currency, property, initial, initialResult }: Props) {
   const router = useRouter();
   const [from, setFrom] = useState(initial.from ?? '');
   const [to, setTo] = useState(initial.to ?? '');
   const [guests, setGuests] = useState(initial.guests);
-  const [result, setResult] = useState<AvailabilityResult | null>(null);
+  const [result, setResult] = useState<AvailabilityResult | null>(initialResult ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(
+    initialResult?.rooms.find((r) => r.roomId === initial.roomId && r.available)?.roomId ?? null,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [code, setCode] = useState(initial.code ?? '');
-  const [promo, setPromo] = useState<{ code: string; pct: number } | null>(null);
+  const [promo, setPromo] = useState<{ code: string; pct: number } | null>(initialResult?.promo ?? null);
   const [codeMsg, setCodeMsg] = useState<string | null>(null);
   const maxGuests = Math.max(1, ...property.rooms.map((r) => r.maxGuests));
 
@@ -84,7 +93,12 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
 
   // Re-price the current search when a code is applied or removed.
   const promoKey = promo?.code ?? '';
+  const firstPromoRun = useRef(true);
   useEffect(() => {
+    if (firstPromoRun.current) {
+      firstPromoRun.current = false; // the server already priced the first search
+      if (initialResult) return;
+    }
     if (result && from && to) void search(from, to, guests);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [promoKey]);
@@ -108,6 +122,10 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
   );
 
   useEffect(() => {
+    if (initialResult) {
+      if (initial.code && !initialResult.promo) void applyCode(initial.code); // shows why the code was refused
+      return;
+    }
     if (initial.code) void applyCode(initial.code);
     if (initial.from && initial.to) void search(initial.from, initial.to, initial.guests);
     // run once with the dates from the search form
@@ -178,29 +196,17 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
           void search(from, to, guests);
         }}
       >
-        <div>
-          <label htmlFor="bf-from" className="label">
-            Check-in
-          </label>
-          <input
-            id="bf-from"
-            type="date"
-            required
-            min={todayIso()}
-            value={from}
-            onChange={(e) => {
-              setFrom(e.target.value);
-              if (!to || to <= e.target.value) setTo(plusDays(e.target.value, 2));
-            }}
-            className="field"
-          />
-        </div>
-        <div>
-          <label htmlFor="bf-to" className="label">
-            Check-out
-          </label>
-          <input id="bf-to" type="date" required min={from ? plusDays(from, 1) : todayIso()} value={to} onChange={(e) => setTo(e.target.value)} className="field" />
-        </div>
+        <StayDates
+          site={site}
+          idPrefix="bf"
+          value={{ from, to }}
+          onChange={(v) => {
+            setFrom(v.from);
+            setTo(v.to);
+            // A full range from the calendar searches straight away.
+            if (v.from && v.to && v.to > v.from) void search(v.from, v.to, guests);
+          }}
+        />
         <div>
           <label htmlFor="bf-guests" className="label">
             Guests
@@ -213,8 +219,8 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
             ))}
           </select>
         </div>
-        <button type="submit" className="btn-primary h-11" disabled={loading}>
-          {loading ? 'Checking…' : result ? 'Update' : 'Check availability'}
+        <button type="submit" className="g-cta h-11" disabled={loading}>
+          {loading ? 'Checking…' : result ? 'Update' : 'See prices'}
         </button>
       </form>
 
@@ -224,8 +230,18 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
         </p>
       )}
 
+      <GuestMotion>
+      <AnimatePresence mode="wait" initial={false}>
       {result && !choice && (
-        <section aria-labelledby="choose" aria-busy={loading}>
+        <m.section
+          key="rooms"
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -16 }}
+          transition={{ duration: 0.2 }}
+          aria-labelledby="choose"
+          aria-busy={loading}
+        >
           <h2 id="choose" className="text-lg font-semibold">
             Choose a room · {nightsLabel(result.rooms[0]?.quote?.nightCount ?? 0)}
           </h2>
@@ -243,11 +259,30 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
               );
             })}
           </ul>
-        </section>
+        </m.section>
       )}
 
       {choice && choice.quote && (
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <m.div
+          key="details"
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 16 }}
+          transition={{ duration: 0.2 }}
+          className="grid gap-6 lg:grid-cols-[1.4fr_1fr]"
+        >
+          <div className="lg:hidden">
+            <Summary
+              room={roomsById.get(choice.roomId)!}
+              ra={choice}
+              from={from}
+              to={to}
+              guests={guests}
+              baseCurrency={result!.baseCurrency}
+              promo={promo}
+              collapsible
+            />
+          </div>
           <form
             className="card space-y-4 p-5"
             onSubmit={(e) => {
@@ -336,8 +371,22 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
                 {promo ? `${promo.code}: ${promo.pct}% off your stay.` : codeMsg}
               </p>
             </div>
-            <div className="rounded-xl bg-surface-2 p-4 text-sm">
-              <p className="font-semibold">Cancellation policy</p>
+            <div className="rounded-card bg-surface-2 p-4 text-sm">
+              <p className="font-semibold">What you pay and when</p>
+              <p className="mt-1">
+                {choice.quote.deposit >= choice.quote.total ? (
+                  <>
+                    You pay the full <strong>{formatMoney(choice.quote.total, result!.baseCurrency)}</strong> now.
+                  </>
+                ) : (
+                  <>
+                    You pay <strong>{formatMoney(choice.quote.deposit, result!.baseCurrency)}</strong> now ({choice.quote.depositPct}%). The rest,{' '}
+                    <strong>{formatMoney(Math.round((choice.quote.total - choice.quote.deposit) * 100) / 100, result!.baseCurrency)}</strong>, is due by{' '}
+                    {fmtDate(balanceDue(from, choice.quote.cancellationPolicy))}.
+                  </>
+                )}
+              </p>
+              <p className="mt-3 font-semibold">Cancellation policy</p>
               <p className="mt-1 text-muted">{POLICY_TEXT[choice.quote.cancellationPolicy]}</p>
               <label className="mt-3 flex items-start gap-2">
                 <input type="checkbox" name="accept" required className="mt-1 h-4 w-4 accent-[var(--brand)]" />
@@ -346,17 +395,21 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
                 </span>
               </label>
             </div>
-            <button type="submit" className="btn-primary w-full" disabled={submitting}>
-              {submitting ? 'Reserving your room…' : 'Continue to payment'}
+            <button type="submit" className="g-cta w-full" disabled={submitting}>
+              {submitting ? 'Holding your room…' : 'Continue to payment'}
             </button>
             <p className="text-center text-xs text-muted">
               Your room is held for 15 minutes while you pay
               {property.paymentMethods.length ? ` by ${property.paymentMethods.map((m) => METHOD_LABEL[m]).join(', ')}` : ''}.
             </p>
           </form>
-          <Summary room={roomsById.get(choice.roomId)!} ra={choice} from={from} to={to} guests={guests} baseCurrency={result!.baseCurrency} promo={promo} />
-        </div>
+          <div className="hidden lg:block">
+            <Summary room={roomsById.get(choice.roomId)!} ra={choice} from={from} to={to} guests={guests} baseCurrency={result!.baseCurrency} promo={promo} />
+          </div>
+        </m.div>
       )}
+      </AnimatePresence>
+      </GuestMotion>
     </div>
   );
 }
@@ -365,14 +418,15 @@ function RoomOption({ room, ra, baseCurrency, onSelect }: { room: PublicRoom; ra
   const d = ra.display;
   const approx = d && d.currency !== baseCurrency;
   return (
-    <div className={`card flex h-full gap-4 p-3 ${ra.available ? '' : 'opacity-60'}`}>
-      <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-xl bg-surface-2">
-        {room.photos[0] && <Image src={room.photos[0]} alt="" fill sizes="112px" className="object-cover" />}
+    <div className={`card flex h-full gap-4 p-3 ${ra.available ? '' : 'bg-surface-2/60'}`}>
+      <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-[calc(var(--radius)*0.6)] bg-surface-2">
+        {room.photos[0] && <Image src={room.photos[0]} alt="" fill sizes="112px" quality={60} className={`object-cover ${ra.available ? '' : 'grayscale'}`} />}
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
         <p className="font-semibold">{room.name}</p>
         <p className="text-xs text-muted">
-          Up to {room.maxGuests} · {room.beds}
+          Sleeps {room.maxGuests}
+          {room.beds ? `, ${room.beds}` : ''}
         </p>
         {ra.available && d ? (
           <div className="mt-auto flex items-end justify-between gap-2 pt-2">
@@ -386,12 +440,12 @@ function RoomOption({ room, ra, baseCurrency, onSelect }: { room: PublicRoom; ra
                 {ra.quote?.discountLabel ? ` · ${ra.quote.discountLabel}` : ''}
               </span>
             </p>
-            <button type="button" className="btn-primary min-h-10 px-4" onClick={onSelect}>
-              Select
+            <button type="button" className="g-cta min-h-10 px-4" onClick={onSelect} aria-label={`Choose ${room.name}`}>
+              Choose
             </button>
           </div>
         ) : (
-          <p className="mt-auto pt-2 text-sm text-bad">{ra.violations.map((v) => violationText(v, ra.quote?.minNights)).join(' · ')}</p>
+          <p className="mt-auto pt-2 text-sm font-medium text-bad">{ra.violations.map((v) => violationText(v, ra.quote?.minNights)).join('. ')}</p>
         )}
       </div>
     </div>
@@ -406,6 +460,7 @@ function Summary({
   guests,
   baseCurrency,
   promo,
+  collapsible = false,
 }: {
   room: PublicRoom;
   ra: RoomAvailability;
@@ -414,25 +469,45 @@ function Summary({
   guests: number;
   baseCurrency: string;
   promo: { code: string; pct: number } | null;
+  /** Phones: a one-line total that opens to the full breakdown. */
+  collapsible?: boolean;
 }) {
   const q = ra.quote!;
   const d = ra.display;
   const showDisplay = d && d.currency !== baseCurrency;
+  if (collapsible) {
+    return (
+      <details className="card text-sm">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 [&::-webkit-details-marker]:hidden">
+          <span>
+            <span className="block font-semibold">{room.name}</span>
+            <span className="text-muted">
+              {fmtDate(from)} to {fmtDate(to)}, {nightsLabel(q.nightCount)}
+            </span>
+          </span>
+          <span className="text-right">
+            <span className="block font-semibold tabular-nums">{formatMoney(q.total, baseCurrency)}</span>
+            <span className="text-xs text-brand underline underline-offset-2">Details</span>
+          </span>
+        </summary>
+        <div className="border-t border-line px-4 pb-4">
+          <Lines q={q} baseCurrency={baseCurrency} promo={promo} />
+          {showDisplay && (
+            <p className="mt-2 text-xs text-muted">
+              ≈ {formatMoney(d.total, d.currency)} total, {formatMoney(d.deposit, d.currency)} deposit.
+            </p>
+          )}
+        </div>
+      </details>
+    );
+  }
   return (
     <aside className="card h-fit space-y-3 p-5 text-sm lg:sticky lg:top-24" aria-label="Price summary">
       <p className="text-base font-semibold">{room.name}</p>
       <p className="text-muted">
-        {from} → {to} · {nightsLabel(q.nightCount)} · {guests} guest{guests === 1 ? '' : 's'}
+        {fmtDate(from)} to {fmtDate(to)}, {nightsLabel(q.nightCount)}, {guests} guest{guests === 1 ? '' : 's'}
       </p>
-      <dl className="space-y-1.5 border-t border-line pt-3">
-        <Row label="Room" value={formatMoney(q.roomSubtotal, baseCurrency)} />
-        {q.extraGuestTotal > 0 && <Row label="Extra guests" value={formatMoney(q.extraGuestTotal, baseCurrency)} />}
-        {q.discount > 0 && <Row label={q.discountLabel ?? 'Discount'} value={`− ${formatMoney(q.discount, baseCurrency)}`} />}
-        {q.promoDiscount > 0 && <Row label={`Code ${promo?.code ?? ''} (${promo?.pct ?? ''}%)`} value={`− ${formatMoney(q.promoDiscount, baseCurrency)}`} />}
-        {q.taxes > 0 && <Row label="Taxes" value={formatMoney(q.taxes, baseCurrency)} />}
-        <Row label="Total" value={formatMoney(q.total, baseCurrency)} strong />
-        <Row label={`Deposit due now (${q.depositPct}%)`} value={formatMoney(q.deposit, baseCurrency)} strong />
-      </dl>
+      <Lines q={q} baseCurrency={baseCurrency} promo={promo} />
       {promo && q.promoDiscount > 0 && (
         <p className="rounded-xl bg-ok-bg p-3 text-ok">
           Code {promo.code} applied: you save {formatMoney(q.promoDiscount, baseCurrency)}.
@@ -444,6 +519,20 @@ function Summary({
         </p>
       )}
     </aside>
+  );
+}
+
+function Lines({ q, baseCurrency, promo }: { q: NonNullable<RoomAvailability['quote']>; baseCurrency: string; promo: { code: string; pct: number } | null }) {
+  return (
+    <dl className="space-y-1.5 border-t border-line pt-3">
+      <Row label="Room" value={formatMoney(q.roomSubtotal, baseCurrency)} />
+      {q.extraGuestTotal > 0 && <Row label="Extra guests" value={formatMoney(q.extraGuestTotal, baseCurrency)} />}
+      {q.discount > 0 && <Row label={q.discountLabel ?? 'Discount'} value={`− ${formatMoney(q.discount, baseCurrency)}`} />}
+      {q.promoDiscount > 0 && <Row label={`Code ${promo?.code ?? ''} (${promo?.pct ?? ''}%)`} value={`− ${formatMoney(q.promoDiscount, baseCurrency)}`} />}
+      {q.taxes > 0 && <Row label="Taxes" value={formatMoney(q.taxes, baseCurrency)} />}
+      <Row label="Total" value={formatMoney(q.total, baseCurrency)} strong />
+      <Row label={`Deposit due now (${q.depositPct}%)`} value={formatMoney(q.deposit, baseCurrency)} strong />
+    </dl>
   );
 }
 

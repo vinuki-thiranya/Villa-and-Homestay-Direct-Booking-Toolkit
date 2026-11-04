@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { BookingView } from '@/components/guest/BookingView';
+import { regionForCurrency } from '@/lib/guest-locale';
 import { siteContext } from '@/lib/site';
 
 type Props = {
@@ -11,7 +12,7 @@ export const metadata: Metadata = { title: 'Your booking', robots: { index: fals
 
 export default async function BookingPage({ params, searchParams }: Props) {
   const { site, reference } = await params;
-  const { property: p, base } = await siteContext(site);
+  const { property: p, base, currency } = await siteContext(site);
   const q = await searchParams;
   const token = typeof q.t === 'string' ? q.t : '';
   return (
@@ -23,6 +24,8 @@ export default async function BookingPage({ params, searchParams }: Props) {
         returnedFromPayment={q.paid === '1'}
         propertyName={p.name}
         paypalClientId={p.paypalClientId}
+        region={regionForCurrency(currency)}
+        mapQuery={p.lat != null && p.lng != null ? `${p.lat},${p.lng}` : p.address || null}
       />
     </div>
   );

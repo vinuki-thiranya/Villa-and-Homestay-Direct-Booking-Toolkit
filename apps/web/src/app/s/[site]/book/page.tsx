@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { BookingPaused } from '@/components/guest/BookingPaused';
 import { BookFlow } from '@/components/guest/BookFlow';
+import type { AvailabilityResult } from '@staydirect/shared';
+import { apiFetch } from '@/lib/api';
 import { siteContext } from '@/lib/site';
 
 type Props = {
@@ -14,10 +16,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 export default async function BookPage({ params, searchParams }: Props) {
   const { property: p, base, currency, siteKey } = await siteContext((await params).site);
   const q = await searchParams;
+  const from = one(q.from);
+  const to = one(q.to);
+  const guests = Number(one(q.guests)) || 2;
+  const code = one(q.code);
+  // Price the first search on the server: step 1 arrives complete, with no shift when results land.
+  let initialResult: (AvailabilityResult & { promo: { code: string; pct: number } | null }) | null = null;
+  if (from && to && ISO.test(from) && ISO.test(to) && to > from && !p.bookingDisabled) {
+    const qs = new URLSearchParams({ from, to, guests: String(guests), currency });
+    if (code) qs.set('code', code);
+    initialResult = await apiFetch<typeof initialResult>(`/public/sites/${encodeURIComponent(siteKey)}/availability?${qs}`).catch(() => null);
+  }
   if (p.bookingDisabled) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10">
@@ -29,7 +43,7 @@ export default async function BookPage({ params, searchParams }: Props) {
   }
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="font-display text-3xl font-semibold">Book your stay</h1>
+      <h1 className="g-display text-4xl">Book your stay</h1>
       <BookFlow
         site={siteKey}
         base={base}
@@ -42,13 +56,8 @@ export default async function BookPage({ params, searchParams }: Props) {
           fx: p.fx,
           paymentMethods: p.paymentMethods,
         }}
-        initial={{
-          from: one(q.from),
-          to: one(q.to),
-          guests: Number(one(q.guests)) || 2,
-          roomId: one(q.room),
-          code: one(q.code),
-        }}
+        initial={{ from, to, guests, roomId: one(q.room), code }}
+        initialResult={initialResult}
       />
     </div>
   );

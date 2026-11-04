@@ -97,6 +97,15 @@ export function PropertyFields({ p }: { p?: OwnerProperty }) {
         />
         <Field label="Custom domain" name="customDomain" placeholder="villalagoon.com" defaultValue={p?.customDomain ?? ''} hint="Point a CNAME to cname.vercel-dns.com first" />
         <TextArea label="Photo URLs (one per line, first is the hero)" name="photos" rows={4} className="sm:col-span-2" defaultValue={p?.photos.join('\n')} />
+        <Field
+          label="Hero video URL (optional)"
+          name="heroVideoUrl"
+          type="url"
+          className="sm:col-span-2"
+          placeholder="https://…/drone-loop.mp4"
+          defaultValue={p?.heroVideoUrl ?? ''}
+          hint="A short muted MP4 loop, under 3 MB. Guests on slow connections or with reduced motion see the first photo instead."
+        />
       </fieldset>
     </div>
   );

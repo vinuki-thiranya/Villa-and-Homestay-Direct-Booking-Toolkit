@@ -117,6 +117,7 @@ function propertyBody(fd: FormData) {
     customDomain: optStr(fd, 'customDomain'),
     hostName: str(fd, 'hostName'),
     hostPhotoUrl: optStr(fd, 'hostPhotoUrl'),
+    heroVideoUrl: optStr(fd, 'heroVideoUrl'),
   };
 }
 

@@ -11,6 +11,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  *   localhost:3000                    → unchanged (/, /s/villa-lagoon, /owner work directly)
  *
  * Rewritten guest requests carry `x-sd-base: ''` so pages build links without the /s/{site} prefix.
+ * Outside production (or with ALLOW_THEME_PREVIEW=1), `?previewTheme=jungle` renders a guest site in another theme.
  */
 const ROOT_DOMAIN = (process.env.ROOT_DOMAIN ?? 'staydirect.lk').toLowerCase();
 const OWNER_HOST = (process.env.OWNER_HOST ?? `app.${ROOT_DOMAIN}`).toLowerCase();
@@ -25,7 +26,9 @@ export function proxy(request: NextRequest) {
   if (pathname.startsWith('/t/') || pathname.startsWith('/j/')) return NextResponse.next();
 
   // Dev and platform preview hosts pass through untouched.
-  if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.vercel.app')) return NextResponse.next();
+  if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.vercel.app')) {
+    return NextResponse.next({ request: { headers: guestHeaders(request) } });
+  }
 
   if (host.endsWith('.localhost')) return rewriteSite(request, host.slice(0, -'.localhost'.length), pathname);
 
@@ -55,9 +58,22 @@ function rewriteSite(request: NextRequest, site: string, pathname: string) {
   if (pathname.startsWith('/s/')) return NextResponse.next();
   const url = request.nextUrl.clone();
   url.pathname = `/s/${encodeURIComponent(site)}${pathname === '/' ? '' : pathname}`;
-  const headers = new Headers(request.headers);
+  const headers = guestHeaders(request);
   headers.set('x-sd-base', '');
   return NextResponse.rewrite(url, { request: { headers } });
+}
+
+/** Theme previews: always in dev; in a production build only when ALLOW_THEME_PREVIEW=1 (Lighthouse runs). */
+function previewAllowed(): boolean {
+  return process.env.NODE_ENV !== 'production' || process.env.ALLOW_THEME_PREVIEW === '1';
+}
+
+function guestHeaders(request: NextRequest): Headers {
+  const headers = new Headers(request.headers);
+  headers.delete('x-sd-preview-theme'); // never trust it from the client
+  const preview = request.nextUrl.searchParams.get('previewTheme');
+  if (preview && previewAllowed() && /^[a-z]{2,20}$/.test(preview)) headers.set('x-sd-preview-theme', preview);
+  return headers;
 }
 
 export const config = {

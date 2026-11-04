@@ -6,16 +6,10 @@ import { Building2, CreditCard, QrCode, Wallet } from 'lucide-react';
 import type { PaymentMethod, PaymentStart, PublicBooking } from '@staydirect/shared';
 import { publicApi } from '@/lib/client-api';
 import { fmtDateTime, formatMoney } from '@/lib/format';
+import type { GuestRegion } from '@/lib/guest-locale';
+import { paymentGroups, type GuestMethod, type PaymentGroup } from '@/lib/payment-groups';
 
-type GuestMethod = Exclude<PaymentMethod, 'cash'>;
-
-/** Payment options grouped by guest type (spec §4.3). Only methods the owner connected are shown. */
-const OPTIONS: { method: GuestMethod; title: string; detail: string; icon: typeof CreditCard }[] = [
-  { method: 'payhere', title: 'Card, Genie or FriMi', detail: 'Visa · Mastercard · Sri Lankan wallets — secure PayHere checkout', icon: CreditCard },
-  { method: 'paypal', title: 'PayPal', detail: 'Pay in USD/EUR/GBP with your PayPal account or card', icon: Wallet },
-  { method: 'lankaqr', title: 'UPI / LankaQR', detail: 'Indian guests: scan with any UPI app (GPay, PhonePe, Paytm)', icon: QrCode },
-  { method: 'bank', title: 'Bank transfer or Wise', detail: 'Transfer, then upload the slip — confirmed by the host', icon: Building2 },
-];
+const ICON: Record<GuestMethod, typeof CreditCard> = { payhere: CreditCard, paypal: Wallet, lankaqr: QrCode, bank: Building2 };
 
 declare global {
   interface Window {
@@ -35,17 +29,21 @@ export function PaymentPanel({
   reference,
   token,
   onPaid,
+  region,
 }: {
   booking: PublicBooking;
   reference: string;
   token: string;
   onPaid: () => void;
+  /** The guest's likely region from their currency: their payment group is shown first. */
+  region: GuestRegion;
 }) {
   const [active, setActive] = useState<GuestMethod | null>(null);
   const [start, setStart] = useState<PaymentStart | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const available = OPTIONS.filter((o) => booking.paymentMethods.includes(o.method));
+  const groups = paymentGroups(booking.paymentMethods, region);
+  const [primary, ...others] = groups;
 
   async function choose(method: GuestMethod) {
     setActive(method);
@@ -67,7 +65,7 @@ export function PaymentPanel({
     }
   }
 
-  if (available.length === 0) {
+  if (!primary) {
     return (
       <div className="card p-6">
         <p>Online payment isn&apos;t set up yet. The host will contact you on WhatsApp to arrange the deposit.</p>
@@ -80,31 +78,20 @@ export function PaymentPanel({
       <h2 id="pay-h" className="text-lg font-semibold">
         How would you like to pay?
       </h2>
-      <div className="mt-4 grid gap-3" role="radiogroup" aria-label="Payment method">
-        {available.map((o) => {
-          const Icon = o.icon;
-          const selected = active === o.method;
-          return (
-            <button
-              key={o.method}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              disabled={busy}
-              onClick={() => void choose(o.method)}
-              className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-colors ${
-                selected ? 'border-brand bg-brand/5' : 'border-line hover:border-brand/60'
-              }`}
-            >
-              <Icon aria-hidden className="h-6 w-6 shrink-0 text-brand" />
-              <span>
-                <span className="block font-semibold">{o.title}</span>
-                <span className="block text-sm text-muted">{o.detail}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <p className="mt-1 text-sm text-muted">
+        Due now: <strong className="text-fg">{formatMoney(Math.max(0, (booking.status === 'pending' ? booking.deposit : booking.total) - booking.paid), booking.currency)}</strong>
+      </p>
+      <Group group={primary} active={active} busy={busy} onChoose={choose} />
+      {others.length > 0 && (
+        <details className="mt-4 rounded-card border border-line" open={!!active && !primary.options.some((o) => o.method === active)}>
+          <summary className="flex min-h-12 cursor-pointer items-center px-4 text-sm font-semibold">Paying from somewhere else?</summary>
+          <div className="space-y-5 px-4 pb-4">
+            {others.map((g) => (
+              <Group key={g.region} group={g} active={active} busy={busy} onChoose={choose} />
+            ))}
+          </div>
+        </details>
+      )}
 
       {busy && (
         <p className="mt-4 text-sm text-muted" role="status">
@@ -156,6 +143,51 @@ export function PaymentPanel({
         You pay {booking.propertyName} directly — card details are entered on the payment provider&apos;s page and never reach this site.
       </p>
     </section>
+  );
+}
+
+function Group({
+  group,
+  active,
+  busy,
+  onChoose,
+}: {
+  group: PaymentGroup;
+  active: GuestMethod | null;
+  busy: boolean;
+  onChoose: (m: GuestMethod) => void;
+}) {
+  return (
+    <div className="mt-4">
+      <h3 id={`pay-${group.region}`} className="text-sm font-semibold text-muted">
+        {group.title}
+      </h3>
+      <div className="mt-2 grid gap-2" role="radiogroup" aria-labelledby={`pay-${group.region}`}>
+        {group.options.map((o) => {
+          const Icon = ICON[o.method];
+          const selected = active === o.method;
+          return (
+            <button
+              key={o.method}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              disabled={busy}
+              onClick={() => onChoose(o.method)}
+              className={`flex min-h-16 w-full items-center gap-4 rounded-card border p-4 text-left transition-colors ${
+                selected ? 'border-brand bg-brand/5 ring-1 ring-brand' : 'border-line hover:border-brand/60'
+              }`}
+            >
+              <Icon aria-hidden className="h-6 w-6 shrink-0 text-brand" />
+              <span>
+                <span className="block font-semibold">{o.title}</span>
+                <span className="block text-sm text-muted">{o.detail}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

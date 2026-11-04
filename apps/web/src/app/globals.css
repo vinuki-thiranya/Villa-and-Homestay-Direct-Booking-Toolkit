@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* Guest-site theme layouts; every rule is scoped to .g-site/[data-theme], so other apps are unaffected. */
+@import './s/[site]/guest.css';
 
 /*
  * Design tokens. Guest sites pick a theme with data-theme on <html>/<div>
@@ -15,6 +17,8 @@
   --brand-strong: #0a5552;
   --brand-fg: #ffffff;
   --accent: #e8a33d;
+  --accent-fg: #14201f;
+  --ring: #0f6e6b;
   --ok: #15803d;
   --ok-bg: #dcfce7;
   --bad: #b91c1c;
@@ -81,6 +85,7 @@
   --color-brand-strong: var(--brand-strong);
   --color-brand-fg: var(--brand-fg);
   --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
   --color-ok: var(--ok);
   --color-ok-bg: var(--ok-bg);
   --color-bad: var(--bad);
@@ -88,8 +93,9 @@
   --color-warn: var(--warn);
   --color-warn-bg: var(--warn-bg);
   --radius-card: var(--radius);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-display: ui-serif, Georgia, 'Times New Roman', serif;
+  /* Guest sites set --g-sans/--g-display from their theme (themes/registry.ts); elsewhere the system stacks. */
+  --font-sans: var(--g-sans, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
+  --font-display: var(--g-display, ui-serif, Georgia, 'Times New Roman', serif);
 }
 
 html {
@@ -120,7 +126,7 @@ body {
 }
 
 @utility btn {
-  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--btn-radius,9999px)] px-5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
 }
 @utility btn-primary {
   @apply btn bg-brand text-brand-fg hover:bg-brand-strong;
