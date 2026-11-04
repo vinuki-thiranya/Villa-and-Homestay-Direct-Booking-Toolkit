@@ -23,7 +23,7 @@ class InboxScreen extends StatelessWidget {
       builder: (context, data, offline, reload) {
         final convs = (data as List).cast<Map<String, dynamic>>();
         if (convs.isEmpty) {
-          return ListView(children: const [SizedBox(height: 80), EmptyNote('No WhatsApp conversations yet.')]);
+          return ListView(children: [const SizedBox(height: 80), EmptyNote(context.l10n.noConversations)]);
         }
         return ListView.separated(
           itemCount: convs.length,
@@ -37,10 +37,10 @@ class InboxScreen extends StatelessWidget {
               leading: CircleAvatar(child: Text(_initials(c['contactName'] as String? ?? c['contact'] as String? ?? '?'))),
               title: Row(children: [
                 Expanded(child: Text((c['contactName'] as String?)?.isNotEmpty == true ? c['contactName'] as String : c['contact'] as String)),
-                if (last != null) Text(ago(DateTime.parse(last)), style: Theme.of(context).textTheme.labelSmall),
+                if (last != null) Text(ago(context.l10n, DateTime.parse(last)), style: Theme.of(context).textTheme.labelSmall),
               ]),
               subtitle: Text(
-                needsHuman ? 'Needs you: ${c['escalationSummary'] ?? ''}' : (c['lastMessage'] as String? ?? ''),
+                needsHuman ? context.l10n.needsYou('${c['escalationSummary'] ?? ''}') : (c['lastMessage'] as String? ?? ''),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: needsHuman ? TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w600) : null,

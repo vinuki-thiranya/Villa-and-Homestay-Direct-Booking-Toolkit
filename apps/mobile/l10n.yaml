@@ -1,0 +1,6 @@
+# gen-l10n: English is the template; Sinhala (si) must define every key (terms: apps/web/src/i18n/owner/GLOSSARY.md).
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false

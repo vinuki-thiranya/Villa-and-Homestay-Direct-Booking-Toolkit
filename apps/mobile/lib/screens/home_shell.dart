@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../main.dart';
 import '../property_scope.dart';
+import '../sinhala.dart';
+import '../widgets.dart';
 import 'inbox_screen.dart';
 import 'portfolio_screen.dart';
 import 'tasks_screen.dart';
@@ -26,6 +28,8 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     _loadProperties();
+    // Adopt the language saved on the account (set on the web, say), or send a change made offline.
+    widget.services.locale.syncWithServer(widget.services.api);
   }
 
   @override
@@ -57,7 +61,7 @@ class _HomeShellState extends State<HomeShell> {
               ListTile(
                 minTileHeight: 56,
                 leading: const Icon(Icons.dashboard_outlined),
-                title: const Text('All properties'),
+                title: Text(context.l10n.allProperties),
                 selected: _scope.showAll,
                 onTap: () {
                   _scope.selectAll();
@@ -89,7 +93,10 @@ class _HomeShellState extends State<HomeShell> {
       child: ListenableBuilder(
         listenable: _scope,
         builder: (context, _) {
+          final l = context.l10n;
+          _scope.allLabel = l.allProperties;
           final pid = _scope.currentId;
+          final locale = widget.services.locale;
           final pages = [
             _scope.showAll
                 ? PortfolioScreen(services: widget.services, onUnauthorized: widget.onSignOut)
@@ -103,7 +110,7 @@ class _HomeShellState extends State<HomeShell> {
               title: _scope.isMulti
                   ? Semantics(
                       button: true,
-                      label: 'Switch property, current ${_scope.currentName}',
+                      label: l.switchPropertyCurrent(_scope.currentName),
                       child: TextButton.icon(
                         style: TextButton.styleFrom(minimumSize: const Size(48, 48), alignment: Alignment.centerLeft),
                         onPressed: _pickProperty,
@@ -113,15 +120,28 @@ class _HomeShellState extends State<HomeShell> {
                       ),
                     )
                   : Text(_scope.currentName),
+              // The vine-scroll band under the app bar, in Sinhala only.
+              bottom: locale.isSinhala ? const LiyawelaBand() : null,
               actions: [
                 PopupMenuButton<String>(
-                  tooltip: 'Account',
+                  tooltip: l.account,
                   onSelected: (v) {
                     if (v == 'out') widget.onSignOut();
+                    if (v == 'lang') locale.setLanguage(locale.isSinhala ? 'en' : 'si', api: widget.services.api);
                   },
                   itemBuilder: (_) => [
                     PopupMenuItem(enabled: false, child: Text(widget.services.store.ownerName ?? '')),
-                    const PopupMenuItem(value: 'out', child: Text('Sign out')),
+                    // Named in the language it switches to, so either reader finds it.
+                    PopupMenuItem(
+                      value: 'lang',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.translate),
+                        title: Text(locale.isSinhala ? l.languageEnglish : l.languageSinhala),
+                        subtitle: Text(l.language),
+                      ),
+                    ),
+                    PopupMenuItem(value: 'out', child: Text(l.signOut)),
                   ],
                 ),
               ],
@@ -130,10 +150,10 @@ class _HomeShellState extends State<HomeShell> {
             bottomNavigationBar: NavigationBar(
               selectedIndex: _tab,
               onDestinationSelected: (i) => setState(() => _tab = i),
-              destinations: const [
-                NavigationDestination(icon: Icon(Icons.today_outlined), selectedIcon: Icon(Icons.today), label: 'Today'),
-                NavigationDestination(icon: Icon(Icons.checklist_outlined), selectedIcon: Icon(Icons.checklist), label: 'Tasks'),
-                NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Inbox'),
+              destinations: [
+                NavigationDestination(icon: const Icon(Icons.today_outlined), selectedIcon: const Icon(Icons.today), label: l.navToday),
+                NavigationDestination(icon: const Icon(Icons.checklist_outlined), selectedIcon: const Icon(Icons.checklist), label: l.navTasks),
+                NavigationDestination(icon: const Icon(Icons.chat_bubble_outline), selectedIcon: const Icon(Icons.chat_bubble), label: l.navInbox),
               ],
             ),
           );

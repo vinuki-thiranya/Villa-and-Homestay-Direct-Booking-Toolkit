@@ -2,7 +2,16 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'format.dart';
+import 'l10n/app_localizations.dart';
 import 'store.dart';
+
+/// Shorthand for the app's strings: `context.l10n.paid`.
+extension L10nContext on BuildContext {
+  AppLocalizations get l10n => AppLocalizations.of(this);
+
+  /// 'en' or 'si', for intl date formatting.
+  String get localeTag => Localizations.localeOf(this).languageCode;
+}
 
 /// Load-with-cache scaffold shared by the tabs: pull to refresh, offline banner, error state.
 class CachedView extends StatefulWidget {
@@ -51,7 +60,7 @@ class _CachedViewState extends State<CachedView> {
         await widget.onUnauthorized();
         return;
       }
-      if (mounted) setState(() => _error = e.status == 0 ? 'No connection and nothing saved yet.' : e.message);
+      if (mounted) setState(() => _error = e.status == 0 ? context.l10n.errorNoConnectionNothingSaved : e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -66,7 +75,7 @@ class _CachedViewState extends State<CachedView> {
         child: ListView(children: [
           const SizedBox(height: 120),
           Icon(Icons.cloud_off, size: 48, color: Theme.of(context).colorScheme.outline),
-          Padding(padding: const EdgeInsets.all(24), child: Text(_error ?? 'Something went wrong', textAlign: TextAlign.center)),
+          Padding(padding: const EdgeInsets.all(24), child: Text(_error ?? context.l10n.errorGeneric, textAlign: TextAlign.center)),
         ]),
       );
     }
@@ -98,7 +107,7 @@ class OfflineBanner extends StatelessWidget {
           Icon(Icons.cloud_off, size: 18, color: scheme.onTertiaryContainer),
           const SizedBox(width: 8),
           Expanded(
-            child: Text('Offline — showing what was saved ${ago(savedAt)}', style: TextStyle(color: scheme.onTertiaryContainer)),
+            child: Text(context.l10n.offlineSavedAgo(ago(context.l10n, savedAt)), style: TextStyle(color: scheme.onTertiaryContainer)),
           ),
         ]),
       ),
@@ -147,12 +156,13 @@ class PaidChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final paid = balance <= 0;
     final c = StatusColors.of(context);
+    final l = context.l10n;
     return Semantics(
-      label: paid ? 'Paid in full' : 'Balance due ${money(balance, currency)}',
+      label: paid ? l.paidInFull : l.balanceDue(money(balance, currency)),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(color: paid ? c.ok : c.bad, borderRadius: BorderRadius.circular(999)),
-        child: Text(paid ? 'Paid' : 'Due ${money(balance, currency)}',
+        child: Text(paid ? l.paid : l.dueAmount(money(balance, currency)),
             style: TextStyle(color: paid ? c.onOk : c.onBad, fontWeight: FontWeight.w600, fontSize: 12)),
       ),
     );

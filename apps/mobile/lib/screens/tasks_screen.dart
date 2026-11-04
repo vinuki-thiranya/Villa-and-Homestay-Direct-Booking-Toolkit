@@ -35,11 +35,11 @@ class TasksScreen extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            SectionTitle('To do', count: open.length),
-            if (open.isEmpty) const EmptyNote('All done for today.'),
+            SectionTitle(context.l10n.toDo, count: open.length),
+            if (open.isEmpty) EmptyNote(context.l10n.allDoneToday),
             ...open.map((t) => _TaskTile(task: t, enabled: !offline, services: services, onChanged: reload)),
             if (done.isNotEmpty) ...[
-              SectionTitle('Done', count: done.length),
+              SectionTitle(context.l10n.done, count: done.length),
               ...done.map((t) => _TaskTile(task: t, enabled: !offline, services: services, onChanged: reload)),
             ],
           ],
@@ -69,7 +69,7 @@ class _TaskTileState extends State<_TaskTile> {
       await widget.services.api.patch('/tasks/${widget.task['id']}', {'status': done ? 'done' : 'todo'});
       await widget.onChanged();
     } on ApiException catch (e) {
-      if (mounted) showSnack(context, e.status == 0 ? 'No connection — try again when online.' : e.message);
+      if (mounted) showSnack(context, e.status == 0 ? context.l10n.noConnectionTryOnline : e.message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -80,6 +80,7 @@ class _TaskTileState extends State<_TaskTile> {
     final t = widget.task;
     final done = t['status'] == 'done';
     final photos = (t['photos'] as List?)?.length ?? 0;
+    final l = context.l10n;
     return Card(
       child: CheckboxListTile(
         value: done,
@@ -89,8 +90,8 @@ class _TaskTileState extends State<_TaskTile> {
         subtitle: Text([
           if (t['assigneeName'] != null) t['assigneeName'],
           if ((t['notes'] as String? ?? '').isNotEmpty) t['notes'],
-          if (photos > 0) '$photos photo${photos == 1 ? '' : 's'}',
-          if (t['cost'] != null) 'cost ${t['cost']}',
+          if (photos > 0) l.photosCount(photos),
+          if (t['cost'] != null) l.taskCost('${t['cost']}'),
         ].join(' · ')),
       ),
     );

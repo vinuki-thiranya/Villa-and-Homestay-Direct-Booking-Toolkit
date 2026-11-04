@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../api.dart';
 import '../format.dart';
+import '../l10n/app_localizations.dart';
 import '../main.dart';
+import '../sinhala.dart';
 import '../widgets.dart';
 
 /// Today first: who arrives, who leaves, who still owes money, and whether calendar sync is healthy.
@@ -19,9 +22,27 @@ class TodayScreen extends StatelessWidget {
       cacheKey: 'dashboard:$pid',
       store: services.store,
       onUnauthorized: onUnauthorized,
-      fetch: () => services.api.get('/properties/$pid/dashboard'),
+      // Holidays travel with the dashboard so the Poya notice is there offline too.
+      fetch: () async {
+        final d = Map<String, dynamic>.from(await services.api.get('/properties/$pid/dashboard') as Map);
+        final today = colomboToday();
+        final tomorrow = isoDate(colomboNow().add(const Duration(days: 1)));
+        try {
+          d['holidays'] = await services.api.get('/holidays?from=$today&to=$tomorrow');
+        } on ApiException {
+          d['holidays'] = const []; // a missing holiday list never breaks Today
+        }
+        return d;
+      },
       builder: (context, data, offline, reload) {
         final d = data as Map<String, dynamic>;
+        final l = context.l10n;
+        final now = colomboNow();
+        final notice = holidayNotice(
+          (d['holidays'] as List?) ?? const [],
+          isoDate(now),
+          isoDate(now.add(const Duration(days: 1))),
+        );
         final currency = d['currency'] as String? ?? 'USD';
         List<Map<String, dynamic>> list(String k) => ((d[k] as List?) ?? const []).cast<Map<String, dynamic>>();
         final sync = list('syncHealth');
@@ -31,51 +52,56 @@ class TodayScreen extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            if (conflicts.isNotEmpty)
-              _Alert(text: '${conflicts.length} double-booking conflict${conflicts.length == 1 ? '' : 's'}. Open the web dashboard to resolve.'),
+            _Greeting(name: services.store.ownerName),
+            if (notice != null) HolidayBanner(notice: notice),
+            if (conflicts.isNotEmpty) _Alert(text: l.conflictsAlert(conflicts.length)),
             SyncBanner(sync: sync, failing: failing),
             _Glance(
               arriving: list('arrivalsToday').length,
               leaving: list('departuresToday').length,
               unpaid: list('unpaidBalances').length,
             ),
-            SectionTitle('Arriving today', count: list('arrivalsToday').length),
+            const PalaPethiDivider(),
+            SectionTitle(l.arrivingToday, count: list('arrivalsToday').length),
             ...list('arrivalsToday').map((b) => _BookingTile(b: b, currency: currency)),
-            if (list('arrivalsToday').isEmpty) const EmptyNote('No arrivals today.'),
-            SectionTitle('Leaving today', count: list('departuresToday').length),
+            if (list('arrivalsToday').isEmpty) EmptyNote(l.noArrivals),
+            SectionTitle(l.leavingToday, count: list('departuresToday').length),
             ...list('departuresToday').map((b) => _BookingTile(b: b, currency: currency)),
-            if (list('departuresToday').isEmpty) const EmptyNote('No departures today.'),
+            if (list('departuresToday').isEmpty) EmptyNote(l.noDepartures),
             if (list('pendingApproval').isNotEmpty) ...[
-              SectionTitle('Waiting for your approval', count: list('pendingApproval').length),
+              SectionTitle(l.waitingApproval, count: list('pendingApproval').length),
               ...list('pendingApproval').map((b) => _BookingTile(b: b, currency: currency)),
             ],
-            SectionTitle('Unpaid balances', count: list('unpaidBalances').length),
+            const PalaPethiDivider(),
+            SectionTitle(l.unpaidBalances, count: list('unpaidBalances').length),
             ...list('unpaidBalances').map((b) => _BookingTile(b: b, currency: currency)),
-            if (list('unpaidBalances').isEmpty) const EmptyNote('Everyone has paid.'),
-            SectionTitle('Next 14 days', count: list('upcomingArrivals').length),
+            if (list('unpaidBalances').isEmpty) EmptyNote(l.everyonePaid),
+            SectionTitle(l.next14Days, count: list('upcomingArrivals').length),
             ...list('upcomingArrivals').take(8).map((b) => _BookingTile(b: b, currency: currency)),
-            const SectionTitle('This month'),
+            const PalaPethiDivider(),
+            SectionTitle(l.thisMonth),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Wrap(spacing: 8, runSpacing: 8, children: [
-                _Stat('Occupancy', '${month['occupancyPct'] ?? 0}%'),
-                _Stat('Direct revenue', money(month['directRevenue'] as num?, currency)),
-                _Stat('Commission saved', money(month['commissionSaved'] as num?, currency)),
+                _Stat(l.occupancy, '${month['occupancyPct'] ?? 0}%'),
+                _Stat(l.directRevenue, money(month['directRevenue'] as num?, currency)),
+                _Stat(l.commissionSaved, money(month['commissionSaved'] as num?, currency)),
               ]),
             ),
-            SectionTitle('Calendar sync', count: sync.length),
+            const PalaPethiDivider(),
+            SectionTitle(l.calendarSync, count: sync.length),
             ...sync.map((s) {
               final bad = _failing(s);
               final c = StatusColors.of(context);
               return ListTile(
                 leading: Icon(bad ? Icons.error : Icons.check_circle, color: bad ? c.bad : c.ok),
-                title: Text('${s['roomName']} · ${channelLabel(s['channel'] as String?)}'),
+                title: Text('${s['roomName']} · ${channelLabel(l, s['channel'] as String?)}'),
                 subtitle: Text(bad
-                    ? (s['lastError']?.toString() ?? 'Failing')
-                    : (s['lastSuccessAt'] != null ? 'Synced ${ago(DateTime.parse(s['lastSuccessAt'] as String))}' : 'Not synced yet')),
+                    ? (s['lastError']?.toString() ?? l.syncFailingShort)
+                    : (s['lastSuccessAt'] != null ? l.syncedAgo(ago(l, DateTime.parse(s['lastSuccessAt'] as String))) : l.notSyncedYet)),
               );
             }),
-            if (sync.isEmpty) const EmptyNote('No Airbnb / Booking.com calendars connected yet.'),
+            if (sync.isEmpty) EmptyNote(l.noCalendarsConnected),
           ],
         );
       },
@@ -96,20 +122,21 @@ class SyncBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final c = StatusColors.of(context);
+    final l = context.l10n;
     final String text;
     final IconData icon;
     final Color fg;
     if (failing.isNotEmpty) {
-      text = 'Calendar sync failing: ${failing.map((s) => '${s['roomName']} (${channelLabel(s['channel'] as String?)})').join(', ')}';
+      text = l.syncFailing(failing.map((s) => '${s['roomName']} (${channelLabel(l, s['channel'] as String?)})').join(', '));
       icon = Icons.sync_problem;
       fg = c.bad;
     } else if (sync.isNotEmpty) {
       final times = sync.map((s) => s['lastSuccessAt'] as String?).whereType<String>().map(DateTime.parse).toList()..sort();
-      text = times.isEmpty ? 'Calendars connected, first sync pending' : 'Calendars in sync, checked ${ago(times.first)}';
+      text = times.isEmpty ? l.syncPending : l.syncOk(ago(l, times.first));
       icon = Icons.sync;
       fg = c.ok;
     } else {
-      text = 'No Airbnb or Booking.com calendars connected';
+      text = l.syncNone;
       icon = Icons.sync_disabled;
       fg = scheme.onSurfaceVariant;
     }
@@ -150,17 +177,18 @@ class _Glance extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = StatusColors.of(context);
+    final l = context.l10n;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Row(children: [
-        Expanded(child: _GlanceTile(value: '$arriving', label: 'arriving')),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(child: _GlanceTile(value: '$arriving', label: l.glanceArriving)),
         const SizedBox(width: 8),
-        Expanded(child: _GlanceTile(value: '$leaving', label: 'leaving')),
+        Expanded(child: _GlanceTile(value: '$leaving', label: l.glanceLeaving)),
         const SizedBox(width: 8),
         Expanded(
           child: _GlanceTile(
-            value: unpaid == 0 ? 'All paid' : '$unpaid',
-            label: unpaid == 0 ? 'balances' : 'unpaid',
+            value: unpaid == 0 ? l.glanceAllPaid : '$unpaid',
+            label: unpaid == 0 ? l.glanceBalances : l.glanceUnpaid,
             color: unpaid == 0 ? c.ok : c.bad,
           ),
         ),
@@ -198,10 +226,13 @@ class _BookingTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phone = b['guestPhone'] as String?;
+    final l = context.l10n;
+    final lang = context.localeTag;
     return Card(
       child: ListTile(
-        title: Text('${b['guestName'] ?? 'Guest'} · ${b['roomName']}'),
-        subtitle: Text('${shortDate(b['from'] as String?)} → ${shortDate(b['to'] as String?)} · ${b['guests']} guests · ${b['reference']}'),
+        title: Text('${b['guestName'] ?? l.guestFallback} · ${b['roomName']}'),
+        subtitle: Text(
+            '${shortDate(b['from'] as String?, lang)} → ${shortDate(b['to'] as String?, lang)} · ${l.guestsCount((b['guests'] as num? ?? 0).toInt())} · ${b['reference']}'),
         trailing: PaidChip(balance: (b['balance'] as num?) ?? 0, currency: b['currency'] as String? ?? currency),
         onTap: phone == null
             ? null
@@ -246,6 +277,95 @@ class _Alert extends StatelessWidget {
         leading: Icon(Icons.warning_amber, color: scheme.onErrorContainer),
         title: Text(text, style: TextStyle(color: scheme.onErrorContainer)),
       ),
+    );
+  }
+}
+
+/// Time-of-day greeting in Colombo time, with the owner's first name.
+class _Greeting extends StatelessWidget {
+  const _Greeting({required this.name});
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final hour = colomboNow().hour;
+    final greeting = hour >= 4 && hour < 12
+        ? l.greetingMorning
+        : hour >= 12 && hour < 17
+            ? l.greetingAfternoon
+            : l.greetingEvening;
+    final first = (name ?? '').trim().split(RegExp(r'\s+')).first;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Text(first.isEmpty ? greeting : l.greetingWithName(greeting, first), style: Theme.of(context).textTheme.headlineSmall),
+    );
+  }
+}
+
+enum HolidayKind { poyaToday, holidayToday, poyaTomorrow }
+
+/// What Today should say about Sri Lankan holidays, if anything.
+class HolidayNotice {
+  const HolidayNotice(this.kind, this.nameEn, this.nameSi);
+  final HolidayKind kind;
+  final String nameEn;
+  final String nameSi;
+}
+
+/// A Poya day today matters most (no alcohol may be sold or served), then any public holiday today,
+/// then a Poya day tomorrow, so the owner can stock up and tell guests. [holidays] is the
+/// /holidays response: [{date, nameEn, nameSi, isPoya, types}].
+HolidayNotice? holidayNotice(List<dynamic> holidays, String today, String tomorrow) {
+  final list = holidays.whereType<Map>().map((h) => h.cast<String, dynamic>()).toList();
+  HolidayNotice make(HolidayKind k, Map<String, dynamic> h) => HolidayNotice(k, h['nameEn'] as String? ?? '', h['nameSi'] as String? ?? '');
+  for (final h in list) {
+    if (h['date'] == today && h['isPoya'] == true) return make(HolidayKind.poyaToday, h);
+  }
+  for (final h in list) {
+    if (h['date'] == today) return make(HolidayKind.holidayToday, h);
+  }
+  for (final h in list) {
+    if (h['date'] == tomorrow && h['isPoya'] == true) return make(HolidayKind.poyaTomorrow, h);
+  }
+  return null;
+}
+
+class HolidayBanner extends StatelessWidget {
+  const HolidayBanner({super.key, required this.notice});
+  final HolidayNotice notice;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    final name = context.localeTag == 'si' && notice.nameSi.isNotEmpty ? notice.nameSi : notice.nameEn;
+    final (title, body) = switch (notice.kind) {
+      HolidayKind.poyaToday => (name, l.poyaToday),
+      HolidayKind.holidayToday => (l.holidayToday(name), null),
+      HolidayKind.poyaTomorrow => (l.poyaTomorrow(name), null),
+    };
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border(left: BorderSide(color: SinhalaColors.of(context).ochre, width: 4)),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(notice.kind == HolidayKind.holidayToday ? Icons.event : Icons.brightness_2_outlined, color: scheme.onSecondaryContainer),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: TextStyle(color: scheme.onSecondaryContainer, fontWeight: FontWeight.w600)),
+            if (body != null) ...[
+              const SizedBox(height: 2),
+              Text(body, style: TextStyle(color: scheme.onSecondaryContainer)),
+            ],
+          ]),
+        ),
+      ]),
     );
   }
 }

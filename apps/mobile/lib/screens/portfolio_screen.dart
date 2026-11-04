@@ -33,7 +33,7 @@ class PortfolioScreen extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text('$arrivals arriving and $departures leaving today across ${list.length} properties',
+              child: Text(context.l10n.portfolioSummary(arrivals, departures, list.length),
                   style: Theme.of(context).textTheme.titleMedium),
             ),
             ...list.map((p) => _PropertyCard(p: p)),
@@ -53,11 +53,12 @@ class _PropertyCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final problems = (p['conflicts'] as num? ?? 0) + (p['syncFailures'] as num? ?? 0);
     final unpaid = (p['unpaid'] as num?) ?? 0;
+    final l = context.l10n;
     final chips = <Widget>[
-      _Chip('${p['occupancyTonightPct']}% full tonight'),
-      _Chip('${p['arrivals']} in · ${p['departures']} out'),
-      if ((p['openTasks'] as num? ?? 0) > 0) _Chip('${p['openTasks']} tasks open'),
-      if ((p['needsReply'] as num? ?? 0) > 0) _Chip('${p['needsReply']} guest${p['needsReply'] == 1 ? '' : 's'} waiting', strong: true),
+      _Chip(l.fullTonight('${p['occupancyTonightPct']}')),
+      _Chip(l.inOut('${p['arrivals']}', '${p['departures']}')),
+      if ((p['openTasks'] as num? ?? 0) > 0) _Chip(l.tasksOpen((p['openTasks'] as num).toInt())),
+      if ((p['needsReply'] as num? ?? 0) > 0) _Chip(l.guestsWaiting((p['needsReply'] as num).toInt()), strong: true),
     ];
     return Card(
       child: InkWell(
@@ -79,9 +80,9 @@ class _PropertyCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     [
-                      if ((p['conflicts'] as num? ?? 0) > 0) '${p['conflicts']} double-booking conflict${p['conflicts'] == 1 ? '' : 's'}',
-                      if ((p['syncFailures'] as num? ?? 0) > 0) 'calendar sync failing',
-                    ].join(' and '),
+                      if ((p['conflicts'] as num? ?? 0) > 0) l.conflictsShort((p['conflicts'] as num).toInt()),
+                      if ((p['syncFailures'] as num? ?? 0) > 0) l.calendarSyncFailing,
+                    ].join(l.listAnd),
                     style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -90,7 +91,7 @@ class _PropertyCard extends StatelessWidget {
             const SizedBox(height: 10),
             Wrap(spacing: 8, runSpacing: 8, children: chips),
             const SizedBox(height: 4),
-            Text('Today ${shortDate(p['today'] as String?)}', style: Theme.of(context).textTheme.labelSmall),
+            Text(l.todayDate(shortDate(p['today'] as String?, context.localeTag)), style: Theme.of(context).textTheme.labelSmall),
           ]),
         ),
       ),
