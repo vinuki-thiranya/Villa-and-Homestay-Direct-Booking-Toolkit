@@ -2,26 +2,26 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, Home, ListChecks, RefreshCw, Settings } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
+import { NAV_ITEMS, type NavItem } from './nav-items';
 
-const ITEMS = [
-  { href: '/owner', label: 'Today', icon: Home, exact: true },
-  { href: '/owner/calendar', label: 'Calendar', icon: CalendarDays },
-  { href: '/owner/bookings', label: 'Bookings', icon: ListChecks },
-  { href: '/owner/sync', label: 'Channels', icon: RefreshCw },
-  { href: '/owner/setup', label: 'Setup', icon: Settings },
-];
+/** Phone bottom bar: the four daily screens, the rest behind "More" (one-thumb reach). */
+const BOTTOM: NavItem[] = [...NAV_ITEMS.slice(0, 4), { href: '/owner/more', label: 'More', icon: MoreHorizontal }];
+const MORE_PATHS = NAV_ITEMS.slice(4).map((i) => i.href);
 
 /** Bottom tab bar on phones (one-thumb), sidebar links on desktop. */
 export function OwnerNav({ variant, badges = {} }: { variant: 'bottom' | 'side'; badges?: Record<string, number> }) {
   const path = usePathname();
-  const isActive = (href: string, exact?: boolean) => (exact ? path === href : path === href || path.startsWith(`${href}/`));
+  const isActive = (href: string, exact?: boolean) => {
+    if (href === '/owner/more') return path === href || MORE_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+    return exact ? path === href : path === href || path.startsWith(`${href}/`);
+  };
 
   if (variant === 'bottom') {
     return (
       <nav aria-label="Owner" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
         <ul className="grid grid-cols-5">
-          {ITEMS.map(({ href, label, icon: Icon, exact }) => {
+          {BOTTOM.map(({ href, label, icon: Icon, exact }) => {
             const active = isActive(href, exact);
             return (
               <li key={href}>
@@ -33,7 +33,10 @@ export function OwnerNav({ variant, badges = {} }: { variant: 'bottom' | 'side';
                   <Icon aria-hidden className="h-5 w-5" />
                   {label}
                   {badges[href] ? (
-                    <span className="absolute right-[22%] top-1.5 min-w-4 rounded-full bg-bad px-1 text-center text-[10px] font-bold text-white">{badges[href]}</span>
+                    <span className="absolute right-[22%] top-1.5 min-w-4 rounded-full bg-bad px-1 text-center text-[10px] font-bold text-white">
+                      {badges[href]}
+                      <span className="sr-only"> waiting</span>
+                    </span>
                   ) : null}
                 </Link>
               </li>
@@ -46,7 +49,7 @@ export function OwnerNav({ variant, badges = {} }: { variant: 'bottom' | 'side';
 
   return (
     <nav aria-label="Owner" className="space-y-1">
-      {ITEMS.map(({ href, label, icon: Icon, exact }) => {
+      {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
         const active = isActive(href, exact);
         return (
           <Link

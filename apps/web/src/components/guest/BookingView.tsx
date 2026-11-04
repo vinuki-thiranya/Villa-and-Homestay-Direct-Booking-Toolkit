@@ -6,6 +6,7 @@ import { CheckCircle2, Clock, MapPin, MessageCircle } from 'lucide-react';
 import type { PublicBooking } from '@staydirect/shared';
 import { publicApi } from '@/lib/client-api';
 import { fmtDate, formatMoney, nightsLabel, waLink } from '@/lib/format';
+import { AddOnsPanel } from './AddOnsPanel';
 import { PaymentPanel } from './PaymentPanel';
 import { Steps } from './Steps';
 
@@ -192,6 +193,7 @@ function Confirmation({ b, reference, token, onPaid }: { b: PublicBooking; refer
           <strong className="text-fg">Cancellation policy:</strong> {b.cancellationPolicyText}
         </p>
       </div>
+      {(b.status === 'confirmed' || b.status === 'checked_in') && <AddOnsPanel reference={reference} token={token} onOrdered={onPaid} />}
       {b.balance > 0 && b.status !== 'checked_out' && b.paymentMethods.length > 0 && (
         <details className="card p-5">
           <summary className="cursor-pointer font-semibold">Pay the balance now</summary>

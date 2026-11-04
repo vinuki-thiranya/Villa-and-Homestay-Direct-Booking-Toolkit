@@ -5,5 +5,6 @@ export * from './pricing.js';
 export * from './cancellation.js';
 export * from './currency.js';
 export * from './schemas.js';
+export * from './schemas-r2.js';
 export * from './types.js';
 export * from './i18n.js';

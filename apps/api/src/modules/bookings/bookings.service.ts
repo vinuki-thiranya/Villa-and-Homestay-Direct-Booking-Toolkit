@@ -100,7 +100,8 @@ export class BookingsService {
     const room = bundle.rooms.find((r) => r.id === input.roomId);
     if (!room) throw new NotFoundException('Room not found');
 
-    const quote = this.availability.quote(bundle, room, input.from, input.to, input.guests);
+    const promo = input.discountCode ? await this.validateDiscount(property.id, input.discountCode) : null;
+    const quote = this.availability.quote(bundle, room, input.from, input.to, input.guests, promo?.pct ?? 0);
     if (quote.violations.length) {
       throw new UnprocessableEntityException({ message: 'These dates cannot be booked', violations: quote.violations });
     }
@@ -128,6 +129,7 @@ export class BookingsService {
         specialRequests: input.specialRequests,
         quote,
         balanceDue: balanceDueDate(input.from, quote.cancellationPolicy, today),
+        discountCodeId: promo?.id ?? null,
       });
       await this.inventory.createHold(tx, {
         tenantId: property.tenant_id,
@@ -214,6 +216,7 @@ export class BookingsService {
     }
     await this.setStatus(tx, b, 'confirmed', actor);
     await this.db.query(`update guest set stays_count = stays_count + 1 where id = $1`, [b.guest_id], tx);
+    if (b.discount_code_id) await this.db.query(`update discount_code set uses = uses + 1 where id = $1`, [b.discount_code_id], tx);
     return 'confirmed';
   }
 
@@ -355,6 +358,19 @@ export class BookingsService {
 
   // ------------------------------------------------------------------ internals
 
+  /** A discount code valid today for the property (uses are counted when the booking is confirmed). */
+  async validateDiscount(propertyId: string, code: string): Promise<{ id: string; pct: number; code: string }> {
+    const property = await this.db.one(`select timezone from property where id = $1`, [propertyId]);
+    const today = todayIn(property?.timezone ?? 'Asia/Colombo');
+    const c = await this.db.one(
+      `select id, pct, code from discount_code where property_id = $1 and code = upper($2) and active
+          and valid_from <= $3 and expires_at >= $3 and uses < max_uses`,
+      [propertyId, code.trim(), today],
+    );
+    if (!c) throw new UnprocessableEntityException({ message: 'That discount code is not valid', code: 'invalid_discount_code' });
+    return { id: c.id, pct: c.pct, code: c.code };
+  }
+
   async lockOwned(tx: pg.PoolClient, bookingId: string): Promise<Row> {
     const b = await this.db.one(
       `select b.*, p.paid from booking b join v_booking_paid p on p.booking_id = b.id where b.id = $1 for update of b`,
@@ -402,6 +418,7 @@ export class BookingsService {
       specialRequests: string;
       quote: ReturnType<AvailabilityService['quote']>;
       balanceDue: string;
+      discountCodeId: string | null;
     },
   ): Promise<Row> {
     for (let attempt = 0; ; attempt++) {
@@ -410,8 +427,8 @@ export class BookingsService {
         const row = await this.db.one(
           `insert into booking (tenant_id, property_id, room_id, guest_id, reference, from_date, to_date, guests, mode, source,
                                 base_amount, taxes, discount, total, currency, display_currency, deposit_due, balance_due_date,
-                                cancellation_policy_snapshot, quote_snapshot, special_requests)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'direct', $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+                                cancellation_policy_snapshot, quote_snapshot, special_requests, discount_code_id, promo_discount)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'direct', $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
            returning *`,
           [
             a.tenantId,
@@ -434,6 +451,8 @@ export class BookingsService {
             JSON.stringify({ policy: a.quote.cancellationPolicy, text: CANCELLATION_POLICY_TEXT[a.quote.cancellationPolicy] }),
             JSON.stringify(a.quote),
             a.specialRequests,
+            a.discountCodeId,
+            a.quote.promoDiscount,
           ],
           tx,
         );

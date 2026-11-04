@@ -10,6 +10,7 @@ export default async function SiteLayout({ children, params }: { children: React
   const wa = waLink(p.whatsappNumber, `Hello ${p.name}, I have a question about a stay.`);
   const nav = [
     { href: `${base}/rooms`, label: 'Rooms' },
+    { href: `${base}/experiences`, label: 'Experiences' },
     { href: `${base}/location`, label: 'Location' },
     { href: `${base}/contact`, label: 'Contact' },
   ];

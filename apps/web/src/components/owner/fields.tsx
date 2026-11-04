@@ -6,13 +6,13 @@ export function Field({
   className = '',
   ...input
 }: { label: string; name: string; hint?: string; className?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  const id = `f-${name}`;
+  const id = input.id ?? `f-${name}`;
   return (
     <div className={className}>
       <label htmlFor={id} className="label">
         {label}
       </label>
-      <input id={id} name={name} className="field" {...input} />
+      <input name={name} className="field" {...input} id={id} />
       {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
     </div>
   );
@@ -25,13 +25,13 @@ export function TextArea({
   className = '',
   ...rest
 }: { label: string; name: string; hint?: string; className?: string } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  const id = `f-${name}`;
+  const id = rest.id ?? `f-${name}`;
   return (
     <div className={className}>
       <label htmlFor={id} className="label">
         {label}
       </label>
-      <textarea id={id} name={name} className="field py-2" rows={3} {...rest} />
+      <textarea name={name} className="field py-2" rows={3} {...rest} id={id} />
       {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
     </div>
   );
@@ -51,13 +51,13 @@ export function Select({
   className?: string;
   hint?: string;
 } & React.SelectHTMLAttributes<HTMLSelectElement>) {
-  const id = `f-${name}`;
+  const id = rest.id ?? `f-${name}`;
   return (
     <div className={className}>
       <label htmlFor={id} className="label">
         {label}
       </label>
-      <select id={id} name={name} className="field" {...rest}>
+      <select name={name} className="field" {...rest} id={id}>
         {options.map(([v, l]) => (
           <option key={v} value={v}>
             {l}

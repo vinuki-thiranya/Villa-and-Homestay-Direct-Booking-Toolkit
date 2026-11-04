@@ -8,6 +8,9 @@ const TABS = [
   ['/owner/setup/rooms', 'Rooms'],
   ['/owner/setup/rates', 'Rates'],
   ['/owner/setup/payments', 'Payments'],
+  ['/owner/setup/concierge', 'Concierge'],
+  ['/owner/setup/staff', 'Staff'],
+  ['/owner/setup/add-ons', 'Add-ons'],
 ] as const;
 
 export function SetupTabs() {

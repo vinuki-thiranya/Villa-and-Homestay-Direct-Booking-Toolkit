@@ -192,6 +192,8 @@ export const AvailabilityQuerySchema = z
     to: isoDate,
     guests: z.coerce.number().int().min(1).max(20).default(2),
     currency: z.enum(DISPLAY_CURRENCIES).optional(),
+    /** Discount code: quotes include it, so the guest sees the discounted total before booking. */
+    code: z.string().trim().max(40).optional(),
   })
   .refine((q) => q.from < q.to, '`to` must be after `from`');
 export type AvailabilityQuery = z.infer<typeof AvailabilityQuerySchema>;
@@ -214,6 +216,7 @@ export const CreateBookingSchema = z
     guest: GuestDetailsSchema,
     specialRequests: z.string().max(1000).default(''),
     displayCurrency: z.enum(DISPLAY_CURRENCIES).default('USD'),
+    discountCode: z.string().trim().max(40).optional(),
     acceptPolicy: z.literal(true),
   })
   .refine((b) => b.from < b.to, '`to` must be after `from`');

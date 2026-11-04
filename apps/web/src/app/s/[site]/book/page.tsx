@@ -47,6 +47,7 @@ export default async function BookPage({ params, searchParams }: Props) {
           to: one(q.to),
           guests: Number(one(q.guests)) || 2,
           roomId: one(q.room),
+          code: one(q.code),
         }}
       />
     </div>

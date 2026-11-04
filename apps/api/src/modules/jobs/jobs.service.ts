@@ -4,6 +4,8 @@ import { FxService } from '../fx/fx.service.js';
 import { IcalService } from '../ical/ical.service.js';
 import { InventoryService } from '../inventory/inventory.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import { OpsService } from '../ops/ops.service.js';
+import { SequencesService } from '../sequences/sequences.service.js';
 
 /** The recurring jobs. Each is safe to run concurrently with itself and idempotent. */
 @Injectable()
@@ -16,6 +18,8 @@ export class JobsService {
     private readonly ical: IcalService,
     private readonly fx: FxService,
     private readonly notify: NotificationsService,
+    private readonly ops: OpsService,
+    private readonly sequences: SequencesService,
   ) {}
 
   /** Every minute: expire holds, abandon their pending bookings (spec §6 hold). */
@@ -47,6 +51,21 @@ export class JobsService {
     this.log.log(`iCal sync: ${results.length} feed(s), ${failed} failed, ${conflicts} new conflict(s)`);
   }
 
+  /** Every 15 minutes: pre-arrival, arrival, mid-stay and check-out messages (sends only 08:00–21:00 local). */
+  runSequences(): Promise<number> {
+    return this.sequences.run();
+  }
+
+  /** Hourly: builds each property's task board once its local time passes 06:00. */
+  buildTaskBoards(): Promise<number> {
+    return this.ops.buildDailyBoards();
+  }
+
+  /** Daily: "book direct next time" codes 11 months after a stay. */
+  repeatGuestCodes(): Promise<number> {
+    return this.sequences.repeatGuestCodes();
+  }
+
   /** Daily. */
   refreshFx(): Promise<number> {
     return this.fx.refresh();
@@ -58,4 +77,7 @@ export const SCHEDULE = [
   { name: 'abandoned-followups', everyMs: 5 * 60_000, run: (j: JobsService) => j.abandonedFollowups() },
   { name: 'ical-sync', everyMs: 15 * 60_000, run: (j: JobsService) => j.syncIcal() },
   { name: 'fx-refresh', everyMs: 24 * 3_600_000, run: (j: JobsService) => j.refreshFx() },
+  { name: 'sequences', everyMs: 15 * 60_000, run: (j: JobsService) => j.runSequences() },
+  { name: 'task-boards', everyMs: 60 * 60_000, run: (j: JobsService) => j.buildTaskBoards() },
+  { name: 'repeat-guest-codes', everyMs: 24 * 3_600_000, run: (j: JobsService) => j.repeatGuestCodes() },
 ] as const;

@@ -1,5 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import type { Language } from '@staydirect/shared';
 import { CONFIG, type AppConfig } from '../../config.js';
+import { META_LANG, orderedParams, templateByName } from './templates.js';
 
 export interface SendResult {
   ok: boolean;
@@ -43,8 +45,9 @@ export class EmailChannel {
 }
 
 /**
- * WhatsApp Cloud API. Outside the 24-hour service window only approved templates can be sent,
- * so owner alerts use a single-parameter template (WHATSAPP_ALERT_TEMPLATE) with the alert text.
+ * WhatsApp Cloud API. Outside the 24-hour service window only approved templates can be sent
+ * (templates.ts). `from` is the sending phone_number_id: the property's own number when it has
+ * one, otherwise the platform number.
  */
 @Injectable()
 export class WhatsAppChannel {
@@ -55,34 +58,46 @@ export class WhatsAppChannel {
     return Boolean(this.config.WHATSAPP_TOKEN && this.config.WHATSAPP_PHONE_NUMBER_ID);
   }
 
-  async sendTemplate(to: string, template: string, params: string[], language = 'en'): Promise<SendResult> {
+  /** Send a template by name with named variables (see templates.ts). */
+  sendNamedTemplate(to: string, name: string, lang: Language, vars: Record<string, string | number>, from?: string | null): Promise<SendResult> {
+    const def = templateByName(name);
+    const language = def.languages.includes(lang) ? lang : 'en';
+    return this.sendTemplate(to, name, orderedParams(def, language, vars), META_LANG[language], from);
+  }
+
+  async sendTemplate(to: string, template: string, params: string[], language = 'en', from?: string | null): Promise<SendResult> {
     if (!this.configured) {
       this.log.log(`[dev whatsapp] to=${to} template=${template} params=${JSON.stringify(params)}`);
       return { ok: true, status: 'logged' };
     }
-    return this.post({
-      messaging_product: 'whatsapp',
-      to: to.replace(/^\+/, ''),
-      type: 'template',
-      template: {
-        name: template,
-        language: { code: language },
-        components: [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text: text.slice(0, 1000) })) }],
+    return this.post(
+      {
+        messaging_product: 'whatsapp',
+        to: to.replace(/^\+/, ''),
+        type: 'template',
+        template: {
+          name: template,
+          language: { code: language },
+          components: [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text: text.slice(0, 1000) })) }],
+        },
       },
-    });
+      from,
+    );
   }
 
-  async sendText(to: string, body: string): Promise<SendResult> {
+  async sendText(to: string, body: string, from?: string | null): Promise<SendResult> {
     if (!this.configured) {
-      this.log.log(`[dev whatsapp] to=${to}\n${body}`);
+      this.log.log(`[dev whatsapp] to=${to}
+${body}`);
       return { ok: true, status: 'logged' };
     }
-    return this.post({ messaging_product: 'whatsapp', to: to.replace(/^\+/, ''), type: 'text', text: { body } });
+    return this.post({ messaging_product: 'whatsapp', to: to.replace(/^\+/, ''), type: 'text', text: { body: body.slice(0, 4096), preview_url: true } }, from);
   }
 
-  private async post(payload: unknown): Promise<SendResult> {
+  private async post(payload: unknown, from?: string | null): Promise<SendResult> {
+    const sender = from || this.config.WHATSAPP_PHONE_NUMBER_ID;
     try {
-      const res = await fetch(`https://graph.facebook.com/v21.0/${this.config.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+      const res = await fetch(`https://graph.facebook.com/v21.0/${sender}/messages`, {
         method: 'POST',
         headers: { authorization: `Bearer ${this.config.WHATSAPP_TOKEN}`, 'content-type': 'application/json' },
         body: JSON.stringify(payload),

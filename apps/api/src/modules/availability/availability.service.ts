@@ -33,7 +33,7 @@ export class AvailabilityService {
   }
 
   /** Price one room for a stay (no availability check). */
-  quote(bundle: PropertyBundle, room: Row, from: string, to: string, guests: number): StayQuote {
+  quote(bundle: PropertyBundle, room: Row, from: string, to: string, guests: number, promoPct = 0): StayQuote {
     return priceStay({
       room: toPricingRoom(room),
       plans: bundle.plans.map(toPricingPlan),
@@ -42,6 +42,7 @@ export class AvailabilityService {
       to,
       guests,
       today: todayIn(bundle.property.timezone),
+      promoPct,
     });
   }
 
@@ -52,9 +53,9 @@ export class AvailabilityService {
     return this.inventory.isFree(occupied, room.id, from, to, buffer);
   }
 
-  async search(bundle: PropertyBundle, q: AvailabilityQuery): Promise<AvailabilityResult> {
+  async search(bundle: PropertyBundle, q: AvailabilityQuery, promoPct = 0): Promise<AvailabilityResult> {
     const displayCurrency = q.currency ?? bundle.property.base_currency;
-    const key = `${bundle.property.id}|${q.from}|${q.to}|${q.guests}|${displayCurrency}`;
+    const key = `${bundle.property.id}|${q.from}|${q.to}|${q.guests}|${displayCurrency}|${promoPct}`;
     const hit = this.cache.get(key);
     if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
 
@@ -68,7 +69,7 @@ export class AvailabilityService {
     const base = bundle.property.base_currency;
 
     const rooms: RoomAvailability[] = bundle.rooms.map((room) => {
-      const quote = this.quote(bundle, room, q.from, q.to, q.guests);
+      const quote = this.quote(bundle, room, q.from, q.to, q.guests, promoPct);
       const free = this.inventory.isFree(occupied, room.id, q.from, q.to, this.bufferFor(room, bundle.property));
       const violations: RoomAvailability['violations'] = [...quote.violations];
       if (!free) violations.push('unavailable');

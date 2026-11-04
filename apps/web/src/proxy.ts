@@ -18,6 +18,10 @@ export function proxy(request: NextRequest) {
   const host = (request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? '').toLowerCase().split(':')[0]!;
   const { pathname } = request.nextUrl;
 
+  // No-login staff links work on any host: cleaner lists (/t/…, sent from the owner host) and
+  // provider job cards (/j/…, sent from the guest-site host).
+  if (pathname.startsWith('/t/') || pathname.startsWith('/j/')) return NextResponse.next();
+
   // Dev and platform preview hosts pass through untouched.
   if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.vercel.app')) return NextResponse.next();
 

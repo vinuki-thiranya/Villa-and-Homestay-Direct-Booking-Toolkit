@@ -1,15 +1,22 @@
 import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, FileText, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardCheck, FileText, MessageCircle, XCircle } from 'lucide-react';
 import type { OwnerDashboard } from '@staydirect/shared';
 import { BookingList } from '@/components/owner/BookingList';
 import { Section } from '@/components/owner/fields';
 import { fmtDate, fmtDateTime, money, SOURCE_LABEL } from '@/lib/format';
 import { currentProperty, ownerApi } from '@/lib/owner';
+import type { Conversation, Task } from '@/lib/owner-types';
 
 export default async function DashboardPage() {
   const property = await currentProperty();
   if (!property) return null;
   const d = await ownerApi<OwnerDashboard>(`/properties/${property.id}/dashboard`);
+  const [convs, tasks] = await Promise.all([
+    ownerApi<Conversation[]>(`/properties/${property.id}/conversations`),
+    ownerApi<Task[]>(`/properties/${property.id}/tasks?from=${d.today}&to=${d.today}`),
+  ]);
+  const needsYou = convs.filter((c) => c.status === 'needs_human' || (c.unreadCount > 0 && c.status !== 'closed'));
+  const tasksDone = tasks.filter((t) => t.status === 'done' || t.status === 'skipped').length;
   const failing = d.syncHealth.filter((s) => s.consecutiveFailures > 0 || s.lastStatus === 'error');
 
   return (
@@ -19,6 +26,31 @@ export default async function DashboardPage() {
           <p className="text-sm text-muted">{fmtDate(d.today)}</p>
           <h1 className="text-2xl font-semibold">Today</h1>
         </div>
+      </div>
+
+
+      <div className="grid grid-cols-2 gap-3">
+        <Link href="/owner/inbox" className={`card flex items-center gap-3 p-4 hover:border-brand ${needsYou.length ? 'border-bad/50' : ''}`}>
+          <MessageCircle aria-hidden className={`h-6 w-6 shrink-0 ${needsYou.length ? 'text-bad' : 'text-brand'}`} />
+          <span>
+            <span className="block text-xl font-semibold">{needsYou.length}</span>
+            <span className="text-sm text-muted">{needsYou.length === 1 ? 'guest needs a reply' : 'guests need a reply'}</span>
+          </span>
+        </Link>
+        <Link href="/owner/tasks" className="card flex items-center gap-3 p-4 hover:border-brand">
+          <ClipboardCheck aria-hidden className={`h-6 w-6 shrink-0 ${tasks.length && tasksDone === tasks.length ? 'text-ok' : 'text-brand'}`} />
+          <span className="min-w-0 flex-1">
+            <span className="block text-xl font-semibold">
+              {tasksDone}/{tasks.length}
+            </span>
+            <span className="text-sm text-muted">tasks done today</span>
+            {tasks.length > 0 && (
+              <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden>
+                <span className="block h-full bg-ok" style={{ width: `${Math.round((tasksDone / tasks.length) * 100)}%` }} />
+              </span>
+            )}
+          </span>
+        </Link>
       </div>
 
       {(d.openConflicts.length > 0 || failing.length > 0 || d.pendingSlips > 0) && (

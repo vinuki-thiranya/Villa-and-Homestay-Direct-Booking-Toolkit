@@ -70,6 +70,14 @@ describe('priceStay', () => {
     expect(q.total).toBe(441);
   });
 
+  it('applies a discount code after the stay discount', () => {
+    const plans = [plan({ id: 'ls7', kind: 'long_stay', minStayNights: 7, adjustmentPct: -10 })];
+    const q = priceStay({ room, plans, defaults, from: '2027-05-01', to: '2027-05-08', guests: 2, today: '2027-01-01', promoPct: 10 });
+    expect(q.discount).toBe(42); // 10% of 420
+    expect(q.promoDiscount).toBe(37.8); // 10% of 378
+    expect(q.total).toBe(340.2);
+  });
+
   it('applies last-minute only within the window', () => {
     const plans = [plan({ id: 'lm', kind: 'last_minute', withinDays: 3, adjustmentPct: -15 })];
     const near = priceStay({ room, plans, defaults, from: '2027-01-03', to: '2027-01-05', guests: 2, today: '2027-01-01' });

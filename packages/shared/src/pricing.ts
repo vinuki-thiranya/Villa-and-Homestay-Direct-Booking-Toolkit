@@ -54,6 +54,8 @@ export interface PriceStayInput {
   guests: number;
   /** Property-local today, for last-minute discounts. */
   today: string;
+  /** Discount-code percentage, applied after the stay-level discount. */
+  promoPct?: number;
 }
 
 export type StayViolation =
@@ -79,6 +81,7 @@ export interface StayQuote {
   discount: number;
   discountPlanId: string | null;
   discountLabel: string | null;
+  promoDiscount: number;
   taxes: number;
   total: number;
   depositPct: number;
@@ -119,7 +122,7 @@ export function nightlyPlanFor(
 }
 
 export function priceStay(input: PriceStayInput): StayQuote {
-  const { room, plans, defaults, from, to, guests, today } = input;
+  const { room, plans, defaults, from, to, guests, today, promoPct = 0 } = input;
   const violations: StayViolation[] = [];
   const nightDates = from < to ? nightsBetween(from, to) : [];
   if (nightDates.length === 0) violations.push('invalid_dates');
@@ -167,7 +170,9 @@ export function priceStay(input: PriceStayInput): StayQuote {
   }
   const gross = roomSubtotal + extraGuestTotal;
   const discount = discountPlan ? -pctOf(gross, discountPlan.adjustmentPct ?? 0) : 0;
-  const net = gross - discount;
+  const afterStayDiscount = gross - discount;
+  const promoDiscount = promoPct > 0 ? pctOf(afterStayDiscount, promoPct) : 0;
+  const net = afterStayDiscount - promoDiscount;
   const taxes = pctOf(net, defaults.taxPct);
   const total = net + taxes;
   const depositPct = arrivalPlan?.depositPct ?? defaults.depositPct;
@@ -180,6 +185,7 @@ export function priceStay(input: PriceStayInput): StayQuote {
     discount: fromMinor(discount),
     discountPlanId: discountPlan?.id ?? null,
     discountLabel: discountPlan?.name ?? null,
+    promoDiscount: fromMinor(promoDiscount),
     taxes: fromMinor(taxes),
     total: fromMinor(total),
     depositPct,

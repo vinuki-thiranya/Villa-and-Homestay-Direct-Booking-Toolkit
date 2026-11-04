@@ -7,7 +7,7 @@ Start every session by reading this file, [docs/spec.md](docs/spec.md) (product)
 ## Layout
 - `apps/api` — NestJS REST API and BullMQ workers (`src/main.ts`, `src/worker.ts`). SQL migrations in `apps/api/migrations`.
 - `apps/web` — Next.js 16 App Router: guest sites (`/s/[site]`), owner web (`/owner`), marketing (`/`). Host routing in `src/proxy.ts`.
-- `apps/mobile` — Flutter owner app (not started).
+- `apps/mobile` — Flutter owner app (Today, Tasks, Inbox; offline cache). `flutter test`, `flutter analyze`.
 - `packages/shared` — types, enums, zod schemas, pricing/date helpers shared by api and web. Build it before the apps (`npm run build -w @staydirect/shared`).
 
 ## Commands
@@ -29,6 +29,8 @@ Start every session by reading this file, [docs/spec.md](docs/spec.md) (product)
 9. **Guest pages under 2 s on 4G.** Static/ISR property pages, availability fetched client-side, images ≤ 150 KB via `next/image`, self-hosted fonts, no heavy client libraries on first view. WCAG AA basics.
 10. **UI work uses the frontend-design and UI UX Pro Max skills** (and Framer Motion on guest sites) when available.
 11. Every migration touching `night_inventory`, `booking` or `payment` is flagged in the PR description for human review.
+12. **The AI concierge never books.** Its tools may read availability and prices, create booking links and escalate. Never give it a tool that writes `booking`, `hold`, `night_inventory` or `payment`.
+13. **WhatsApp:** free text only inside the 24-hour window; otherwise a template from `templates.ts` (generated from `packages/shared/src/i18n.ts`). Keep template text free of leading/trailing variables (a test enforces it).
 
 ## Conventions
 - API modules live in `apps/api/src/modules/<name>/`; SQL is written by hand with `pg` (`DbService.query/tx/withTenant`), no ORM.
