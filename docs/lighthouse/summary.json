@@ -1,0 +1,217 @@
+{
+  "site": "villa-lagoon",
+  "at": "2026-11-04T18:10:14.790Z",
+  "min": {
+    "performance": 95,
+    "accessibility": 100,
+    "best-practices": 95
+  },
+  "rows": [
+    {
+      "page": "lagoon-home",
+      "runs": [
+        86,
+        86,
+        91,
+        92,
+        94
+      ],
+      "performance": 91,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 3133,
+      "fcpMs": 1532,
+      "cls": 0,
+      "totalKb": 334,
+      "largestImageKb": 24,
+      "heavyImages": [],
+      "failures": [
+        "performance 91 < 95"
+      ],
+      "failingAudits": [
+        "largest-contentful-paint: 3.1 s",
+        "max-potential-fid: 320 ms",
+        "mainthread-work-breakdown: 2.1 s",
+        "unused-javascript: Est savings of 27 KiB",
+        "bf-cache: 2 failure reasons",
+        "forced-reflow-insight: 0",
+        "image-delivery-insight: Est savings of 41 KiB",
+        "legacy-javascript-insight: Est savings of 14 KiB",
+        "network-dependency-tree-insight: 0",
+        "render-blocking-insight: Est savings of 370 ms"
+      ]
+    },
+    {
+      "page": "lagoon-checkout",
+      "runs": [
+        87,
+        93,
+        93,
+        94,
+        94
+      ],
+      "performance": 93,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 63,
+      "lcpMs": 3059,
+      "fcpMs": 1372,
+      "cls": 0,
+      "totalKb": 314,
+      "largestImageKb": 5,
+      "heavyImages": [],
+      "failures": [
+        "performance 93 < 95"
+      ],
+      "failingAudits": [
+        "largest-contentful-paint: 3.1 s",
+        "max-potential-fid: 200 ms",
+        "unused-javascript: Est savings of 47 KiB",
+        "is-crawlable: 0",
+        "bf-cache: 2 failure reasons",
+        "forced-reflow-insight: 0",
+        "lcp-discovery-insight: 0",
+        "legacy-javascript-insight: Est savings of 14 KiB",
+        "render-blocking-insight: Est savings of 570 ms"
+      ]
+    },
+    {
+      "page": "jungle-home",
+      "runs": [
+        84,
+        86,
+        88,
+        91,
+        92
+      ],
+      "performance": 88,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 3466,
+      "fcpMs": 1861,
+      "cls": 0,
+      "totalKb": 369,
+      "largestImageKb": 24,
+      "heavyImages": [],
+      "failures": [
+        "performance 88 < 95"
+      ],
+      "failingAudits": [
+        "first-contentful-paint: 1.9 s",
+        "largest-contentful-paint: 3.5 s",
+        "max-potential-fid: 320 ms",
+        "mainthread-work-breakdown: 2.2 s",
+        "unused-javascript: Est savings of 27 KiB",
+        "bf-cache: 2 failure reasons",
+        "image-delivery-insight: Est savings of 41 KiB",
+        "legacy-javascript-insight: Est savings of 14 KiB",
+        "network-dependency-tree-insight: 0",
+        "render-blocking-insight: Est savings of 630 ms"
+      ]
+    },
+    {
+      "page": "jungle-checkout",
+      "runs": [
+        83,
+        86,
+        92,
+        94,
+        95
+      ],
+      "performance": 92,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 63,
+      "lcpMs": 2884,
+      "fcpMs": 1536,
+      "cls": 0.001,
+      "totalKb": 325,
+      "largestImageKb": 5,
+      "heavyImages": [],
+      "failures": [
+        "performance 92 < 95"
+      ],
+      "failingAudits": [
+        "largest-contentful-paint: 2.9 s",
+        "max-potential-fid: 270 ms",
+        "mainthread-work-breakdown: 2.1 s",
+        "unused-javascript: Est savings of 47 KiB",
+        "is-crawlable: 0",
+        "bf-cache: 2 failure reasons",
+        "forced-reflow-insight: 0",
+        "legacy-javascript-insight: Est savings of 14 KiB",
+        "render-blocking-insight: Est savings of 590 ms"
+      ]
+    },
+    {
+      "page": "surf-home",
+      "runs": [
+        90,
+        93,
+        93,
+        94,
+        100
+      ],
+      "performance": 93,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 3082,
+      "fcpMs": 1674,
+      "cls": 0,
+      "totalKb": 336,
+      "largestImageKb": 24,
+      "heavyImages": [],
+      "failures": [
+        "performance 93 < 95"
+      ],
+      "failingAudits": [
+        "largest-contentful-paint: 3.1 s",
+        "max-potential-fid: 140 ms",
+        "unused-javascript: Est savings of 27 KiB",
+        "bf-cache: 2 failure reasons",
+        "forced-reflow-insight: 0",
+        "image-delivery-insight: Est savings of 41 KiB",
+        "legacy-javascript-insight: Est savings of 14 KiB",
+        "network-dependency-tree-insight: 0",
+        "render-blocking-insight: Est savings of 700 ms"
+      ]
+    },
+    {
+      "page": "surf-checkout",
+      "runs": [
+        90,
+        90,
+        94,
+        94,
+        95
+      ],
+      "performance": 94,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 63,
+      "lcpMs": 2923,
+      "fcpMs": 1373,
+      "cls": 0,
+      "totalKb": 301,
+      "largestImageKb": 5,
+      "heavyImages": [],
+      "failures": [
+        "performance 94 < 95"
+      ],
+      "failingAudits": [
+        "largest-contentful-paint: 2.9 s",
+        "max-potential-fid: 210 ms",
+        "unused-javascript: Est savings of 47 KiB",
+        "is-crawlable: 0",
+        "bf-cache: 2 failure reasons",
+        "forced-reflow-insight: 0",
+        "lcp-discovery-insight: 0",
+        "legacy-javascript-insight: Est savings of 14 KiB",
+        "render-blocking-insight: Est savings of 550 ms"
+      ]
+    }
+  ]
+}

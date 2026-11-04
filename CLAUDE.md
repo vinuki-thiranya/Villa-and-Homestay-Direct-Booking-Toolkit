@@ -36,6 +36,7 @@ Start every session by reading this file, [docs/spec.md](docs/spec.md) (product)
 15. **Property access is enforced by RLS** (`property_scope`, fed by `AuthGuard` → request context → `withTenant`). New property-scoped tables must get the restrictive `property_scope` policy in their migration.
 16. **Gate plan features with `FlagsService.require()`** in the service, not only in the UI.
 17. **Design skills live in `.claude/skills/`** (frontend-design, ui-ux-pro-max — see its README). Start UI work by generating/reading the design system (`design-system/<project>/MASTER.md`).
+18. **Guest site performance budget:** nothing heavy on the first view. Client islands stay small; the calendar and motion load on demand (`next/dynamic`, `LazyMotion` with `m.*` only, never `motion.*`); photos through `next/image` at quality 60 and under 150 KB. Theme colours, fonts and layouts come from `apps/web/src/themes/registry.ts` + `app/s/[site]/guest.css` (see `design-system/staydirect-guest/pages/themes.md`). Check changes with `npm run screenshots` and `npm run lighthouse` in apps/web.
 
 ## Conventions
 - API modules live in `apps/api/src/modules/<name>/`; SQL is written by hand with `pg` (`DbService.query/tx/withTenant`), no ORM.
