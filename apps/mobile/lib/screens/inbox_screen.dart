@@ -7,13 +7,14 @@ import 'thread_screen.dart';
 
 /// WhatsApp inbox (spec §3.4): conversations needing a human first.
 class InboxScreen extends StatelessWidget {
-  const InboxScreen({super.key, required this.services, required this.onUnauthorized});
+  const InboxScreen({super.key, required this.services, required this.propertyId, required this.onUnauthorized});
   final AppServices services;
+  final String propertyId;
   final Future<void> Function() onUnauthorized;
 
   @override
   Widget build(BuildContext context) {
-    final pid = services.store.propertyId!;
+    final pid = propertyId;
     return CachedView(
       cacheKey: 'conversations:$pid',
       store: services.store,

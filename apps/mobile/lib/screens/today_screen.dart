@@ -7,13 +7,14 @@ import '../widgets.dart';
 
 /// Today first: who arrives, who leaves, who still owes money, and whether calendar sync is healthy.
 class TodayScreen extends StatelessWidget {
-  const TodayScreen({super.key, required this.services, required this.onUnauthorized});
+  const TodayScreen({super.key, required this.services, required this.propertyId, required this.onUnauthorized});
   final AppServices services;
+  final String propertyId;
   final Future<void> Function() onUnauthorized;
 
   @override
   Widget build(BuildContext context) {
-    final pid = services.store.propertyId!;
+    final pid = propertyId;
     return CachedView(
       cacheKey: 'dashboard:$pid',
       store: services.store,
