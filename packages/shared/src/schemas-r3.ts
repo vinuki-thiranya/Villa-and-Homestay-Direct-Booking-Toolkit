@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FEATURE_FLAGS, INVITE_ROLES, LANGUAGES, PLANS, TICKET_STATUSES, UTILITY_METERS } from './enums.js';
+import { FEATURE_FLAGS, INVITE_ROLES, LANGUAGES, PLANS, THEME_FONTS, TICKET_STATUSES, UTILITY_METERS } from './enums.js';
 import { isoDate, normalizePhone, phone } from './schemas.js';
 
 const intlPhone = z.string().min(6).max(20).transform((p) => normalizePhone(p)).pipe(phone);
@@ -135,8 +135,8 @@ export const ThemeSchema = z.object({
     bg: z.string().regex(/^#[0-9a-fA-F]{6}$/),
     surface2: z.string().regex(/^#[0-9a-fA-F]{6}$/),
     radius: z.string().regex(/^\d{1,2}px$/).default('14px'),
-    fontDisplay: z.string().max(120).optional(),
-    fontSans: z.string().max(120).optional(),
+    fontDisplay: z.enum(THEME_FONTS).optional(),
+    fontSans: z.enum(THEME_FONTS).optional(),
   }),
   published: z.boolean().default(true),
 });

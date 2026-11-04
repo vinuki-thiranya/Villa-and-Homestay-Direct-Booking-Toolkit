@@ -39,6 +39,7 @@ import { CatalogService } from './modules/properties/catalog.service.js';
 import { PropertiesService } from './modules/properties/properties.service.js';
 import { PublicR2Controller } from './modules/public/public-r2.controller.js';
 import { PublicController } from './modules/public/public.controller.js';
+import { SiteFactsService } from './modules/public/site-facts.service.js';
 import { SequencesService } from './modules/sequences/sequences.service.js';
 import { WebhooksController } from './modules/public/webhooks.controller.js';
 import { StorageService } from './modules/storage/storage.service.js';
@@ -54,6 +55,7 @@ export const DOMAIN_PROVIDERS = [
   PropertiesService,
   FxService,
   AvailabilityService,
+  SiteFactsService,
   EmailChannel,
   WhatsAppChannel,
   SmsChannel,

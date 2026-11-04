@@ -102,6 +102,7 @@ export function toOwnerProperty(p: Row) {
     customDomain: p.custom_domain,
     hostName: p.host_name,
     hostPhotoUrl: p.host_photo_url,
+    heroVideoUrl: p.hero_video_url,
     published: p.published,
   };
 }
@@ -174,6 +175,7 @@ export const PROPERTY_COLUMNS: Record<string, string> = {
   customDomain: 'custom_domain',
   hostName: 'host_name',
   hostPhotoUrl: 'host_photo_url',
+  heroVideoUrl: 'hero_video_url',
 };
 
 export const ROOM_COLUMNS: Record<string, string> = {

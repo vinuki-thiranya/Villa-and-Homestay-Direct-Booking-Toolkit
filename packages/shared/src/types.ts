@@ -54,6 +54,12 @@ export interface PublicProperty {
   customDomain: string | null;
   hostName: string;
   hostPhotoUrl: string | null;
+  /** Looping hero video (MP4/WebM); photos[0] is the poster. */
+  heroVideoUrl: string | null;
+  /** Public review average (1–5) and count; null average when there are none. */
+  reviewSummary: { average: number | null; count: number };
+  /** Median minutes to the first reply on WhatsApp over 90 days; null when there is too little data. */
+  responseMinutes: number | null;
   paymentMethods: PaymentMethod[];
   paypalClientId: string | null;
   rooms: PublicRoom[];
@@ -66,6 +72,13 @@ export interface PublicProperty {
   brand: { displayName: string; logoUrl: string | null; primaryColor: string | null; accentColor: string | null } | null;
   /** CSS variable values from the admin theme editor for this property's theme. */
   themeTokens: Record<string, string> | null;
+}
+
+/** Nights on which no room can be booked, for greying out the date picker. */
+export interface SiteCalendar {
+  from: string;
+  to: string;
+  closed: string[];
 }
 
 export interface DisplayAmounts {
@@ -122,6 +135,8 @@ export interface PublicBooking {
   address: string;
   mapsUrl: string | null;
   hostWhatsapp: string | null;
+  /** The booking-confirmed WhatsApp message exactly as the guest receives it. */
+  confirmationMessage: string;
 }
 
 export interface CreateBookingResult {

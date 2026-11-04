@@ -19,6 +19,7 @@ import {
   type AvailabilityQuery,
   type CreateBooking,
   type PublicProperty,
+  type SiteCalendar,
 } from '@staydirect/shared';
 import { z } from 'zod';
 import { ZodPipe } from '../../common/zod.pipe.js';
@@ -29,6 +30,7 @@ import { FxService } from '../fx/fx.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
 import { CatalogService } from '../properties/catalog.service.js';
 import { enabledMethods, toPublicRoom } from '../properties/mappers.js';
+import { SiteFactsService } from './site-facts.service.js';
 
 const SlipSchema = z.object({ token: z.string().min(16), method: z.enum(['bank', 'lankaqr']) });
 
@@ -42,6 +44,7 @@ export class PublicController {
     private readonly payments: PaymentsService,
     private readonly fx: FxService,
     private readonly branding: BrandingService,
+    private readonly siteFacts: SiteFactsService,
   ) {}
 
   @Get('sites/:site')
@@ -51,7 +54,7 @@ export class PublicController {
     if (!p) throw new NotFoundException('Property not found');
     const bundle = (await this.catalog.bundle(p.id))!;
     const cfg = this.catalog.gatewayConfig(p);
-    const brand = await this.branding.forTenant(p.tenant_id);
+    const [brand, facts] = await Promise.all([this.branding.forTenant(p.tenant_id), this.siteFacts.facts(p.id)]);
     return {
       id: p.id,
       slug: p.slug,
@@ -77,6 +80,9 @@ export class PublicController {
       customDomain: p.custom_domain,
       hostName: p.host_name,
       hostPhotoUrl: p.host_photo_url,
+      heroVideoUrl: p.hero_video_url,
+      reviewSummary: { average: facts.average, count: facts.count },
+      responseMinutes: facts.responseMinutes,
       paymentMethods: enabledMethods(cfg),
       paypalClientId: cfg?.paypal?.clientId ?? null,
       rooms: bundle.rooms.map((r) => toPublicRoom(r, p)),
@@ -88,6 +94,14 @@ export class PublicController {
         : null,
       themeTokens: await this.branding.themeTokens(p.theme),
     };
+  }
+
+  @Get('sites/:site/calendar')
+  @Header('cache-control', 'public, max-age=60')
+  async calendar(@Param('site') site: string, @Query('from') from?: string, @Query('to') to?: string): Promise<SiteCalendar> {
+    const p = await this.catalog.propertyBySite(site);
+    if (!p) throw new NotFoundException('Property not found');
+    return this.siteFacts.calendar(p, from, to);
   }
 
   @Get('sites/:site/availability')

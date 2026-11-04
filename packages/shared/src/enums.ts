@@ -53,6 +53,10 @@ export type DisplayCurrency = (typeof DISPLAY_CURRENCIES)[number];
 export const THEMES = ['lagoon', 'jungle', 'surf'] as const;
 export type Theme = (typeof THEMES)[number];
 
+/** Fonts the guest site ships (self-hosted with next/font). Theme tokens may only pick from these. */
+export const THEME_FONTS = ['cormorant', 'manrope', 'lora', 'work-sans', 'barlow-condensed', 'barlow'] as const;
+export type ThemeFont = (typeof THEME_FONTS)[number];
+
 /** OTA commission the owner would have paid; used for "commission saved" (spec §6 v_owner_dashboard). */
 export const OTA_COMMISSION_RATE = 0.15;
 /** Display-currency buffer over the daily mid rate (spec §4.5). */
