@@ -25,6 +25,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
         propertyName={p.name}
         paypalClientId={p.paypalClientId}
         region={regionForCurrency(currency)}
+        display={{ currency, fx: p.fx }}
         mapQuery={p.lat != null && p.lng != null ? `${p.lat},${p.lng}` : p.address || null}
       />
     </div>

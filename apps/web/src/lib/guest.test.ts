@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { contrastChecks, resolvePalette, themeCss, THEME_KEYS, THEMES, type ThemeFont } from '@/themes/registry';
+import { approxIn } from './format';
 import { canCheckIn, canCheckOut, monthGrid, monthsFrom, pick, selectable } from './calendar';
 import { currencyForCountry, guessCurrency, regionForCurrency, regionFromAcceptLanguage } from './guest-locale';
 import { paymentGroups } from './payment-groups';
@@ -105,5 +106,15 @@ describe('date range picker', () => {
     expect(r).toEqual({ from: '2026-12-05', to: '2026-12-08' });
     expect(pick(r, '2026-12-03', today, closed)).toEqual({ from: '2026-12-03', to: null });
     expect(pick(r, '2026-12-10', today, closed)).toEqual(r);
+  });
+});
+
+describe('approximate amounts on the pay step', () => {
+  const fx = { USD: 1, GBP: 0.8, LKR: 300 };
+  it('shows the guest currency beside a charge in another currency, nothing when they match', () => {
+    expect(approxIn(100, 'USD', { currency: 'GBP', fx })).toBe('≈ £81.20'); // includes the 1.5% FX buffer
+    expect(approxIn(100, 'USD', { currency: 'USD', fx })).toBeNull();
+    expect(approxIn(100, 'USD', null)).toBeNull();
+    expect(approxIn(100, 'USD', { currency: 'EUR', fx })).toBeNull(); // no rate: no guess
   });
 });

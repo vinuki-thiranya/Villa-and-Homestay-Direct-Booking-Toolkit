@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CheckCheck, Clock, Map as MapIcon, MapPin, MessageCircle } from 'lucide-react';
 import type { PublicBooking } from '@staydirect/shared';
 import { publicApi } from '@/lib/client-api';
-import { fmtDate, formatMoney, nightsLabel, waLink } from '@/lib/format';
+import { approxIn, fmtDate, formatMoney, nightsLabel, waLink, type DisplayCurrency } from '@/lib/format';
 import type { GuestRegion } from '@/lib/guest-locale';
 import { AddOnsPanel } from './AddOnsPanel';
 import { GuestInvoices } from './GuestInvoices';
@@ -22,9 +22,11 @@ interface Props {
   region: GuestRegion;
   /** lat,lng or address for the tap-to-load map. */
   mapQuery: string | null;
+  /** The guest's browsing currency: approximate amounts beside the exact charge. */
+  display: DisplayCurrency;
 }
 
-export function BookingView({ reference, token, base, returnedFromPayment, propertyName, region, mapQuery }: Props) {
+export function BookingView({ reference, token, base, returnedFromPayment, propertyName, region, mapQuery, display }: Props) {
   const [booking, setBooking] = useState<PublicBooking | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +71,7 @@ export function BookingView({ reference, token, base, returnedFromPayment, prope
   const b = booking;
   const confirmed = ['confirmed', 'checked_in', 'checked_out'].includes(b.status);
 
-  if (confirmed) return <Confirmation b={b} reference={reference} token={token} onPaid={load} region={region} mapQuery={mapQuery} />;
+  if (confirmed) return <Confirmation b={b} reference={reference} token={token} onPaid={load} region={region} mapQuery={mapQuery} display={display} />;
 
   if (b.status === 'abandoned' || b.status === 'cancelled' || b.status === 'no_show') {
     return (
@@ -85,6 +87,8 @@ export function BookingView({ reference, token, base, returnedFromPayment, prope
     );
   }
 
+  const depositNow = Math.max(0, b.deposit - b.paid);
+  const balanceLater = Math.max(0, b.total - b.deposit);
   return (
     <div className="space-y-6">
       <Steps current={2} />
@@ -100,9 +104,9 @@ export function BookingView({ reference, token, base, returnedFromPayment, prope
           {b.holdExpiresAt && !b.awaitingApproval && <Countdown until={b.holdExpiresAt} onExpire={load} />}
         </div>
         <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-sm sm:grid-cols-4">
-          <Fact label="Total" value={formatMoney(b.total, b.currency)} />
-          <Fact label="Deposit now" value={formatMoney(Math.max(0, b.deposit - b.paid), b.currency)} strong />
-          <Fact label="Balance later" value={formatMoney(Math.max(0, b.total - b.deposit), b.currency)} />
+          <Fact label="Total" value={formatMoney(b.total, b.currency)} note={approxIn(b.total, b.currency, display)} />
+          <Fact label="Deposit now" value={formatMoney(depositNow, b.currency)} note={approxIn(depositNow, b.currency, display)} strong />
+          <Fact label="Balance later" value={formatMoney(balanceLater, b.currency)} note={approxIn(balanceLater, b.currency, display)} />
           <Fact label="Balance due" value={fmtDate(b.balanceDueDate)} />
         </dl>
         <p className="mt-4 rounded-xl bg-surface-2 p-3 text-sm">
@@ -123,17 +127,18 @@ export function BookingView({ reference, token, base, returnedFromPayment, prope
           <p className="mt-2 text-muted">This usually takes a few seconds. You can keep this page open.</p>
         </div>
       ) : (
-        <PaymentPanel booking={b} reference={reference} token={token} onPaid={load} region={region} />
+        <PaymentPanel booking={b} reference={reference} token={token} onPaid={load} region={region} display={display} />
       )}
     </div>
   );
 }
 
-function Fact({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function Fact({ label, value, strong, note }: { label: string; value: string; strong?: boolean; note?: string | null }) {
   return (
     <div>
       <dt className="text-muted">{label}</dt>
       <dd className={strong ? 'text-base font-semibold' : 'font-medium'}>{value}</dd>
+      {note && <dd className="text-xs text-muted">{note}</dd>}
     </div>
   );
 }
@@ -170,6 +175,7 @@ function Confirmation({
   onPaid,
   region,
   mapQuery,
+  display,
 }: {
   b: PublicBooking;
   reference: string;
@@ -177,6 +183,7 @@ function Confirmation({
   onPaid: () => void;
   region: GuestRegion;
   mapQuery: string | null;
+  display: DisplayCurrency;
 }) {
   const wa = waLink(b.hostWhatsapp, `Hello, this is ${b.guestName} — booking ${b.reference}.`);
   const nights = Math.round((new Date(`${b.to}T00:00:00Z`).getTime() - new Date(`${b.from}T00:00:00Z`).getTime()) / 86_400_000);
@@ -211,6 +218,7 @@ function Confirmation({
           <Fact
             label="Still to pay"
             value={b.balance > 0 ? `${formatMoney(b.balance, b.currency)} by ${fmtDate(b.balanceDueDate)}` : 'Nothing, fully paid'}
+            note={b.balance > 0 ? approxIn(b.balance, b.currency, display) : null}
             strong={b.balance > 0}
           />
           <Fact label="Check-in" value={`From ${b.checkIn}`} />
@@ -265,7 +273,7 @@ function Confirmation({
         <details className="card p-5">
           <summary className="cursor-pointer font-semibold">Pay the balance now</summary>
           <div className="mt-4">
-            <PaymentPanel booking={b} reference={reference} token={token} onPaid={onPaid} region={region} />
+            <PaymentPanel booking={b} reference={reference} token={token} onPaid={onPaid} region={region} display={display} />
           </div>
         </details>
       )}

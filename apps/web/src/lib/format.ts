@@ -41,6 +41,19 @@ export function displayPrice(amount: number, base: string, target: string, fx: F
   }
 }
 
+/** The guest's display currency and today's rates, for "≈ £76.80" next to an exact charge. */
+export interface DisplayCurrency {
+  currency: string;
+  fx: FxTable;
+}
+
+/** "≈ £76.80" when the guest browses in another currency than the charge; null when they match. */
+export function approxIn(amount: number, charged: string, display: DisplayCurrency | null | undefined): string | null {
+  if (!display || display.currency === charged) return null;
+  const p = displayPrice(amount, charged, display.currency, display.fx);
+  return p.approx ? `≈ ${p.text}` : null;
+}
+
 export function money(amount: number, currency: string): string {
   return formatMoney(amount, currency);
 }

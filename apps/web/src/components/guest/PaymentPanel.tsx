@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Building2, CreditCard, QrCode, Wallet } from 'lucide-react';
 import type { PaymentMethod, PaymentStart, PublicBooking } from '@staydirect/shared';
 import { publicApi } from '@/lib/client-api';
-import { fmtDateTime, formatMoney } from '@/lib/format';
+import { approxIn, fmtDateTime, formatMoney, type DisplayCurrency } from '@/lib/format';
 import type { GuestRegion } from '@/lib/guest-locale';
 import { paymentGroups, type GuestMethod, type PaymentGroup } from '@/lib/payment-groups';
 
@@ -30,6 +30,7 @@ export function PaymentPanel({
   token,
   onPaid,
   region,
+  display,
 }: {
   booking: PublicBooking;
   reference: string;
@@ -37,12 +38,14 @@ export function PaymentPanel({
   onPaid: () => void;
   /** The guest's likely region from their currency: their payment group is shown first. */
   region: GuestRegion;
+  display?: DisplayCurrency;
 }) {
   const [active, setActive] = useState<GuestMethod | null>(null);
   const [start, setStart] = useState<PaymentStart | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const groups = paymentGroups(booking.paymentMethods, region);
+  const dueNow = Math.max(0, (booking.status === 'pending' ? booking.deposit : booking.total) - booking.paid);
   const [primary, ...others] = groups;
 
   async function choose(method: GuestMethod) {
@@ -79,7 +82,13 @@ export function PaymentPanel({
         How would you like to pay?
       </h2>
       <p className="mt-1 text-sm text-muted">
-        Due now: <strong className="text-fg">{formatMoney(Math.max(0, (booking.status === 'pending' ? booking.deposit : booking.total) - booking.paid), booking.currency)}</strong>
+        Due now: <strong className="text-fg">{formatMoney(dueNow, booking.currency)}</strong>
+        {approxIn(dueNow, booking.currency, display) && (
+          <span>
+            {' '}
+            ({approxIn(dueNow, booking.currency, display)}). You are charged in {booking.currency}; your bank or card sets the final rate.
+          </span>
+        )}
       </p>
       <Group group={primary} active={active} busy={busy} onChoose={choose} />
       {others.length > 0 && (
