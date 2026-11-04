@@ -27,7 +27,7 @@ interface Props {
     fx: Record<string, number>;
     paymentMethods: PaymentMethod[];
   };
-  initial: { from?: string; to?: string; guests: number; roomId?: string };
+  initial: { from?: string; to?: string; guests: number; roomId?: string; code?: string };
 }
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -47,6 +47,9 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [code, setCode] = useState(initial.code ?? '');
+  const [promo, setPromo] = useState<{ code: string; pct: number } | null>(null);
+  const [codeMsg, setCodeMsg] = useState<string | null>(null);
   const maxGuests = Math.max(1, ...property.rooms.map((r) => r.maxGuests));
 
   const search = useCallback(
@@ -58,13 +61,13 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
       }
       setLoading(true);
       setError(null);
-      setSelected(null);
       try {
         const qs = new URLSearchParams({ from: f, to: t, guests: String(g), currency });
+        if (promo) qs.set('code', promo.code); // quotes then include the discount
         const res = await publicApi<AvailabilityResult>(`/public/sites/${encodeURIComponent(site)}/availability?${qs}`);
         setResult(res);
-        const preferred = res.rooms.find((r) => r.roomId === initial.roomId && r.available);
-        if (preferred) setSelected(preferred.roomId);
+        // keep the guest's room choice across re-searches when it is still bookable
+        setSelected((prev) => res.rooms.find((r) => r.roomId === (prev ?? initial.roomId) && r.available)?.roomId ?? null);
         const url = new URL(window.location.href);
         url.searchParams.set('from', f);
         url.searchParams.set('to', t);
@@ -76,10 +79,36 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
         setLoading(false);
       }
     },
-    [site, currency, initial.roomId],
+    [site, currency, initial.roomId, promo],
+  );
+
+  // Re-price the current search when a code is applied or removed.
+  const promoKey = promo?.code ?? '';
+  useEffect(() => {
+    if (result && from && to) void search(from, to, guests);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [promoKey]);
+
+  const applyCode = useCallback(
+    async (raw: string) => {
+      const c = raw.trim();
+      setCodeMsg(null);
+      if (!c) {
+        setPromo(null);
+        return;
+      }
+      try {
+        setPromo(await publicApi<{ code: string; pct: number }>(`/public/sites/${encodeURIComponent(site)}/discount-codes/${encodeURIComponent(c)}`));
+      } catch (err) {
+        setPromo(null);
+        setCodeMsg(err instanceof ClientApiError && err.status === 422 ? 'That code is not valid or has expired.' : 'Could not check the code. Try again.');
+      }
+    },
+    [site],
   );
 
   useEffect(() => {
+    if (initial.code) void applyCode(initial.code);
     if (initial.from && initial.to) void search(initial.from, initial.to, initial.guests);
     // run once with the dates from the search form
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,6 +140,7 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
           },
           specialRequests: String(fd.get('requests') ?? ''),
           displayCurrency: currency,
+          ...(promo ? { discountCode: promo.code } : {}),
           acceptPolicy: fd.get('accept') === 'on',
         },
       });
@@ -120,6 +150,12 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
       if (err instanceof ClientApiError && err.status === 409) {
         setError('Sorry — those nights were just booked by someone else. Here is what is still free.');
         void search(from, to, guests);
+        return;
+      }
+      if (err instanceof ClientApiError && err.status === 422 && err.body?.code === 'invalid_discount_code') {
+        setPromo(null);
+        setCodeMsg('That code is no longer valid — remove it or try another.');
+        setError('The discount code was not accepted. Nothing was booked yet.');
         return;
       }
       if (err instanceof ClientApiError && err.status === 422) {
@@ -278,6 +314,28 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
                 <textarea id="g-req" name="requests" rows={3} maxLength={1000} className="field py-2" placeholder="Arrival time, airport pickup, dietary needs…" />
               </div>
             </div>
+            <div>
+              <label htmlFor="g-code" className="label">
+                Discount code <span className="font-normal text-muted">(optional)</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="g-code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  autoComplete="off"
+                  maxLength={40}
+                  className="field font-mono uppercase"
+                  aria-describedby="g-code-msg"
+                />
+                <button type="button" className="btn-secondary shrink-0" onClick={() => void applyCode(code)}>
+                  Apply
+                </button>
+              </div>
+              <p id="g-code-msg" aria-live="polite" className={`mt-1 text-sm ${promo ? 'text-ok' : 'text-bad'}`}>
+                {promo ? `${promo.code}: ${promo.pct}% off your stay.` : codeMsg}
+              </p>
+            </div>
             <div className="rounded-xl bg-surface-2 p-4 text-sm">
               <p className="font-semibold">Cancellation policy</p>
               <p className="mt-1 text-muted">{POLICY_TEXT[choice.quote.cancellationPolicy]}</p>
@@ -296,7 +354,7 @@ export function BookFlow({ site, base, currency, property, initial }: Props) {
               {property.paymentMethods.length ? ` by ${property.paymentMethods.map((m) => METHOD_LABEL[m]).join(', ')}` : ''}.
             </p>
           </form>
-          <Summary room={roomsById.get(choice.roomId)!} ra={choice} from={from} to={to} guests={guests} baseCurrency={result!.baseCurrency} />
+          <Summary room={roomsById.get(choice.roomId)!} ra={choice} from={from} to={to} guests={guests} baseCurrency={result!.baseCurrency} promo={promo} />
         </div>
       )}
     </div>
@@ -347,6 +405,7 @@ function Summary({
   to,
   guests,
   baseCurrency,
+  promo,
 }: {
   room: PublicRoom;
   ra: RoomAvailability;
@@ -354,6 +413,7 @@ function Summary({
   to: string;
   guests: number;
   baseCurrency: string;
+  promo: { code: string; pct: number } | null;
 }) {
   const q = ra.quote!;
   const d = ra.display;
@@ -368,10 +428,16 @@ function Summary({
         <Row label="Room" value={formatMoney(q.roomSubtotal, baseCurrency)} />
         {q.extraGuestTotal > 0 && <Row label="Extra guests" value={formatMoney(q.extraGuestTotal, baseCurrency)} />}
         {q.discount > 0 && <Row label={q.discountLabel ?? 'Discount'} value={`− ${formatMoney(q.discount, baseCurrency)}`} />}
+        {q.promoDiscount > 0 && <Row label={`Code ${promo?.code ?? ''} (${promo?.pct ?? ''}%)`} value={`− ${formatMoney(q.promoDiscount, baseCurrency)}`} />}
         {q.taxes > 0 && <Row label="Taxes" value={formatMoney(q.taxes, baseCurrency)} />}
         <Row label="Total" value={formatMoney(q.total, baseCurrency)} strong />
         <Row label={`Deposit due now (${q.depositPct}%)`} value={formatMoney(q.deposit, baseCurrency)} strong />
       </dl>
+      {promo && q.promoDiscount > 0 && (
+        <p className="rounded-xl bg-ok-bg p-3 text-ok">
+          Code {promo.code} applied: you save {formatMoney(q.promoDiscount, baseCurrency)}.
+        </p>
+      )}
       {showDisplay && (
         <p className="text-xs text-muted">
           ≈ {formatMoney(d.total, d.currency)} total, {formatMoney(d.deposit, d.currency)} deposit. The exact charge currency is shown before you pay.

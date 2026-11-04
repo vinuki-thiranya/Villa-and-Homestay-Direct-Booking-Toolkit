@@ -5,7 +5,9 @@ import { BadgeCheck, MapPin, ShieldCheck, Wallet } from 'lucide-react';
 import { RoomCard } from '@/components/guest/RoomCard';
 import { SearchForm } from '@/components/guest/SearchForm';
 import { BookingPaused } from '@/components/guest/BookingPaused';
-import { displayPrice, PROPERTY_TYPE_LABEL } from '@/lib/format';
+import { Stars } from '@/components/Stars';
+import { getSiteReviews } from '@/lib/api';
+import { displayPrice, fmtDate, PROPERTY_TYPE_LABEL } from '@/lib/format';
 import { canonicalUrl, fromRate, siteContext } from '@/lib/site';
 
 const POLICY_SHORT: Record<string, string> = {
@@ -32,7 +34,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SiteHome({ params }: Props) {
   const { site } = await params;
-  const { property: p, base, currency } = await siteContext(site);
+  const { property: p, base, currency, siteKey } = await siteContext(site);
+  const reviews = await getSiteReviews(siteKey);
   const hero = p.photos[0];
   const from = fromRate(p);
   const fromPrice = from != null ? displayPrice(from, p.baseCurrency, currency, p.fx) : null;
@@ -59,6 +62,10 @@ export default async function SiteHome({ params }: Props) {
       name: a,
       value: true,
     })),
+    aggregateRating:
+      reviews.count > 0 && reviews.average != null
+        ? { '@type': 'AggregateRating', ratingValue: reviews.average, reviewCount: reviews.count, bestRating: 5 }
+        : undefined,
     containsPlace: p.rooms.map((r) => ({
       '@type': 'HotelRoom',
       name: r.name,
@@ -159,6 +166,34 @@ export default async function SiteHome({ params }: Props) {
           ))}
         </div>
       </section>
+
+
+      {reviews.count > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-12" aria-labelledby="reviews">
+          <div className="flex flex-wrap items-end gap-3">
+            <h2 id="reviews" className="font-display text-2xl font-semibold">
+              What guests say
+            </h2>
+            {reviews.average != null && (
+              <p className="flex items-center gap-2 text-sm text-muted">
+                <Stars rating={Math.round(reviews.average)} /> {Number(reviews.average).toFixed(1)} · {reviews.count} review{reviews.count === 1 ? '' : 's'}
+              </p>
+            )}
+          </div>
+          <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {reviews.reviews.slice(0, 6).map((r, i) => (
+              <li key={i} className="card p-5">
+                <Stars rating={r.rating} />
+                {r.body && <p className="mt-2 line-clamp-6 leading-relaxed">“{r.body}”</p>}
+                <p className="mt-3 text-sm text-muted">
+                  {r.guestName} · {fmtDate(r.createdAt)}
+                </p>
+                {r.ownerReply && <p className="mt-2 rounded-xl bg-surface-2 p-3 text-sm">Host: {r.ownerReply}</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {p.hostName && (
         <section className="bg-surface-2/70" aria-labelledby="host">

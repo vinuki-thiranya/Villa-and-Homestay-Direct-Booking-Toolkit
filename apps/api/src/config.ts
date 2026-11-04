@@ -27,6 +27,17 @@ const ConfigSchema = z.object({
   WHATSAPP_TOKEN: z.string().optional().default(''),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional().default(''),
   WHATSAPP_ALERT_TEMPLATE: z.string().default('owner_alert'),
+  /** Meta app secret: verifies X-Hub-Signature-256 on inbound webhooks. */
+  WHATSAPP_APP_SECRET: z.string().optional().default(''),
+  /** Token you type into the Meta dashboard when subscribing the webhook. */
+  WHATSAPP_VERIFY_TOKEN: z.string().optional().default(''),
+  /** WhatsApp Business Account id, for submitting message templates. */
+  WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().optional().default(''),
+  ANTHROPIC_API_KEY: z.string().optional().default(''),
+  CONCIERGE_MODEL: z.string().default('claude-opus-5-5'),
+  CONCIERGE_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
+  /** Per property per month; spec §7 budgets about LKR 300 (≈ USD 1). */
+  CONCIERGE_MONTHLY_BUDGET_USD: z.coerce.number().default(1),
   PAYHERE_SANDBOX: bool,
   PAYPAL_SANDBOX: bool,
   R2_ACCOUNT_ID: z.string().optional().default(''),

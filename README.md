@@ -14,7 +14,7 @@ PayHere, PayPal, LankaQR or bank transfer under the **owner's own** merchant acc
 |---|---|
 | `apps/api` | NestJS 12 REST API + workers (iCal sync every 15 min, hold sweeper, follow-ups, FX). SQL migrations in `apps/api/migrations`. |
 | `apps/web` | Next.js 16: guest sites (`*.staydirect.lk`, custom domains), owner web (`app.staydirect.lk`), marketing site. |
-| `apps/mobile` | Flutter owner app (Release 2). |
+| `apps/mobile` | Flutter owner app: Today, Tasks, Inbox, offline viewing. |
 | `packages/shared` | Types, zod schemas, pricing engine, currency and date helpers shared by API and web. |
 
 ## Run it locally (no Docker needed)
@@ -48,6 +48,9 @@ to the API log instead of being sent. Without `REDIS_URL` the recurring jobs run
 To use Supabase instead of the embedded database, put the Singapore project's session-pooler URI in `DATABASE_URL`
 and run `npm run db:migrate`.
 
+Release 2 (WhatsApp inbox, AI concierge, housekeeping, add-ons, reviews, CRM) is described in [docs/plan.md §7](docs/plan.md).
+Set `ANTHROPIC_API_KEY` and switch the concierge on under *Setup → Concierge* to try it; without a key, guest messages land in the inbox only.
+
 ## Tests
 
 ```bash
@@ -63,6 +66,7 @@ guarantees under test live in the database:
 - PayHere notifies are signature-verified and idempotent; a payment that arrives after the nights were resold is flagged for refund;
 - iCal import adds/releases OTA nights, records conflicts with direct bookings, and never releases nights on a failed fetch;
 - RLS hides other tenants' rows; payment rows are append-only.
+- Release 2: WhatsApp webhook signatures and duplicates, the 24-hour window, the AI concierge with a stubbed model (tool use, fallbacks, never books, escalation, monthly budget), discount codes, add-on commission split and job cards, review routing, repeat-guest codes, sequence send hours, the daily task board and the cleaner link; WhatsApp templates checked against Meta's rules.
 
 ## Deploy
 

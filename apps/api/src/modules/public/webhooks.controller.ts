@@ -1,4 +1,7 @@
-import { Body, Controller, Get, Header, HttpCode, NotFoundException, Param, Post } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Header, Headers, HttpCode, Inject, NotFoundException, Param, Post, Query, Req, type RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
+import { CONFIG, type AppConfig } from '../../config.js';
+import { InboxService } from '../inbox/inbox.service.js';
 import { IcalService } from '../ical/ical.service.js';
 import type { PayhereNotify } from '../payments/payhere.js';
 import { PaymentsService } from '../payments/payments.service.js';
@@ -8,7 +11,25 @@ export class WebhooksController {
   constructor(
     private readonly payments: PaymentsService,
     private readonly ical: IcalService,
+    private readonly inbox: InboxService,
+    @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
+
+  /** Meta webhook subscription handshake. */
+  @Get('webhooks/whatsapp')
+  @Header('content-type', 'text/plain')
+  whatsappVerify(@Query('hub.mode') mode: string, @Query('hub.verify_token') token: string, @Query('hub.challenge') challenge: string) {
+    if (mode === 'subscribe' && this.config.WHATSAPP_VERIFY_TOKEN && token === this.config.WHATSAPP_VERIFY_TOKEN) return challenge;
+    throw new ForbiddenException();
+  }
+
+  /** Inbound WhatsApp messages and delivery statuses. Signed with the app secret; idempotent on message id. */
+  @Post('webhooks/whatsapp')
+  @HttpCode(200)
+  async whatsapp(@Req() req: RawBodyRequest<Request>, @Headers('x-hub-signature-256') signature: string | undefined, @Body() body: unknown) {
+    this.inbox.verifySignature(req.rawBody, signature);
+    return this.inbox.handleWebhook(body);
+  }
 
   @Get('health')
   health() {

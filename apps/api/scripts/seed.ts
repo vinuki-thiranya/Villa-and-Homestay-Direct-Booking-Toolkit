@@ -130,6 +130,8 @@ export async function seed(databaseUrl: string, log: (s: string) => void = conso
       { room: 1, from: addDays(today, -2), nights: 4, guest: 1, paidPct: 30, status: 'checked_in' },
       { room: 3, from: addDays(today, 5), nights: 7, guest: 2, paidPct: 30, status: 'confirmed' },
     ];
+    const bookingIds: string[] = [];
+    const guestIds: string[] = [];
     for (const [i, s] of stays.entries()) {
       const g = guests[s.guest]!;
       const guest = (
@@ -149,6 +151,8 @@ export async function seed(databaseUrl: string, log: (s: string) => void = conso
           [tenant.id, property.id, roomIds[s.room], guest.id, `SD-DEMO${i + 1}`, s.from, to, s.status, total, deposit],
         )
       ).rows[0];
+      bookingIds.push(b.id);
+      guestIds.push(guest.id);
       await db.query(
         `insert into night_inventory (tenant_id, room_id, date, status, source, booking_id)
          select $1, $2, d::date, 'reserved', 'direct', $3 from generate_series($4::date, $5::date - 1, interval '1 day') d`,
@@ -173,6 +177,8 @@ export async function seed(databaseUrl: string, log: (s: string) => void = conso
       [tenant.id, roomIds[5], addDays(today, 10)],
     );
 
+    await seedRelease2(db, { tenantId: tenant.id, propertyId: property.id, roomIds, bookingIds, guestIds, today });
+
     await db.query('commit');
     log(`seeded ${DEMO_SLUG}: 6 rooms, ${plans.length} rate plans, 3 bookings. Owner login ${DEMO_PHONE} (dev OTP from OTP_DEV_CODE).`);
     return { propertyId: property.id, roomIds, tenantId: tenant.id };
@@ -184,14 +190,135 @@ export async function seed(databaseUrl: string, log: (s: string) => void = conso
   }
 }
 
+/** Release 2 demo data: house guide, knowledge base, staff and tasks, add-ons, an inbox thread, a code. */
+async function seedRelease2(
+  db: pg.Client,
+  a: { tenantId: string; propertyId: string; roomIds: string[]; bookingIds: string[]; guestIds: string[]; today: string },
+) {
+  const { tenantId, propertyId, roomIds, bookingIds, guestIds, today } = a;
+  const guide = {
+    wifiName: 'VillaLagoon-Guest',
+    wifiPassword: 'coconut2027',
+    arrival: 'Ask the tuk-tuk driver for Bandaramulla Road, opposite the temple. Ring the bell at the blue gate; Nimali or Kamal will meet you.',
+    rules: 'No smoking indoors. Quiet hours 10 pm to 7 am. Rinse sand off at the outdoor shower. Switch off the AC when you go out.',
+    checkoutNotes: 'Leave the key in the room. Late check-out until 1 pm if nobody arrives that day, just ask.',
+    emergency: [
+      { label: 'Ambulance (Suwa Seriya)', phone: '1990' },
+      { label: 'Police', phone: '119' },
+      { label: 'Tourist police', phone: '+94 11 242 1052' },
+      { label: 'Host (Nimali)', phone: '+94 77 000 0000' },
+    ],
+    places: [
+      { name: 'Dewmini Roti Shop', kind: 'restaurant', note: 'Rotis and rice and curry, 5 min walk', mapsUrl: null },
+      { name: 'Secret Beach', kind: 'beach', note: 'Quiet cove, calm in the morning', mapsUrl: null },
+      { name: 'Commercial Bank ATM', kind: 'atm', note: 'Main road, 10 min by tuk-tuk', mapsUrl: null },
+      { name: 'Mirissa Pharmacy', kind: 'pharmacy', note: 'Open until 9 pm', mapsUrl: null },
+    ],
+  };
+  await db.query(`update property set google_review_url = 'https://g.page/r/demo-villa-lagoon/review', guide = $2 where id = $1`, [
+    propertyId,
+    JSON.stringify(guide),
+  ]);
+
+  const knowledge: [string, string][] = [
+    ['Breakfast', 'Breakfast is included and served 7:30 to 10:00 on the terrace: fruit, eggs, hoppers or toast, Ceylon tea. Vegetarian and vegan on request.'],
+    ['Surf boards', 'Guests can borrow two foam boards for free. Hard boards are LKR 1,500 per day from the surf shop next door.'],
+    ['Airport transfer', 'Private car from Colombo airport (BIA) costs USD 55 for up to 3 people, about 3 hours via the Southern Expressway. Book it as an add-on or ask the host.'],
+    ['Pets', 'Sorry, no pets. Our two cats live in the garden.'],
+    ['Laundry', 'Laundry is LKR 800 per kg, ready the next day.'],
+  ];
+  for (const [title, body] of knowledge) {
+    await db.query(`insert into knowledge_entry (tenant_id, property_id, title, body) values ($1, $2, $3, $4)`, [tenantId, propertyId, title, body]);
+  }
+
+  const kamala = (
+    await db.query(`insert into staff (tenant_id, property_id, name, phone, role) values ($1, $2, 'Kamala', '+94771111111', 'cleaner') returning id`, [tenantId, propertyId])
+  ).rows[0];
+  await db.query(`insert into staff (tenant_id, property_id, name, phone, role) values ($1, $2, 'Sunil', '+94772222222', 'maintenance')`, [tenantId, propertyId]);
+  await db.query(
+    `insert into task (tenant_id, property_id, room_id, date, type, title, assignee_staff_id)
+     values ($1, $2, $3, $4, 'clean', 'Clean Garden Twin', $5),
+            ($1, $2, $6, $4, 'prepare', 'Prepare Ocean Suite for Anna Schmidt (2 guests)', $5),
+            ($1, $2, $7, $4, 'maintenance', 'Fix dripping tap in Treehouse Loft', null)`,
+    [tenantId, propertyId, roomIds[2], today, kamala.id, roomIds[0], roomIds[5]],
+  );
+
+  const providers: [string, string, string[]][] = [
+    ['Ruwan Tours', '+94773333333', ['airport_pickup', 'driver', 'safari']],
+    ['Mirissa Surf School', '+94774444444', ['surf_lesson']],
+    ['Raja and the Whales', '+94775555555', ['whale_watching']],
+  ];
+  const providerIds: string[] = [];
+  for (const [name, phone, types] of providers) {
+    providerIds.push((await db.query(`insert into provider (tenant_id, name, phone, service_types) values ($1, $2, $3, $4) returning id`, [tenantId, name, phone, types])).rows[0].id);
+  }
+  const addOns: [string, string, string, number, string, string | null, number][] = [
+    ['Airport pickup (Colombo BIA)', 'Private air-conditioned car, up to 3 people with luggage. About 3 hours.', 'airport_pickup', 55, 'USD', providerIds[0]!, 24],
+    ['Surf lesson (2 hours)', 'Beginner lesson with a certified instructor; board and rash guard included.', 'surf_lesson', 25, 'USD', providerIds[1]!, 12],
+    ['Whale watching', 'Morning boat from Mirissa harbour with breakfast. Season November to April.', 'whale_watching', 60, 'USD', providerIds[2]!, 24],
+    ['Yala safari day trip', 'Jeep, park tickets and driver for a full-day safari in Yala National Park.', 'safari', 140, 'USD', providerIds[0]!, 48],
+    ['Laundry (per kg)', 'Washed, dried and folded, back the next day.', 'laundry', 800, 'LKR', null, 0],
+  ];
+  const addOnIds: string[] = [];
+  for (const [i, [name, desc, cat, price, cur, prov, lead]] of addOns.entries()) {
+    addOnIds.push(
+      (
+        await db.query(
+          `insert into add_on (tenant_id, property_id, name, description, category, price, currency, provider_id, lead_time_hours, sort_order)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id`,
+          [tenantId, propertyId, name, desc, cat, price, cur, prov, lead, i],
+        )
+      ).rows[0].id,
+    );
+  }
+  // Anna's stay: a surf lesson tomorrow. USD 25 = provider 19.38 + owner 3.12 (12.5%) + platform 2.50 (10%).
+  await db.query(
+    `insert into add_on_order (tenant_id, booking_id, add_on_id, provider_id, date, qty, amount, currency, provider_amount, owner_amount, platform_amount, status)
+     values ($1, $2, $3, $4, $5, 1, 25, 'USD', 19.38, 3.12, 2.50, 'confirmed')`,
+    [tenantId, bookingIds[0], addOnIds[1], providerIds[1], addDays(today, 1)],
+  );
+  await db.query(`update booking set add_ons_amount = 25, total = total + 25 where id = $1`, [bookingIds[0]]);
+
+  // An escalated WhatsApp thread with Rahul (in-house guest).
+  const conv = (
+    await db.query(
+      `insert into conversation (tenant_id, property_id, guest_id, contact, contact_name, language, status, ai_paused, escalation_summary,
+                                 unread_count, last_inbound_at, last_message_at)
+       values ($1, $2, $3, '+919812345678', 'Rahul Mehta', 'hi', 'needs_human', true,
+               'Rahul asks for a 3 pm late check-out on departure day (evening train).', 1, now() - interval '20 minutes', now() - interval '20 minutes')
+       returning id`,
+      [tenantId, propertyId, guestIds[1]],
+    )
+  ).rows[0];
+  const thread: [string, string, string, string][] = [
+    ['in', 'Hi! What is the Wi-Fi password?', 'guest', '45 minutes'],
+    ['out', 'Hi Rahul! Wi-Fi network VillaLagoon-Guest, password coconut2027. Enjoy!', 'ai', '44 minutes'],
+    ['in', 'Thanks. Can we check out at 3 pm on our last day? Our train is in the evening.', 'guest', '20 minutes'],
+    ['out', 'Let me check with Nimali, she will reply shortly.', 'ai', '19 minutes'],
+  ];
+  for (const [dir, body, by, ago] of thread) {
+    await db.query(
+      `insert into message (tenant_id, property_id, guest_id, conversation_id, channel, direction, recipient, body, status, sent_by, ai_generated, created_at)
+       values ($1, $2, $3, $4, 'whatsapp', $5, '+919812345678', $6, $7, $8, $9, now() - $10::interval)`,
+      [tenantId, propertyId, guestIds[1], conv.id, dir, body, dir === 'in' ? 'received' : 'delivered', by, by === 'ai', ago],
+    );
+  }
+  await db.query(`insert into discount_code (tenant_id, property_id, code, pct, expires_at, max_uses) values ($1, $2, 'WELCOME10', 10, $3, 100)`, [
+    tenantId,
+    propertyId,
+    addDays(today, 180),
+  ]);
+}
+
 /** Remove a tenant's data in dependency order (demo reset only — money triggers are bypassed by dropping rows as owner). */
 async function wipeTenant(db: pg.Client, tenantId: string) {
   await db.query(`alter table payment disable trigger trg_payment_append_only`);
   await db.query(`alter table audit_log disable trigger trg_audit_append_only`);
-  for (const t of ['payment', 'night_inventory', 'sync_conflict', 'hold', 'booking_status_log', 'message', 'audit_log']) {
+  for (const t of ['payment', 'night_inventory', 'sync_conflict', 'hold', 'booking_status_log', 'message', 'audit_log', 'add_on_order', 'review',
+                   'task', 'task_board_run', 'sequence_send', 'conversation', 'quick_reply', 'knowledge_entry', 'ai_usage', 'sequence']) {
     await db.query(`delete from ${t} where tenant_id = $1`, [tenantId]);
   }
-  for (const t of ['booking', 'guest', 'ical_source', 'rate_plan', 'room', 'property', 'app_user']) {
+  for (const t of ['booking', 'discount_code', 'guest', 'staff', 'add_on', 'provider', 'ical_source', 'rate_plan', 'room', 'property', 'app_user']) {
     await db.query(`delete from ${t} where tenant_id = $1`, [tenantId]);
   }
   await db.query(`delete from webhook_event where tenant_id = $1`, [tenantId]);

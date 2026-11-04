@@ -5,7 +5,8 @@ import { LogOut } from 'lucide-react';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { OwnerNav } from '@/components/owner/OwnerNav';
 import { PropertyFields } from '@/components/owner/PropertyFields';
-import { currentProperty, getToken, listProperties } from '@/lib/owner';
+import { currentProperty, getToken, listProperties, ownerApi } from '@/lib/owner';
+import type { Conversation } from '@/lib/owner-types';
 import { createPropertyAction, logoutAction, selectPropertyAction } from '../actions';
 
 export const metadata: Metadata = { title: 'StayDirect LK — owner', robots: { index: false } };
@@ -14,6 +15,8 @@ export const dynamic = 'force-dynamic';
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
   if (!(await getToken())) redirect('/owner/login');
   const [properties, property] = await Promise.all([listProperties(), currentProperty()]);
+  const waiting = property ? await inboxWaiting(property.id) : 0;
+  const badges: Record<string, number> = waiting ? { '/owner/inbox': waiting } : {};
 
   return (
     <div className="owner min-h-dvh bg-bg text-fg">
@@ -22,7 +25,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
           <Link href="/owner" className="mb-6 px-3 font-display text-lg font-semibold">
             StayDirect <span className="text-brand">LK</span>
           </Link>
-          {property && <OwnerNav variant="side" />}
+          {property && <OwnerNav variant="side" badges={badges} />}
           <form action={logoutAction} className="mt-auto">
             <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted hover:bg-surface-2">
               <LogOut aria-hidden className="h-5 w-5" /> Log out
@@ -72,7 +75,17 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
           </main>
         </div>
       </div>
-      {property && <OwnerNav variant="bottom" />}
+      {property && <OwnerNav variant="bottom" badges={badges} />}
     </div>
   );
+}
+
+/** Conversations that need the owner: escalated by the concierge, or unread with the AI off. */
+async function inboxWaiting(propertyId: string): Promise<number> {
+  try {
+    const convs = await ownerApi<Conversation[]>(`/properties/${propertyId}/conversations`);
+    return convs.filter((c) => c.status === 'needs_human' || (c.unreadCount > 0 && c.status !== 'closed')).length;
+  } catch {
+    return 0; // the badge is a hint; never break the layout over it
+  }
 }

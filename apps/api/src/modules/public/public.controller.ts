@@ -87,7 +87,9 @@ export class PublicController {
   async search(@Param('site') site: string, @Query(new ZodPipe(AvailabilityQuerySchema)) q: AvailabilityQuery) {
     const p = await this.catalog.propertyBySite(site);
     if (!p) throw new NotFoundException('Property not found');
-    return this.availability.search((await this.catalog.bundle(p.id))!, q);
+    const promo = q.code ? await this.bookings.validateDiscount(p.id, q.code) : null;
+    const result = await this.availability.search((await this.catalog.bundle(p.id))!, q, promo?.pct ?? 0);
+    return { ...result, promo: promo ? { code: promo.code, pct: promo.pct } : null };
   }
 
   @Post('bookings')

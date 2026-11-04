@@ -2,7 +2,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
-import { ApiError, apiFetch } from './api';
+import { API_URL, ApiError, apiFetch, errorMessage } from './api';
 
 export const TOKEN_COOKIE = 'sd_token';
 export const PROPERTY_COOKIE = 'sd_property';
@@ -88,6 +88,19 @@ export async function ownerApi<T>(path: string, opts: { method?: string; body?: 
     if (err instanceof ApiError && err.status === 401) redirect('/owner/login?expired=1');
     throw err;
   }
+}
+
+/** Multipart upload (task photos) to an owner endpoint; the file is forwarded as field "file". */
+export async function ownerUpload<T>(path: string, file: File): Promise<T> {
+  const token = await getToken();
+  if (!token) redirect('/owner/login');
+  const fd = new FormData();
+  fd.set('file', file, file.name || 'photo.jpg');
+  const res = await fetch(`${API_URL}${path}`, { method: 'POST', headers: { authorization: `Bearer ${token}` }, body: fd, cache: 'no-store' });
+  const body = await res.json().catch(() => null);
+  if (res.status === 401) redirect('/owner/login?expired=1');
+  if (!res.ok) throw new ApiError(res.status, errorMessage(body, `HTTP ${res.status}`), body);
+  return body as T;
 }
 
 export const listProperties = cache(() => ownerApi<OwnerProperty[]>('/properties'));

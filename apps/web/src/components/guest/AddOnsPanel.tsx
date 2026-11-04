@@ -1,0 +1,187 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { Sparkles } from 'lucide-react';
+import { publicApi } from '@/lib/client-api';
+import { fmtDate, formatMoney } from '@/lib/format';
+
+interface CatalogueItem {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  currency: string;
+  leadTimeHours: number;
+  photoUrl: string | null;
+}
+
+interface GuestOrder {
+  id: string;
+  addOnName: string | null;
+  date: string;
+  time: string | null;
+  qty: number;
+  amount: number;
+  currency: string;
+  status: 'requested' | 'confirmed' | 'done' | 'cancelled';
+}
+
+interface GuestAddOns {
+  canOrder: boolean;
+  stay: { from: string; to: string };
+  catalogue: CatalogueItem[];
+  orders: GuestOrder[];
+}
+
+const STATUS: Record<string, string> = { requested: 'Requested', confirmed: 'Confirmed', done: 'Done', cancelled: 'Cancelled' };
+
+function minus1(iso: string) {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Experiences the guest can add to a confirmed stay (spec §3.7). Paid with the balance. */
+export function AddOnsPanel({ reference, token, onOrdered }: { reference: string; token: string; onOrdered?: () => void }) {
+  const [data, setData] = useState<GuestAddOns | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setData(await publicApi<GuestAddOns>(`/public/bookings/${encodeURIComponent(reference)}/add-ons?t=${encodeURIComponent(token)}`));
+    } catch {
+      setData(null);
+    }
+  }, [reference, token]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (!data || (data.catalogue.length === 0 && data.orders.length === 0)) return null;
+
+  async function order(item: CatalogueItem, form: HTMLFormElement) {
+    const fd = new FormData(form);
+    setBusy(true);
+    setMsg(null);
+    try {
+      await publicApi(`/public/bookings/${encodeURIComponent(reference)}/add-ons`, {
+        json: {
+          token,
+          addOnId: item.id,
+          date: String(fd.get('date')),
+          time: String(fd.get('time') ?? '') || null,
+          qty: Number(fd.get('qty') ?? 1),
+          notes: String(fd.get('notes') ?? ''),
+        },
+      });
+      setMsg({ ok: true, text: `${item.name} requested. The provider will confirm, and the amount is added to your balance.` });
+      setOpen(null);
+      await load();
+      onOrdered?.();
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof Error ? err.message : 'Could not place the order' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section id="addons" className="card scroll-mt-24 p-5" aria-labelledby="addons-title">
+      <h2 id="addons-title" className="flex items-center gap-2 text-lg font-semibold">
+        <Sparkles aria-hidden className="h-5 w-5 text-brand" /> Make the most of your stay
+      </h2>
+
+      {data.orders.length > 0 && (
+        <ul className="mt-3 divide-y divide-line rounded-xl border border-line text-sm">
+          {data.orders.map((o) => (
+            <li key={o.id} className="flex flex-wrap items-center gap-2 px-3 py-2">
+              <span className="flex-1">
+                {o.addOnName} × {o.qty} · {fmtDate(o.date)}
+                {o.time ? ` ${o.time}` : ''}
+              </span>
+              <span>{formatMoney(o.amount, o.currency)}</span>
+              <span className={`pill ${o.status === 'confirmed' || o.status === 'done' ? 'bg-ok-bg text-ok' : o.status === 'cancelled' ? 'bg-bad-bg text-bad' : 'bg-warn-bg text-warn'}`}>
+                {STATUS[o.status]}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {msg && (
+        <p role={msg.ok ? 'status' : 'alert'} className={`mt-3 rounded-xl p-3 text-sm ${msg.ok ? 'bg-ok-bg text-ok' : 'bg-bad-bg text-bad'}`}>
+          {msg.text}
+        </p>
+      )}
+
+      {data.canOrder && (
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          {data.catalogue.map((item) => (
+            <li key={item.id} className="rounded-xl border border-line p-4">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold">{item.name}</p>
+                <p className="shrink-0 font-semibold">{formatMoney(item.price, item.currency)}</p>
+              </div>
+              {item.description && <p className="mt-1 text-sm text-muted">{item.description}</p>}
+              {open === item.id ? (
+                <form
+                  className="mt-3 space-y-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void order(item, e.currentTarget);
+                  }}
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label htmlFor={`d-${item.id}`} className="label">
+                        Date
+                      </label>
+                      <input id={`d-${item.id}`} name="date" type="date" required min={minus1(data.stay.from)} max={data.stay.to} defaultValue={data.stay.from} className="field" />
+                    </div>
+                    <div>
+                      <label htmlFor={`t-${item.id}`} className="label">
+                        Time <span className="font-normal text-muted">(optional)</span>
+                      </label>
+                      <input id={`t-${item.id}`} name="time" type="time" className="field" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-[6rem_1fr] gap-2">
+                    <div>
+                      <label htmlFor={`q-${item.id}`} className="label">
+                        Qty
+                      </label>
+                      <input id={`q-${item.id}`} name="qty" type="number" min={1} max={20} defaultValue={1} className="field" />
+                    </div>
+                    <div>
+                      <label htmlFor={`n-${item.id}`} className="label">
+                        Notes
+                      </label>
+                      <input id={`n-${item.id}`} name="notes" maxLength={500} placeholder="Flight no., pickup point…" className="field" />
+                    </div>
+                  </div>
+                  {item.leadTimeHours > 0 && <p className="text-xs text-muted">Please order at least {item.leadTimeHours} hours ahead.</p>}
+                  <div className="flex gap-2">
+                    <button type="submit" className="btn-primary" disabled={busy}>
+                      {busy ? 'Ordering…' : 'Request'}
+                    </button>
+                    <button type="button" className="btn-secondary" onClick={() => setOpen(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button type="button" className="btn-secondary mt-3 min-h-10 px-4" onClick={() => setOpen(item.id)}>
+                  Add to my stay
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}

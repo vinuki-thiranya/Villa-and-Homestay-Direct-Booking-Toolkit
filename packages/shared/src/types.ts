@@ -86,6 +86,8 @@ export interface AvailabilityResult {
   baseCurrency: string;
   displayCurrency: string;
   rooms: RoomAvailability[];
+  /** The discount code applied to these quotes, if any. */
+  promo?: { code: string; pct: number } | null;
 }
 
 export interface PublicBooking {

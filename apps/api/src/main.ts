@@ -9,7 +9,7 @@ import { startScheduler } from './scheduler.js';
 
 async function bootstrap() {
   const config = loadConfig();
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: false });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: false, rawBody: true }); // rawBody: WhatsApp signatures
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.useBodyParser('json', { limit: '1mb' });

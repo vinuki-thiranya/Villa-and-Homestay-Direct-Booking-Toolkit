@@ -6,7 +6,10 @@ import { StatusBadge } from '@/components/owner/BookingList';
 import { Check, Field, Section, Select } from '@/components/owner/fields';
 import { ApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime, METHOD_LABEL, money, SOURCE_LABEL, waLink } from '@/lib/format';
-import { ownerApi } from '@/lib/owner';
+import { currentProperty, ownerApi } from '@/lib/owner';
+import { OrderBadge } from '@/components/owner/OrderBadge';
+import type { AddOnOrder, OwnerAddOn } from '@/lib/owner-types';
+import { ownerOrderAction } from '../../../actions-r2';
 import {
   bookingAction,
   cancelAction,
@@ -54,6 +57,13 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   const active = b.status === 'confirmed' || b.status === 'checked_in';
   const pendingSlips = b.payments.filter((p) => p.kind === 'charge' && p.status === 'pending' && p.slipUrl);
   const pendingRefunds = b.payments.filter((p) => p.kind === 'refund' && p.status === 'pending');
+  const property = await currentProperty();
+  const [catalogue, orders] = await Promise.all([
+    property ? ownerApi<OwnerAddOn[]>(`/properties/${property.id}/add-ons`) : Promise.resolve([] as OwnerAddOn[]),
+    ownerApi<AddOnOrder[]>(`/bookings/${b.id}/add-on-orders`),
+  ]);
+  const orderable = catalogue.filter((a) => a.active);
+  const dayBefore = new Date(Date.parse(`${b.from}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
 
   return (
     <div className="space-y-5">
@@ -183,6 +193,48 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
               <ActionForm action={bookingAction.bind(null, b.id, 'no-show')} submitLabel="Mark no-show" variant="secondary" confirm="Mark as no-show? Remaining nights go back on sale." />
             )}
           </div>
+        </Section>
+      )}
+
+
+      {(active || orders.length > 0) && (
+        <Section title={`Add-ons (${orders.length})`}>
+          {orders.length > 0 && (
+            <ul className="mb-4 divide-y divide-line text-sm">
+              {orders.map((o) => (
+                <li key={o.id} className="flex flex-wrap items-center gap-2 py-2">
+                  <span className="flex-1">
+                    {o.addOnName} × {o.qty} · {fmtDate(o.date)}
+                    {o.time ? ` ${o.time}` : ''} · {money(o.amount, o.currency)}
+                    {o.providerName ? <span className="text-muted"> · {o.providerName}</span> : null}
+                  </span>
+                  <OrderBadge status={o.status} />
+                </li>
+              ))}
+            </ul>
+          )}
+          {active && orderable.length > 0 ? (
+            <ActionForm action={ownerOrderAction.bind(null, b.id)} submitLabel="Order for guest">
+              <div className="grid gap-3 sm:grid-cols-4">
+                <Select
+                  label="Experience"
+                  name="addOnId"
+                  options={orderable.map((a) => [a.id, `${a.name} (${money(a.price, a.currency)})`] as [string, string])}
+                  className="sm:col-span-2"
+                />
+                <Field label="Date" name="date" type="date" required min={dayBefore} max={b.to} defaultValue={b.from} />
+                <Field label="Time" name="time" type="time" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
+                <Field label="Quantity" name="qty" type="number" min={1} max={20} defaultValue={1} />
+                <Field label="Notes for the provider" name="notes" placeholder="Flight number, pickup point…" />
+              </div>
+            </ActionForm>
+          ) : active ? (
+            <p className="text-sm text-muted">
+              No experiences in your catalogue yet. <Link href="/owner/setup/add-ons" className="text-brand underline">Add airport pickups, surf lessons…</Link>
+            </p>
+          ) : null}
         </Section>
       )}
 

@@ -61,3 +61,42 @@ export const HOLD_MINUTES = 15;
 export const REQUEST_HOLD_HOURS = 12;
 export const MAX_ICAL_SOURCES_PER_ROOM = 5;
 export const ICAL_FAILURE_ALERT_THRESHOLD = 3;
+
+// ---------------- Release 2
+export const SEQUENCE_TRIGGERS = ['booking_confirmed', 'pre_arrival_7d', 'pre_arrival_1d', 'arrival', 'mid_stay', 'check_out'] as const;
+export type SequenceTrigger = (typeof SEQUENCE_TRIGGERS)[number];
+
+export const TASK_TYPES = ['clean', 'prepare', 'maintenance', 'shopping'] as const;
+export type TaskType = (typeof TASK_TYPES)[number];
+export const TASK_STATUSES = ['todo', 'in_progress', 'done', 'skipped'] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+export const STAFF_ROLES = ['cleaner', 'maintenance', 'front_desk'] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
+
+export const ADD_ON_CATEGORIES = [
+  'airport_pickup',
+  'driver',
+  'tuk_tuk',
+  'surf_lesson',
+  'whale_watching',
+  'safari',
+  'cooking_class',
+  'laundry',
+  'bicycle',
+  'other',
+] as const;
+export type AddOnCategory = (typeof ADD_ON_CATEGORIES)[number];
+export const ADD_ON_ORDER_STATUSES = ['requested', 'confirmed', 'done', 'cancelled'] as const;
+export type AddOnOrderStatus = (typeof ADD_ON_ORDER_STATUSES)[number];
+
+export const CONVERSATION_STATUSES = ['open', 'needs_human', 'closed'] as const;
+export type ConversationStatus = (typeof CONVERSATION_STATUSES)[number];
+
+/** Ratings below this are routed privately to the owner instead of the public review prompt (spec §3.8). */
+export const PUBLIC_REVIEW_MIN_RATING = 4;
+/** "Book direct next time" code goes out this many days after check-out (11 months, spec §3.8). */
+export const REPEAT_GUEST_CODE_AFTER_DAYS = 335;
+export const REPEAT_GUEST_CODE_VALID_DAYS = 90;
+/** WhatsApp customer-service window. */
+export const WHATSAPP_SERVICE_WINDOW_HOURS = 24;

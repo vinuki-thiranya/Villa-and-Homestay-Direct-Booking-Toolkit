@@ -179,3 +179,23 @@ Cloudflare Pages is the fallback if Vercel Pro is not wanted (free wildcards via
 | 18 | Timezones | All stay dates are `date` (property-local nights, Asia/Colombo default); timestamps `timestamptz`; "today" computed in the property timezone. |
 | 19 | Rate-plan overlaps | Highest `priority` wins per night, ties → most recent; stay-level discounts (long-stay, last-minute) apply the single best one. Covered by unit tests. |
 | 20 | Guest page speed on 4G | Static per-site pages, client-side availability, image budget 150 KB, no heavy client libraries on the first view; Lighthouse in CI (Phase 2). |
+
+## 7. Release 2 (Prompt 3) — WhatsApp, concierge, housekeeping, add-ons
+
+Built on branch `phase-2-concierge-ops`; schema in [0002_concierge_ops.sql](../apps/api/migrations/0002_concierge_ops.sql).
+
+| Area | How it works |
+|---|---|
+| WhatsApp inbox | `POST /webhooks/whatsapp` verifies `X-Hub-Signature-256` (app secret) over the raw body and is idempotent on the WhatsApp message id. A message belongs to the property whose own `phone_number_id` received it, or (shared platform number) to the sender's most recent booking. Free text is only sent inside the 24-hour service window; outside it, templates. |
+| Templates | Generated from the same i18n strings the API sends ([templates.ts](../apps/api/src/modules/notifications/templates.ts)), so approved text never drifts. `npm run whatsapp:templates` submits all 31 (EN/DE/FR/HI). A test enforces Meta's rules (no variable at the start or end). |
+| Quick replies | 30 topics × 4 languages, filled from the profile and house guide on "Load defaults"; owners edit freely. |
+| AI concierge | Claude (`CONCIERGE_MODEL`, default `claude-opus-5-5`, effort `low`) with four strict tools: `check_availability`, `quote`, `send_booking_link`, `escalate`. No tool can write inventory or bookings — only a payment webhook confirms. Server-side refusal fallback (`fallbacks: "default"`) is on; a refusal or error escalates to the host. The property facts and whole knowledge base sit in a cached system prompt (small properties don't need retrieval yet); today's date is a separate uncached block. Spend is tracked per property per month in `ai_usage`; over `CONCIERGE_MONTHLY_BUDGET_USD` (default USD 1 ≈ LKR 300) the concierge hands over instead of calling the model. |
+| Sequences | Every 15 min, 08:00–21:00 property time: booking confirmed (WhatsApp), 7 days before, 1 day before, arrival (house guide), mid-stay (add-ons), check-out (review request). One send per booking and trigger (`sequence_send` claim row). Free text inside the window, otherwise the matching template; email fallback. |
+| House guide | `/guide/{guide_token}` — token-gated because it contains the Wi-Fi password; sent on arrival day. |
+| Housekeeping | Hourly job builds each property's board once local time passes 06:00 (clean for check-outs, prepare for check-ins incl. OTA arrivals), idempotent per day, then WhatsApps each cleaner a link to `/t/{token}` (no login). Maintenance tasks carry photos and cost. |
+| Add-ons | Catalogue per property, providers per tenant. Each order splits the amount into provider / owner (`commission_pct`, default 12.5%) / platform (`platform_pct`, default 10%) — a DB check makes the parts sum to the amount. The amount is added to the booking total (collected with the stay); cancelling reverses it. Providers get a WhatsApp job card linking to `/j/{token}`; the guest's phone is shown only after they accept. Monthly commission summary per currency. |
+| Reviews | Review link on check-out day. 4–5★ are public and invite the guest to Google; 1–3★ stay private and alert the owner. |
+| Guest CRM | Guests per property with stays and spend; discount codes (manual, and an automatic personal "book direct next time" code ~11 months after a stay). Codes apply in availability quotes and at booking; uses are counted on confirmation. |
+| Owner app | Flutter (`apps/mobile`): Today (arrivals, departures, unpaid balances green/red, sync health), Tasks, Inbox with quick replies; every screen cached on the device for offline viewing; dark mode. |
+
+**Accounts needed before switching it on:** Meta app secret + verify token for the webhook, `WHATSAPP_BUSINESS_ACCOUNT_ID` to submit templates (approval 1–2 days each), and `ANTHROPIC_API_KEY` for the concierge.

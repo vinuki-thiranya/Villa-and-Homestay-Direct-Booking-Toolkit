@@ -88,7 +88,8 @@ export class NotificationsService {
     const phone = property.whatsapp_number ?? owner?.phone;
     let result: SendResult = { ok: false, status: 'failed', error: 'no recipient' };
     if (phone) {
-      result = await this.whatsapp.sendTemplate(phone, this.config.WHATSAPP_ALERT_TEMPLATE, [body]);
+      result = await this.whatsapp.sendTemplate(phone, this.config.WHATSAPP_ALERT_TEMPLATE, [property.name, `${text}
+${link}`]);
       await this.record(property.tenant_id, propertyId, null, null, 'whatsapp', phone, null, body, result);
     }
     const email = property.email ?? owner?.email;

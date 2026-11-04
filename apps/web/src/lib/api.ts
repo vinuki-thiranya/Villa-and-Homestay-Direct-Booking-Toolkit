@@ -72,3 +72,38 @@ export async function getSite(site: string): Promise<PublicProperty | null> {
     throw err;
   }
 }
+
+export interface PublicAddOn {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  currency: string;
+  leadTimeHours: number;
+  photoUrl: string | null;
+}
+
+export interface PublicReviews {
+  average: number | null;
+  count: number;
+  reviews: { rating: number; body: string; guestName: string; ownerReply: string | null; createdAt: string }[];
+}
+
+/** Public add-on catalogue for the experiences page (cached like site data). */
+export async function getSiteAddOns(site: string): Promise<PublicAddOn[]> {
+  try {
+    return await apiFetch<PublicAddOn[]>(`/public/sites/${encodeURIComponent(site)}/add-ons`, { revalidate: 300, tags: [`site:${site}`, 'sites'] });
+  } catch {
+    return [];
+  }
+}
+
+/** Public reviews; a failure hides the block rather than breaking the home page. */
+export async function getSiteReviews(site: string): Promise<PublicReviews> {
+  try {
+    return await apiFetch<PublicReviews>(`/public/sites/${encodeURIComponent(site)}/reviews`, { revalidate: 300, tags: [`site:${site}`, 'sites'] });
+  } catch {
+    return { average: null, count: 0, reviews: [] };
+  }
+}
