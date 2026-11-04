@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
+import { useGT } from './GuestI18n';
 
 type NetworkInfo = { saveData?: boolean; effectiveType?: string };
 
@@ -15,6 +16,7 @@ export function HeroVideo({ src }: { src: string }) {
   const [visible, setVisible] = useState(false);
   const [paused, setPaused] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
+  const t = useGT();
 
   useEffect(() => {
     const net = (navigator as Navigator & { connection?: NetworkInfo }).connection;
@@ -66,7 +68,7 @@ export function HeroVideo({ src }: { src: string }) {
           type="button"
           onClick={toggle}
           className="absolute bottom-4 right-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur hover:bg-black/60"
-          aria-label={paused ? 'Play background video' : 'Pause background video'}
+          aria-label={paused ? t('home.videoPlay') : t('home.videoPause')}
         >
           {paused ? <Play aria-hidden className="h-4 w-4" /> : <Pause aria-hidden className="h-4 w-4" />}
         </button>

@@ -6,27 +6,27 @@ import { canonicalUrl, siteContext } from '@/lib/site';
 type Props = { params: Promise<{ site: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { property: p } = await siteContext((await params).site);
+  const { property: p, t } = await siteContext((await params).site);
   return {
-    title: `Contact ${p.name}`,
-    description: `Message ${p.name} on WhatsApp or by email about rooms, transfers and availability.`,
+    title: t('pages.contact.metaTitle', { name: p.name }),
+    description: t('pages.contact.metaDescription', { name: p.name }),
     alternates: { canonical: canonicalUrl(p, '/contact') },
   };
 }
 
 export default async function ContactPage({ params }: Props) {
-  const { property: p } = await siteContext((await params).site);
-  const wa = waLink(p.whatsappNumber, `Hello ${p.name}, I have a question about a stay.`);
+  const { property: p, t } = await siteContext((await params).site);
+  const wa = waLink(p.whatsappNumber, t('layout.waText', { name: p.name }));
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="font-display text-3xl font-semibold">Contact {p.name}</h1>
-      <p className="mt-2 text-muted">The fastest way to reach {p.hostName || 'us'} is WhatsApp.</p>
+      <h1 className="font-display text-3xl font-semibold">{t('pages.contact.title', { name: p.name })}</h1>
+      <p className="mt-2 text-muted">{t('pages.contact.fastest', { host: p.hostName || t('pages.contact.us') })}</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {wa && (
           <a href={wa} target="_blank" rel="noopener noreferrer" className="card flex items-center gap-4 p-5 hover:border-brand">
             <MessageCircle aria-hidden className="h-8 w-8 text-[#128c4a]" />
             <span>
-              <strong className="block">WhatsApp</strong>
+              <strong className="block">{t('pages.contact.whatsapp')}</strong>
               <span className="text-sm text-muted">{p.whatsappNumber}</span>
             </span>
           </a>
@@ -35,7 +35,7 @@ export default async function ContactPage({ params }: Props) {
           <a href={`mailto:${p.email}`} className="card flex items-center gap-4 p-5 hover:border-brand">
             <Mail aria-hidden className="h-8 w-8 text-brand" />
             <span>
-              <strong className="block">Email</strong>
+              <strong className="block">{t('pages.contact.email')}</strong>
               <span className="text-sm text-muted">{p.email}</span>
             </span>
           </a>

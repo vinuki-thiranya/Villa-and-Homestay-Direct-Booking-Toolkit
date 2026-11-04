@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../main.dart';
 import '../property_scope.dart';
-import '../sinhala.dart';
 import '../widgets.dart';
 import 'inbox_screen.dart';
 import 'portfolio_screen.dart';
@@ -121,7 +120,6 @@ class _HomeShellState extends State<HomeShell> {
                     )
                   : Text(_scope.currentName),
               // The vine-scroll band under the app bar, in Sinhala only.
-              bottom: locale.isSinhala ? const LiyawelaBand() : null,
               actions: [
                 PopupMenuButton<String>(
                   tooltip: l.account,

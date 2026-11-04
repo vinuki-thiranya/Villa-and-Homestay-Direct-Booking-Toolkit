@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Bath, BedDouble, Check, Moon, Users } from 'lucide-react';
+import { rich } from '@/components/guest/rich';
 import { RoomGallery } from '@/components/guest/RoomGallery';
 import { SearchForm } from '@/components/guest/SearchForm';
 import { StickyBookBar } from '@/components/guest/StickyBookBar';
@@ -19,25 +20,25 @@ async function load(params: Props['params']) {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { property: p, room } = await load(params);
-  const title = `${room.name} at ${p.name}, ${p.area || 'Sri Lanka'} — book direct`;
+  const { property: p, room, t } = await load(params);
+  const title = t('room.metaTitle', { room: room.name, name: p.name, place: p.area || t('home.sriLanka') });
   return {
     title,
-    description: `${room.name}: sleeps ${room.maxGuests}${room.beds ? `, ${room.beds}` : ''}. ${room.description.slice(0, 120)}`,
+    description: t('room.metaDescription', { room: room.name, n: room.maxGuests, beds: room.beds ? `, ${room.beds}` : '', description: room.description.slice(0, 120) }),
     alternates: { canonical: canonicalUrl(p, `/rooms/${room.id}`) },
     openGraph: { title, images: room.photos.slice(0, 1) },
   };
 }
 
 export default async function RoomPage({ params }: Props) {
-  const { property: p, room, base, currency, siteKey } = await load(params);
+  const { property: p, room, base, currency, siteKey, t } = await load(params);
   const price = displayPrice(room.baseRate, p.baseCurrency, currency, p.fx);
   const priceText = `${price.approx ? '≈ ' : ''}${price.text}`;
   const facts = [
-    { icon: Users, text: `Sleeps ${room.maxGuests}` },
+    { icon: Users, text: t('rooms.sleeps', { n: room.maxGuests }) },
     room.beds && { icon: BedDouble, text: room.beds },
     room.bathroom && { icon: Bath, text: room.bathroom },
-    room.minNights > 1 && { icon: Moon, text: `${room.minNights} nights minimum` },
+    room.minNights > 1 && { icon: Moon, text: t('room.minNights', { n: room.minNights }) },
   ].filter(Boolean) as { icon: typeof Users; text: string }[];
 
   return (
@@ -47,10 +48,14 @@ export default async function RoomPage({ params }: Props) {
       <div className="grid gap-10 px-4 pt-6 sm:px-0 lg:grid-cols-[1.5fr_1fr]">
         <div>
           <p className="text-sm text-muted">
-            <Link href={`${base}/rooms`} className="underline-offset-4 hover:underline">
-              Rooms
-            </Link>{' '}
-            at {p.name}
+            {rich(t('room.breadcrumb'), {
+              rooms: (
+                <Link href={`${base}/rooms`} className="underline-offset-4 hover:underline">
+                  {t('rooms.title')}
+                </Link>
+              ),
+              name: p.name,
+            })}
           </p>
           <h1 className="g-display mt-1 text-4xl leading-tight sm:text-5xl">{room.name}</h1>
           <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
@@ -63,7 +68,7 @@ export default async function RoomPage({ params }: Props) {
           {room.description && <p className="mt-6 whitespace-pre-line text-[1.0625rem] leading-relaxed text-muted">{room.description}</p>}
           {room.amenities.length > 0 && (
             <>
-              <h2 className="g-display mt-8 text-2xl">In the room</h2>
+              <h2 className="g-display mt-8 text-2xl">{t('room.inTheRoom')}</h2>
               <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
                 {room.amenities.map((a) => (
                   <li key={a} className="flex items-start gap-2">
@@ -75,13 +80,13 @@ export default async function RoomPage({ params }: Props) {
           )}
         </div>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start" aria-label="Check dates">
+        <aside className="lg:sticky lg:top-24 lg:self-start" aria-label={t('room.checkDates')}>
           <div id="search-card" className="card p-5">
             <p className="text-sm text-muted">
-              <span className="text-2xl font-semibold tabular-nums text-fg">{priceText}</span> a night before discounts
+              <span className="text-2xl font-semibold tabular-nums text-fg">{priceText}</span> {t('room.priceNote')}
             </p>
             {p.bookingDisabled ? (
-              <p className="mt-3 text-sm">Online booking is paused. Message {p.name} on WhatsApp to book.</p>
+              <p className="mt-3 text-sm">{t('room.paused', { name: p.name })}</p>
             ) : (
               <div className="mt-4">
                 <SearchForm action={`${base}/book`} site={siteKey} maxGuests={room.maxGuests} roomId={room.id} stacked />
@@ -91,7 +96,7 @@ export default async function RoomPage({ params }: Props) {
         </aside>
       </div>
 
-      {!p.bookingDisabled && <StickyBookBar href={`${base}/book?room=${room.id}`} price={priceText} note="Per night" />}
+      {!p.bookingDisabled && <StickyBookBar href={`${base}/book?room=${room.id}`} price={priceText} note={t('room.perNight')} label={t('home.checkDates')} />}
     </div>
   );
 }

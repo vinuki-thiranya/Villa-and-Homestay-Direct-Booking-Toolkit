@@ -72,13 +72,11 @@ class _StayDirectAppState extends State<StayDirectApp> {
 
 /// Light by day, dark at night (system setting). The dark scheme keeps surfaces near-black teal so
 /// the phone stays readable in a dim room without glaring, and status colours stay distinguishable.
-/// In Sinhala the palette, headings and text size follow sinhala.dart; English is unchanged.
+/// Sinhala uses the same colours; only the type changes (sinhala.dart).
 ThemeData appTheme(Brightness brightness, {bool sinhala = false}) {
   final dark = brightness == Brightness.dark;
   var scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF0E7C86), brightness: brightness);
-  if (sinhala) {
-    scheme = sinhalaScheme(brightness);
-  } else if (dark) {
+  if (dark) {
     scheme = scheme.copyWith(
       surface: const Color(0xFF0F1716),
       surfaceContainerLowest: const Color(0xFF0B1211),
@@ -91,17 +89,16 @@ ThemeData appTheme(Brightness brightness, {bool sinhala = false}) {
       outlineVariant: const Color(0xFF2C3D3A),
     );
   }
-  final ornament = dark ? SinhalaColors.dark : SinhalaColors.light;
   final base = ThemeData(colorScheme: scheme, useMaterial3: true, fontFamilyFallback: sinhalaFallback).textTheme;
   return ThemeData(
     colorScheme: scheme,
     useMaterial3: true,
     fontFamilyFallback: sinhalaFallback,
-    textTheme: sinhala ? sinhalaTextTheme(base, ornament) : null,
+    textTheme: sinhala ? sinhalaTextTheme(base) : null,
     visualDensity: VisualDensity.standard,
     materialTapTargetSize: MaterialTapTargetSize.padded,
     scaffoldBackgroundColor: scheme.surface,
-    extensions: [dark ? StatusColors.dark : StatusColors.light, ornament],
+    extensions: [dark ? StatusColors.dark : StatusColors.light],
     inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
     cardTheme: CardThemeData(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),

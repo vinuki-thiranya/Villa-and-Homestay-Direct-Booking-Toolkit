@@ -4,13 +4,13 @@ import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 import { addDaysIso } from '@/lib/calendar';
+import { useGT } from './GuestI18n';
 
 // The calendar (and motion) load on the first tap, not with the page.
 const loadCalendar = () => import('./RangeCalendar');
 const RangeCalendar = dynamic(loadCalendar, { ssr: false });
 
 const SHOW = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
-const show = (iso: string) => SHOW.format(new Date(`${iso}T00:00:00Z`));
 
 interface Props {
   site: string;
@@ -29,6 +29,9 @@ interface Props {
 export function StayDates({ site, value, defaultValue, onChange, idPrefix }: Props) {
   const [inner, setInner] = useState({ from: defaultValue?.from ?? '', to: defaultValue?.to ?? '' });
   const v = value ?? inner;
+  const t = useGT();
+  // English keeps the weekday ("Thu 5 Nov"); Sinhala uses the short date with modern month names.
+  const show = (iso: string) => (t.lang === 'en' ? SHOW.format(new Date(`${iso}T00:00:00Z`)) : t.short(iso));
   const [enhanced, setEnhanced] = useState(false);
   const [open, setOpen] = useState<null | 'from' | 'to'>(null);
   const [opened, setOpened] = useState(false); // keep the sheet mounted so it can animate out
@@ -86,7 +89,7 @@ export function StayDates({ site, value, defaultValue, onChange, idPrefix }: Pro
               className="field flex items-center gap-2 text-left"
             >
               <CalendarDays aria-hidden className="h-4 w-4 shrink-0 text-muted" />
-              <span className={`truncate ${iso ? '' : 'text-muted'}`}>{iso ? show(iso) : 'Add date'}</span>
+              <span className={`truncate ${iso ? '' : 'text-muted'}`}>{iso ? show(iso) : t('search.addDate')}</span>
             </button>
           </>
         ) : (
@@ -113,8 +116,8 @@ export function StayDates({ site, value, defaultValue, onChange, idPrefix }: Pro
 
   return (
     <>
-      {field('from', 'Check-in')}
-      {field('to', 'Check-out')}
+      {field('from', t('search.checkIn'))}
+      {field('to', t('search.checkOut'))}
       {opened && (
         <RangeCalendar
           open={open !== null}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Star } from 'lucide-react';
 import { publicApi } from '@/lib/client-api';
-import { fmtDate } from '@/lib/format';
+import { useGT } from './GuestI18n';
 
 interface ReviewContext {
   propertyName: string;
@@ -17,10 +17,12 @@ interface ReviewContext {
   googleReviewUrl: string | null;
 }
 
-const LABELS = ['', 'Poor', 'Fair', 'Good', 'Very good', 'Excellent'];
+const LABELS = ['', 'poor', 'fair', 'good', 'veryGood', 'excellent'] as const;
 
 /** Post-stay review (spec §3.8): 4–5★ are published and invited to Google, 1–3★ go privately to the host. */
 export function ReviewForm({ reference, token }: { reference: string; token: string }) {
+  const t = useGT();
+  const label = (n: number) => (n ? t(`review.labels.${LABELS[n]!}` as 'review.labels.poor') : '');
   const [ctx, setCtx] = useState<ReviewContext | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [rating, setRating] = useState(0);
@@ -38,30 +40,30 @@ export function ReviewForm({ reference, token }: { reference: string; token: str
   if (loadError) {
     return (
       <div className="card p-6">
-        <h1 className="text-xl font-semibold">Review link not found</h1>
-        <p className="mt-2 text-muted">Please use the link from your check-out message.</p>
+        <h1 className="text-xl font-semibold">{t('review.notFound')}</h1>
+        <p className="mt-2 text-muted">{t('review.notFoundHint')}</p>
       </div>
     );
   }
-  if (!ctx) return <div className="card h-64 animate-pulse" aria-busy="true" aria-label="Loading" />;
+  if (!ctx) return <div className="card h-64 animate-pulse" aria-busy="true" aria-label={t('review.loading')} />;
 
   const finished = done ?? (ctx.review ? { public: ctx.review.public, googleReviewUrl: ctx.googleReviewUrl } : null);
   if (finished) {
     return (
       <div className="card space-y-3 p-6" role="status">
         <CheckCircle2 aria-hidden className="h-10 w-10 text-ok" />
-        <h1 className="font-display text-2xl font-semibold">Thank you, {ctx.guestName.split(' ')[0]}!</h1>
+        <h1 className="font-display text-2xl font-semibold">{t('review.thanks', { name: ctx.guestName.split(' ')[0]! })}</h1>
         {finished.public ? (
           <>
-            <p className="text-muted">Your review will help other travellers find {ctx.propertyName}.</p>
+            <p className="text-muted">{t('review.publicHint', { property: ctx.propertyName })}</p>
             {finished.googleReviewUrl && (
               <a href={finished.googleReviewUrl} target="_blank" rel="noopener noreferrer" className="btn-primary">
-                Also review us on Google
+                {t('review.google')}
               </a>
             )}
           </>
         ) : (
-          <p className="text-muted">Your feedback went privately to the host. They read every message and may get in touch to make it right.</p>
+          <p className="text-muted">{t('review.privateHint')}</p>
         )}
       </div>
     );
@@ -70,17 +72,15 @@ export function ReviewForm({ reference, token }: { reference: string; token: str
   if (!ctx.canReview) {
     return (
       <div className="card p-6">
-        <h1 className="text-xl font-semibold">Reviews open on {fmtDate(ctx.opensOn)}</h1>
-        <p className="mt-2 text-muted">
-          Your stay: {fmtDate(ctx.from)} → {fmtDate(ctx.to)}. Come back to this link on your check-out day.
-        </p>
+        <h1 className="text-xl font-semibold">{t('review.opensOn', { date: t.date(ctx.opensOn) })}</h1>
+        <p className="mt-2 text-muted">{t('review.opensHint', { from: t.date(ctx.from), to: t.date(ctx.to) })}</p>
       </div>
     );
   }
 
   async function submit() {
     if (!rating) {
-      setError('Choose a star rating.');
+      setError(t('review.chooseStars'));
       return;
     }
     setBusy(true);
@@ -88,7 +88,7 @@ export function ReviewForm({ reference, token }: { reference: string; token: str
     try {
       setDone(await publicApi<{ public: boolean; googleReviewUrl: string | null }>(`/public/reviews/${encodeURIComponent(reference)}`, { json: { token, rating, body } }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send your review');
+      setError(err instanceof Error ? err.message : t('review.failed'));
     } finally {
       setBusy(false);
     }
@@ -103,21 +103,19 @@ export function ReviewForm({ reference, token }: { reference: string; token: str
       }}
     >
       <div>
-        <h1 className="font-display text-2xl font-semibold">How was your stay at {ctx.propertyName}?</h1>
-        <p className="mt-1 text-muted">
-          {fmtDate(ctx.from)} → {fmtDate(ctx.to)}
-        </p>
+        <h1 className="font-display text-2xl font-semibold">{t('review.title', { property: ctx.propertyName })}</h1>
+        <p className="mt-1 text-muted">{t('review.dates', { from: t.date(ctx.from), to: t.date(ctx.to) })}</p>
       </div>
       <fieldset>
-        <legend className="label">Your rating</legend>
-        <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+        <legend className="label">{t('review.yourRating')}</legend>
+        <div className="flex gap-1" role="radiogroup" aria-label={t('review.rating')}>
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
               role="radio"
               aria-checked={rating === n}
-              aria-label={`${n} star${n === 1 ? '' : 's'} — ${LABELS[n]}`}
+              aria-label={t.n('review.starLabel', n, { label: label(n) })}
               onClick={() => setRating(n)}
               className="flex h-12 w-12 items-center justify-center rounded-full hover:bg-surface-2"
             >
@@ -126,12 +124,12 @@ export function ReviewForm({ reference, token }: { reference: string; token: str
           ))}
         </div>
         <p className="mt-1 h-5 text-sm text-muted" aria-live="polite">
-          {LABELS[rating]}
+          {label(rating)}
         </p>
       </fieldset>
       <div>
         <label htmlFor="review-body" className="label">
-          Tell us more <span className="font-normal text-muted">(optional)</span>
+          {t('review.more')} <span className="font-normal text-muted">{t('review.optional')}</span>
         </label>
         <textarea id="review-body" rows={5} maxLength={3000} value={body} onChange={(e) => setBody(e.target.value)} className="field py-2" />
       </div>
@@ -141,7 +139,7 @@ export function ReviewForm({ reference, token }: { reference: string; token: str
         </p>
       )}
       <button type="submit" className="btn-primary w-full sm:w-auto" disabled={busy}>
-        {busy ? 'Sending…' : 'Send review'}
+        {busy ? t('review.sending') : t('review.send')}
       </button>
     </form>
   );

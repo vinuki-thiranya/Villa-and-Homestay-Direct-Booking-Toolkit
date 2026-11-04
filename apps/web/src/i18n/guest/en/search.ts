@@ -1,2 +1,25 @@
-// Guest site text: search. Filled during the Sinhala translation (G1).
-export const search = {};
+// Guest site text: the date/guest search and the availability calendar sheet.
+export const search = {
+  checkIn: 'Check-in',
+  checkOut: 'Check-out',
+  addDate: 'Add date',
+  guests: 'Guests',
+  guestOption_one: '{n} guest',
+  guestOption_other: '{n} guests',
+  seePrices: 'See prices',
+  calTitle: 'Your dates',
+  calLoading: 'Loading free dates…',
+  calChooseCheckIn: 'Choose your check-in date',
+  calChooseCheckOut: 'Check-in {date}. Now choose check-out.',
+  calRange: '{from} to {to}, {nights}',
+  calClose: 'Close',
+  calClear: 'Clear',
+  calUse_one: 'Use {n} night',
+  calUse_other: 'Use {n} nights',
+  calChooseDates: 'Choose dates',
+  dayCheckIn: ', check-in',
+  dayCheckOut: ', check-out',
+  dayBooked: ', booked',
+  /** Monday first, space separated. */
+  weekdays: 'Mo Tu We Th Fr Sa Su',
+};

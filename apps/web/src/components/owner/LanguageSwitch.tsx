@@ -21,7 +21,8 @@ export function LanguageSwitch({ lang, compact = false }: { lang: OwnerLang; com
           aria-label={other === 'si' ? 'සිංහලෙන් පෙන්වන්න (Show in Sinhala)' : 'Show in English (ඉංග්‍රීසියෙන් පෙන්වන්න)'}
         >
           <Languages aria-hidden className="h-4 w-4" />
-          {other === 'si' ? 'සිං' : 'EN'}
+          {/* System font: the Sinhala web font should only download for Sinhala pages. */}
+          <span style={{ fontFamily: 'system-ui, sans-serif' }}>{other === 'si' ? 'සිං' : 'EN'}</span>
         </button>
       </form>
     );

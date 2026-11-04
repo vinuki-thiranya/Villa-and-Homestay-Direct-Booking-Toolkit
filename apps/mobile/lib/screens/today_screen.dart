@@ -5,7 +5,6 @@ import '../api.dart';
 import '../format.dart';
 import '../l10n/app_localizations.dart';
 import '../main.dart';
-import '../sinhala.dart';
 import '../widgets.dart';
 
 /// Today first: who arrives, who leaves, who still owes money, and whether calendar sync is healthy.
@@ -61,7 +60,7 @@ class TodayScreen extends StatelessWidget {
               leaving: list('departuresToday').length,
               unpaid: list('unpaidBalances').length,
             ),
-            const PalaPethiDivider(),
+            const SizedBox(height: 4),
             SectionTitle(l.arrivingToday, count: list('arrivalsToday').length),
             ...list('arrivalsToday').map((b) => _BookingTile(b: b, currency: currency)),
             if (list('arrivalsToday').isEmpty) EmptyNote(l.noArrivals),
@@ -72,13 +71,13 @@ class TodayScreen extends StatelessWidget {
               SectionTitle(l.waitingApproval, count: list('pendingApproval').length),
               ...list('pendingApproval').map((b) => _BookingTile(b: b, currency: currency)),
             ],
-            const PalaPethiDivider(),
+            const SizedBox(height: 4),
             SectionTitle(l.unpaidBalances, count: list('unpaidBalances').length),
             ...list('unpaidBalances').map((b) => _BookingTile(b: b, currency: currency)),
             if (list('unpaidBalances').isEmpty) EmptyNote(l.everyonePaid),
             SectionTitle(l.next14Days, count: list('upcomingArrivals').length),
             ...list('upcomingArrivals').take(8).map((b) => _BookingTile(b: b, currency: currency)),
-            const PalaPethiDivider(),
+            const SizedBox(height: 4),
             SectionTitle(l.thisMonth),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -88,7 +87,7 @@ class TodayScreen extends StatelessWidget {
                 _Stat(l.commissionSaved, money(month['commissionSaved'] as num?, currency)),
               ]),
             ),
-            const PalaPethiDivider(),
+            const SizedBox(height: 4),
             SectionTitle(l.calendarSync, count: sync.length),
             ...sync.map((s) {
               final bad = _failing(s);
@@ -351,7 +350,7 @@ class HolidayBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.secondaryContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border(left: BorderSide(color: SinhalaColors.of(context).ochre, width: 4)),
+        border: Border(left: BorderSide(color: scheme.secondary, width: 4)),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(notice.kind == HolidayKind.holidayToday ? Icons.event : Icons.brightness_2_outlined, color: scheme.onSecondaryContainer),

@@ -1,2 +1,32 @@
-// Guest site text: review. Filled during the Sinhala translation (G2).
-export const review = {};
+// Guest site text: the post-stay review page.
+export const review = {
+  metaTitle: 'Review your stay',
+  notFound: 'Review link not found',
+  notFoundHint: 'Please use the link from your check-out message.',
+  loading: 'Loading',
+  thanks: 'Thank you, {name}!',
+  publicHint: 'Your review will help other travellers find {property}.',
+  google: 'Also review us on Google',
+  privateHint: 'Your feedback went privately to the host. They read every message and may get in touch to make it right.',
+  opensOn: 'Reviews open on {date}',
+  opensHint: 'Your stay: {from} to {to}. Come back to this link on your check-out day.',
+  chooseStars: 'Choose a star rating.',
+  failed: 'Could not send your review',
+  title: 'How was your stay at {property}?',
+  dates: '{from} to {to}',
+  yourRating: 'Your rating',
+  rating: 'Rating',
+  starLabel_one: '{n} star, {label}',
+  starLabel_other: '{n} stars, {label}',
+  labels: {
+    poor: 'Poor',
+    fair: 'Fair',
+    good: 'Good',
+    veryGood: 'Very good',
+    excellent: 'Excellent',
+  },
+  more: 'Tell us more',
+  optional: '(optional)',
+  send: 'Send review',
+  sending: 'Sending…',
+};

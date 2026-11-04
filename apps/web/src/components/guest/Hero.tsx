@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import type { PublicProperty } from '@staydirect/shared';
+import { guestT } from '@/lib/site';
 import type { ThemeKey } from '@/themes/registry';
 import { BookingPaused } from './BookingPaused';
 import { HeroVideo } from './HeroVideo';
@@ -19,13 +20,15 @@ interface Props {
  * stages it differently (guest.css): lagoon over the water, jungle in a verandah arch, surf on a
  * yellow band.
  */
-export function Hero({ p, theme, base, siteKey, typeLabel, fromPrice }: Props) {
-  const place = `${typeLabel} in ${p.area || 'Sri Lanka'}`;
-  const price = fromPrice ? `Rooms from ${fromPrice.approx ? '≈ ' : ''}${fromPrice.text} a night` : null;
+export async function Hero({ p, theme, base, siteKey, typeLabel, fromPrice }: Props) {
+  const t = await guestT();
+  const area = p.area || t('home.sriLanka');
+  const place = t('home.place', { type: typeLabel, place: area });
+  const price = fromPrice ? t('home.roomsFrom', { price: `${fromPrice.approx ? '≈ ' : ''}${fromPrice.text}` }) : null;
   const media = (
     <>
       {p.photos[0] && (
-        <Image src={p.photos[0]} alt={`${p.name}, ${p.area || 'Sri Lanka'}`} fill preload fetchPriority="high" quality={60} sizes="(min-width: 768px) 60vw, 100vw" />
+        <Image src={p.photos[0]} alt={t('home.heroAlt', { name: p.name, place: area })} fill preload fetchPriority="high" quality={60} sizes="(min-width: 768px) 60vw, 100vw" />
       )}
       {p.heroVideoUrl && <HeroVideo src={p.heroVideoUrl} />}
     </>

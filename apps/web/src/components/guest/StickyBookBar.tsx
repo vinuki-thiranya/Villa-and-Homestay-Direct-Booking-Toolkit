@@ -2,13 +2,27 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useGT } from './GuestI18n';
 
 /**
  * Phone-only bar with the "from" price and a Book button. Hidden while the search form is on screen
  * (it already does the same job) and on wider screens, where the header button is in reach.
  */
-export function StickyBookBar({ href, price, note, watch = 'search-card' }: { href: string; price: string | null; note?: string; watch?: string }) {
+export function StickyBookBar({
+  href,
+  price,
+  note,
+  label,
+  watch = 'search-card',
+}: {
+  href: string;
+  price: string | null;
+  note?: string;
+  label?: string;
+  watch?: string;
+}) {
   const [hidden, setHidden] = useState(true);
+  const t = useGT();
 
   useEffect(() => {
     const target = document.getElementById(watch);
@@ -32,12 +46,12 @@ export function StickyBookBar({ href, price, note, watch = 'search-card' }: { hr
       <div className="mx-auto flex max-w-6xl items-center gap-3">
         {price && (
           <p className="min-w-0 flex-1 leading-tight">
-            <span className="block text-xs text-muted">{note ?? 'From, per night'}</span>
+            <span className="block text-xs text-muted">{note ?? t('home.bookbarFrom')}</span>
             <span className="text-lg font-semibold tabular-nums">{price}</span>
           </p>
         )}
         <Link href={href} className={`g-cta ${price ? '' : 'flex-1'}`}>
-          Check dates
+          {label ?? t('home.checkDates')}
         </Link>
       </div>
     </div>

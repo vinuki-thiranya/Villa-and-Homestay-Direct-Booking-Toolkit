@@ -27,6 +27,18 @@ export interface SiteContext {
   t: GuestTranslator;
 }
 
+/** The guest's site language: their choice (cookie), else a browser set to Sinhala, else English. */
+export const guestLang = cache(async (): Promise<GuestLang> => {
+  const lc = (await cookies()).get(GUEST_LANG_COOKIE)?.value;
+  if (isGuestLang(lc)) return lc;
+  return /^si\b/i.test((await headers()).get('accept-language') ?? '') ? 'si' : 'en';
+});
+
+/** Guest translator for server components that have no site key (shared pieces, not-found). */
+export async function guestT(): Promise<GuestTranslator> {
+  return makeGuestT(await guestLang());
+}
+
 /** Per-request site context; memoised so layout and page share one fetch. */
 export const siteContext = cache(async (rawSite: string): Promise<SiteContext> => {
   const site = decodeURIComponent(rawSite);
@@ -36,9 +48,7 @@ export const siteContext = cache(async (rawSite: string): Promise<SiteContext> =
   const base = h.get('x-sd-base') === '' ? '' : `/s/${encodeURIComponent(site)}`;
   const jar = await cookies();
   const c = jar.get(CURRENCY_COOKIE)?.value;
-  const lc = jar.get(GUEST_LANG_COOKIE)?.value;
-  // Chosen language, else a browser set to Sinhala, else English.
-  const lang: GuestLang = isGuestLang(lc) ? lc : /^si\b/i.test(h.get('accept-language') ?? '') ? 'si' : 'en';
+  const lang = await guestLang();
   const currency: Currency = isCurrency(c) ? c : (guessCurrency(h) ?? (isCurrency(property.baseCurrency) ? property.baseCurrency : 'USD'));
   // proxy.ts only sets the header when previews are allowed and strips any copy sent by the client.
   const preview = h.get(PREVIEW_THEME_HEADER);
@@ -71,12 +81,18 @@ export function siteThemeCss(p: PublicProperty, theme: GuestTheme): string {
   );
 }
 
-/** "Usually replies within …" from the median first-reply time. */
-export function responseTimeText(minutes: number | null): string | null {
+/** "Usually replies within …" from the median first-reply time, in the guest's language. */
+export function responseTimeText(minutes: number | null, t: GuestTranslator): string | null {
   if (minutes == null) return null;
-  if (minutes <= 15) return 'Usually replies within 15 minutes';
-  if (minutes <= 60) return 'Usually replies within an hour';
-  if (minutes <= 180) return 'Usually replies within a few hours';
-  if (minutes <= 24 * 60) return 'Usually replies within a day';
+  if (minutes <= 15) return t('home.reply15');
+  if (minutes <= 60) return t('home.replyHour');
+  if (minutes <= 180) return t('home.replyFew');
+  if (minutes <= 24 * 60) return t('home.replyDay');
   return null;
+}
+
+/** Property type in the guest's language ("Villa", "විලා"). */
+export function propertyTypeLabel(type: string, t: GuestTranslator): string {
+  const key = ['villa', 'guesthouse', 'homestay', 'surf_camp', 'boutique_hotel', 'bungalow'].includes(type) ? type : 'stay';
+  return t(`home.types.${key}` as Parameters<GuestTranslator>[0]);
 }

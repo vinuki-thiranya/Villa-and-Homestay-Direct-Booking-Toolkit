@@ -136,4 +136,16 @@ void main() {
       expect(c.lang, 'si');
     });
   });
+
+  test('Sinhala keeps the English colours in light and dark; only the type changes', () {
+    for (final b in Brightness.values) {
+      final en = appTheme(b);
+      final si = appTheme(b, sinhala: true);
+      expect(si.colorScheme, en.colorScheme);
+      expect(si.extensions.values.length, en.extensions.values.length); // status colours only, no ornament palette
+      expect(si.textTheme.titleLarge?.fontFamily, 'AbhayaLibre');
+      expect(si.textTheme.bodyMedium?.fontFamily, 'NotoSansSinhala');
+      expect(si.textTheme.titleLarge?.color, en.textTheme.titleLarge?.color);
+    }
+  });
 }

@@ -39,7 +39,9 @@ export function GuestLanguageSwitch() {
       aria-label={other === 'si' ? 'සිංහලෙන් පෙන්වන්න (Show in Sinhala)' : 'Show in English (ඉංග්‍රීසියෙන් පෙන්වන්න)'}
     >
       <Languages aria-hidden className="h-4 w-4" />
-      {other === 'si' ? 'සිං' : 'EN'}
+      {/* System font, not the web font: two Sinhala letters on an English page must not download a
+          127 KB Sinhala font (phones and desktops all ship one). */}
+      <span style={{ fontFamily: 'system-ui, sans-serif' }}>{other === 'si' ? 'සිං' : 'EN'}</span>
     </button>
   );
 }

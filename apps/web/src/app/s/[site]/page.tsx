@@ -7,23 +7,19 @@ import { RoomCard } from '@/components/guest/RoomCard';
 import { StickyBookBar } from '@/components/guest/StickyBookBar';
 import { Stars } from '@/components/Stars';
 import { getSiteReviews } from '@/lib/api';
-import { displayPrice, fmtDate, PROPERTY_TYPE_LABEL } from '@/lib/format';
-import { canonicalUrl, fromRate, responseTimeText, siteContext } from '@/lib/site';
+import { displayPrice } from '@/lib/format';
+import { canonicalUrl, fromRate, propertyTypeLabel, responseTimeText, siteContext } from '@/lib/site';
 
-const POLICY_SHORT: Record<string, string> = {
-  flexible: 'Free cancellation up to 7 days before arrival',
-  moderate: 'Half refunded up to 14 days before arrival',
-  strict: 'The deposit is non-refundable',
-};
+const POLICIES = ['flexible', 'moderate', 'strict'] as const;
 
 type Props = { params: Promise<{ site: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { site } = await params;
-  const { property: p } = await siteContext(site);
-  const type = PROPERTY_TYPE_LABEL[p.type] ?? 'Stay';
-  const title = `${p.name} — ${type} in ${p.area || 'Sri Lanka'} — book direct, best price`;
-  const description = `${type} in ${p.area || 'Sri Lanka'} with ${p.rooms.length} rooms. Book direct with ${p.name} for the best price and a smaller deposit.`;
+  const { property: p, t } = await siteContext(site);
+  const vars = { name: p.name, type: propertyTypeLabel(p.type, t), place: p.area || t('home.sriLanka'), rooms: p.rooms.length };
+  const title = t('home.metaTitle', vars);
+  const description = t('home.metaDescription', vars);
   return {
     title,
     description,
@@ -34,12 +30,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SiteHome({ params }: Props) {
   const { site } = await params;
-  const { property: p, base, currency, siteKey, theme } = await siteContext(site);
+  const { property: p, base, currency, siteKey, theme, t } = await siteContext(site);
   const reviews = await getSiteReviews(siteKey);
   const from = fromRate(p);
   const fromPrice = from != null ? displayPrice(from, p.baseCurrency, currency, p.fx) : null;
-  const type = PROPERTY_TYPE_LABEL[p.type] ?? 'Stay';
-  const reply = responseTimeText(p.responseMinutes);
+  const type = propertyTypeLabel(p.type, t);
+  const reply = responseTimeText(p.responseMinutes, t);
+  const policy = (POLICIES as readonly string[]).includes(p.defaultCancellationPolicy) ? (p.defaultCancellationPolicy as (typeof POLICIES)[number]) : 'moderate';
   const rating = p.reviewSummary.average;
 
   const jsonLd = {
@@ -81,16 +78,14 @@ export default async function SiteHome({ params }: Props) {
       <Hero p={p} theme={theme.key} base={base} siteKey={siteKey} typeLabel={type} fromPrice={fromPrice} />
 
       {/* Why book here, answered before anyone scrolls far: reviews, registration, a real host, the money. */}
-      <section aria-label="Why book direct" className="mx-auto max-w-6xl px-4 pt-8">
+      <section aria-label={t('home.whyDirect')} className="mx-auto max-w-6xl px-4 pt-8">
         <ul className="grid grid-cols-2 gap-x-4 gap-y-5 text-sm md:grid-cols-4 [&_strong]:text-[0.95rem] [&_strong]:leading-snug">
           {rating != null && p.reviewSummary.count > 0 && (
             <li className="flex gap-3">
               <Star aria-hidden className="mt-0.5 h-5 w-5 shrink-0 fill-accent text-accent" />
               <a href="#reviews" className="hover:underline">
-                <strong className="block text-base tabular-nums">{Number(rating).toFixed(1)} out of 5</strong>
-                <span className="text-muted">
-                  from {p.reviewSummary.count} guest review{p.reviewSummary.count === 1 ? '' : 's'}
-                </span>
+                <strong className="block text-base tabular-nums">{t('home.ratingOutOf', { rating: Number(rating).toFixed(1) })}</strong>
+                <span className="text-muted">{t.n('home.ratingFrom', p.reviewSummary.count)}</span>
               </a>
             </li>
           )}
@@ -98,23 +93,23 @@ export default async function SiteHome({ params }: Props) {
             <li className="flex gap-3">
               <BadgeCheck aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
               <span>
-                <strong className="block text-base">SLTDA registered</strong>
-                <span className="text-muted">Licence {p.sltdaNumber}</span>
+                <strong className="block text-base">{t('home.sltdaRegistered')}</strong>
+                <span className="text-muted">{t('home.licence', { number: p.sltdaNumber })}</span>
               </span>
             </li>
           )}
           <li className="flex gap-3">
             <MessageCircle aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
             <span>
-              <strong className="block text-base">{p.hostName ? `${p.hostName} hosts` : 'Talk to the host'}</strong>
-              <span className="text-muted">{reply ?? 'Ask anything on WhatsApp'}</span>
+              <strong className="block text-base">{p.hostName ? t('home.hostHosts', { host: p.hostName }) : t('home.talkToHost')}</strong>
+              <span className="text-muted">{reply ?? t('home.askWhatsapp')}</span>
             </span>
           </li>
           <li className="flex gap-3">
             <ShieldCheck aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
             <span>
-              <strong className="block text-base">Pay {p.defaultDepositPct}% to book</strong>
-              <span className="text-muted">{POLICY_SHORT[p.defaultCancellationPolicy]}</span>
+              <strong className="block text-base">{t('home.payToBook', { pct: p.defaultDepositPct })}</strong>
+              <span className="text-muted">{t(`home.policyShort.${policy}`)}</span>
             </span>
           </li>
         </ul>
@@ -123,11 +118,11 @@ export default async function SiteHome({ params }: Props) {
       <section className="mx-auto max-w-6xl px-4 py-14" aria-labelledby="about">
         <div className="max-w-2xl">
           <h2 id="about" className="g-display text-3xl sm:text-4xl">
-            Welcome to {p.name}
+            {t('home.welcome', { name: p.name })}
           </h2>
           <p className="mt-4 whitespace-pre-line text-[1.0625rem] leading-relaxed text-muted">{p.description}</p>
           <Link href={`${base}/location`} className="mt-4 inline-block font-medium text-brand underline underline-offset-4">
-            How to get to {p.area || 'us'}
+            {p.area ? t('home.howToGet', { place: p.area }) : t('home.howToGetUs')}
           </Link>
         </div>
       </section>
@@ -135,11 +130,11 @@ export default async function SiteHome({ params }: Props) {
       <section className="mx-auto max-w-6xl px-4 pb-14" aria-labelledby="rooms">
         <div className="flex items-end justify-between gap-4">
           <h2 id="rooms" className="g-display text-3xl sm:text-4xl">
-            {p.rooms.length === 1 ? 'The room' : 'Rooms'}
+            {p.rooms.length === 1 ? t('home.theRoom') : t('home.rooms')}
           </h2>
           {p.rooms.length > 3 && (
             <Link href={`${base}/rooms`} className="text-sm font-medium text-brand underline-offset-4 hover:underline">
-              See all {p.rooms.length} rooms
+              {t('home.seeAllRooms', { n: p.rooms.length })}
             </Link>
           )}
         </div>
@@ -154,14 +149,12 @@ export default async function SiteHome({ params }: Props) {
         <section className="pb-14" aria-labelledby="reviews">
           <div className="mx-auto flex max-w-6xl flex-wrap items-end gap-x-4 gap-y-1 px-4">
             <h2 id="reviews" className="g-display text-3xl sm:text-4xl">
-              What guests say
+              {t('home.whatGuestsSay')}
             </h2>
             {reviews.average != null && (
               <p className="flex items-center gap-2 pb-1 text-sm text-muted">
                 <Stars rating={Math.round(reviews.average)} />
-                <span>
-                  {Number(reviews.average).toFixed(1)} from {reviews.count} review{reviews.count === 1 ? '' : 's'}
-                </span>
+                <span>{t.n('home.reviewsSummary', reviews.count, { avg: Number(reviews.average).toFixed(1) })}</span>
               </p>
             )}
           </div>
@@ -172,9 +165,9 @@ export default async function SiteHome({ params }: Props) {
                 <Stars rating={r.rating} />
                 {r.body && <p className="mt-3 line-clamp-6 leading-relaxed">“{r.body}”</p>}
                 <p className="mt-3 text-sm text-muted">
-                  {r.guestName}, {fmtDate(r.createdAt)}
+                  {r.guestName}, {t.date(r.createdAt)}
                 </p>
-                {r.ownerReply && <p className="mt-3 rounded-lg bg-surface-2 p-3 text-sm">Host reply: {r.ownerReply}</p>}
+                {r.ownerReply && <p className="mt-3 rounded-lg bg-surface-2 p-3 text-sm">{t('home.hostReply', { text: r.ownerReply })}</p>}
               </li>
             ))}
           </ul>
@@ -186,7 +179,7 @@ export default async function SiteHome({ params }: Props) {
           <div className="mx-auto flex max-w-6xl items-center gap-5 px-4 py-12">
             <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-brand/15">
               {p.hostPhotoUrl ? (
-                <Image src={p.hostPhotoUrl} alt={`${p.hostName}, your host`} fill sizes="80px" className="object-cover" />
+                <Image src={p.hostPhotoUrl} alt={t('home.hostPhotoAlt', { host: p.hostName })} fill sizes="80px" className="object-cover" />
               ) : (
                 <span aria-hidden className="g-display flex h-full items-center justify-center text-3xl text-brand">
                   {p.hostName.slice(0, 1)}
@@ -195,10 +188,10 @@ export default async function SiteHome({ params }: Props) {
             </div>
             <div>
               <h2 id="host" className="g-display text-2xl">
-                Your host, {p.hostName}
+                {t('home.yourHost', { host: p.hostName })}
               </h2>
               <p className="mt-1 text-muted">
-                {reply ? `${reply} on WhatsApp.` : 'Message on WhatsApp with any question before you book.'}
+                {reply ? t('home.replyOnWhatsapp', { reply }) : t('home.messageBeforeBook')}
               </p>
             </div>
           </div>
@@ -206,7 +199,12 @@ export default async function SiteHome({ params }: Props) {
       )}
 
       {!p.bookingDisabled && (
-        <StickyBookBar href={`${base}/book`} price={fromPrice ? `${fromPrice.approx ? '≈ ' : ''}${fromPrice.text}` : null} />
+        <StickyBookBar
+          href={`${base}/book`}
+          price={fromPrice ? `${fromPrice.approx ? '≈ ' : ''}${fromPrice.text}` : null}
+          note={t('home.bookbarFrom')}
+          label={t('home.checkDates')}
+        />
       )}
     </>
   );

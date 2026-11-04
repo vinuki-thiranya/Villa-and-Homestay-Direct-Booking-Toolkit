@@ -13,9 +13,12 @@ import type {
 } from '@staydirect/shared';
 import { ClientApiError, publicApi } from '@/lib/client-api';
 import { addDaysIso } from '@/lib/calendar';
-import { fmtDate, formatMoney, METHOD_LABEL, nightsLabel } from '@/lib/format';
-import { COUNTRIES, LANGUAGES, POLICY_TEXT, violationText } from '@/lib/guest-copy';
+import { formatMoney } from '@/lib/format';
+import { countryOptions, LANGUAGES, policyText, violationText } from '@/lib/guest-copy';
+import type { GuestTranslator } from '@/i18n/guest/t';
+import { useGT } from './GuestI18n';
 import { GuestMotion } from './GuestMotion';
+import { rich } from './rich';
 import { StayDates } from './StayDates';
 import { Steps } from './Steps';
 
@@ -44,8 +47,14 @@ function balanceDue(from: string, policy: string): string {
   return due < todayIso() ? todayIso() : due;
 }
 
+/** Payment method names for the hold note: brand names as they are, bank transfer translated. */
+function methodName(t: GuestTranslator, m: PaymentMethod): string {
+  return { payhere: 'PayHere', paypal: 'PayPal', lankaqr: 'LankaQR', bank: t('pay.options.sri_lanka.bank.title'), cash: '' }[m];
+}
+
 export function BookFlow({ site, base, currency, property, initial, initialResult }: Props) {
   const router = useRouter();
+  const t = useGT();
   const [from, setFrom] = useState(initial.from ?? '');
   const [to, setTo] = useState(initial.to ?? '');
   const [guests, setGuests] = useState(initial.guests);
@@ -62,16 +71,16 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
   const maxGuests = Math.max(1, ...property.rooms.map((r) => r.maxGuests));
 
   const search = useCallback(
-    async (f: string, t: string, g: number) => {
-      if (!f || !t) return;
-      if (t <= f) {
-        setError('Check-out must be after check-in.');
+    async (f: string, until: string, g: number) => {
+      if (!f || !until) return;
+      if (until <= f) {
+        setError(t('book.errors.datesOrder'));
         return;
       }
       setLoading(true);
       setError(null);
       try {
-        const qs = new URLSearchParams({ from: f, to: t, guests: String(g), currency });
+        const qs = new URLSearchParams({ from: f, to: until, guests: String(g), currency });
         if (promo) qs.set('code', promo.code); // quotes then include the discount
         const res = await publicApi<AvailabilityResult>(`/public/sites/${encodeURIComponent(site)}/availability?${qs}`);
         setResult(res);
@@ -79,16 +88,16 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
         setSelected((prev) => res.rooms.find((r) => r.roomId === (prev ?? initial.roomId) && r.available)?.roomId ?? null);
         const url = new URL(window.location.href);
         url.searchParams.set('from', f);
-        url.searchParams.set('to', t);
+        url.searchParams.set('to', until);
         url.searchParams.set('guests', String(g));
         window.history.replaceState(null, '', url);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not check availability. Please try again.');
+        setError(err instanceof Error ? err.message : t('book.errors.search'));
       } finally {
         setLoading(false);
       }
     },
-    [site, currency, initial.roomId, promo],
+    [site, currency, initial.roomId, promo, t],
   );
 
   // Re-price the current search when a code is applied or removed.
@@ -115,10 +124,10 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
         setPromo(await publicApi<{ code: string; pct: number }>(`/public/sites/${encodeURIComponent(site)}/discount-codes/${encodeURIComponent(c)}`));
       } catch (err) {
         setPromo(null);
-        setCodeMsg(err instanceof ClientApiError && err.status === 422 ? 'That code is not valid or has expired.' : 'Could not check the code. Try again.');
+        setCodeMsg(err instanceof ClientApiError && err.status === 422 ? t('book.code.invalid') : t('book.code.checkFailed'));
       }
     },
-    [site],
+    [site, t],
   );
 
   useEffect(() => {
@@ -154,7 +163,7 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
             email: String(fd.get('email') ?? ''),
             phone: String(fd.get('phone') ?? ''),
             country: String(fd.get('country') ?? ''),
-            language: String(fd.get('language') ?? 'en'),
+            language: String(fd.get('language') ?? t.lang),
           },
           specialRequests: String(fd.get('requests') ?? ''),
           displayCurrency: currency,
@@ -166,22 +175,22 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
     } catch (err) {
       setSubmitting(false);
       if (err instanceof ClientApiError && err.status === 409) {
-        setError('Sorry — those nights were just booked by someone else. Here is what is still free.');
+        setError(t('book.errors.taken'));
         void search(from, to, guests);
         return;
       }
       if (err instanceof ClientApiError && err.status === 422 && err.body?.code === 'invalid_discount_code') {
         setPromo(null);
-        setCodeMsg('That code is no longer valid — remove it or try another.');
-        setError('The discount code was not accepted. Nothing was booked yet.');
+        setCodeMsg(t('book.code.noLongerValid'));
+        setError(t('book.errors.codeRefused'));
         return;
       }
       if (err instanceof ClientApiError && err.status === 422) {
         const v = (err.body?.violations as string[] | undefined) ?? [];
-        setError(v.length ? v.map((x) => violationText(x, choice.quote?.minNights)).join('. ') : err.message);
+        setError(v.length ? v.map((x) => violationText(t, x, choice.quote?.minNights)).join('. ') : err.message);
         return;
       }
-      setError(err instanceof Error ? err.message : 'Booking failed. Please try again.');
+      setError(err instanceof Error ? err.message : t('book.errors.failed'));
     }
   }
 
@@ -209,7 +218,7 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
         />
         <div>
           <label htmlFor="bf-guests" className="label">
-            Guests
+            {t('book.guests')}
           </label>
           <select id="bf-guests" value={guests} onChange={(e) => setGuests(Number(e.target.value))} className="field">
             {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
@@ -220,7 +229,7 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
           </select>
         </div>
         <button type="submit" className="g-cta h-11" disabled={loading}>
-          {loading ? 'Checking…' : result ? 'Update' : 'See prices'}
+          {loading ? t('book.checking') : result ? t('book.update') : t('book.seePrices')}
         </button>
       </form>
 
@@ -243,10 +252,10 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
           aria-busy={loading}
         >
           <h2 id="choose" className="text-lg font-semibold">
-            Choose a room · {nightsLabel(result.rooms[0]?.quote?.nightCount ?? 0)}
+            {t('book.choose', { nights: t.n('common.nights', result.rooms[0]?.quote?.nightCount ?? 0) })}
           </h2>
           {result.rooms.every((r) => !r.available) && (
-            <p className="mt-2 text-sm text-muted">Nothing is free for these dates. Try moving your dates by a day or two.</p>
+            <p className="mt-2 text-sm text-muted">{t('book.nothingFree')}</p>
           )}
           <ul className="mt-4 grid gap-4 sm:grid-cols-2">
             {result.rooms.map((ra) => {
@@ -291,39 +300,39 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
             }}
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Your details</h2>
+              <h2 className="text-lg font-semibold">{t('book.details.title')}</h2>
               <button type="button" className="text-sm font-medium text-brand underline-offset-2 hover:underline" onClick={() => setSelected(null)}>
-                Change room
+                {t('book.details.changeRoom')}
               </button>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label htmlFor="g-name" className="label">
-                  Full name
+                  {t('book.details.name')}
                 </label>
                 <input id="g-name" name="name" required minLength={2} autoComplete="name" className="field" />
               </div>
               <div>
                 <label htmlFor="g-email" className="label">
-                  Email
+                  {t('book.details.email')}
                 </label>
                 <input id="g-email" name="email" type="email" required autoComplete="email" className="field" />
               </div>
               <div>
                 <label htmlFor="g-phone" className="label">
-                  WhatsApp / phone
+                  {t('book.details.phone')}
                 </label>
                 <input id="g-phone" name="phone" type="tel" required autoComplete="tel" placeholder="+44 7700 900123" className="field" />
               </div>
               <div>
                 <label htmlFor="g-country" className="label">
-                  Country
+                  {t('book.details.country')}
                 </label>
                 <select id="g-country" name="country" required defaultValue="" className="field" autoComplete="country">
                   <option value="" disabled>
-                    Select…
+                    {t('book.details.select')}
                   </option>
-                  {COUNTRIES.map(([code, name]) => (
+                  {countryOptions(t.lang).map(([code, name]) => (
                     <option key={code} value={code}>
                       {name}
                     </option>
@@ -332,9 +341,11 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
               </div>
               <div>
                 <label htmlFor="g-lang" className="label">
-                  Messages in
+                  {t('book.details.messagesIn')}
                 </label>
-                <select id="g-lang" name="language" defaultValue="en" className="field">
+                {/* Defaults to the language the guest is reading the site in. */}
+                {/* System font: the language names (සිංහල, हिन्दी) must not pull web fonts into English pages. */}
+                <select id="g-lang" name="language" defaultValue={t.lang} className="field" style={t.lang === 'si' ? undefined : { fontFamily: 'system-ui, sans-serif' }}>
                   {LANGUAGES.map(([code, name]) => (
                     <option key={code} value={code}>
                       {name}
@@ -344,14 +355,14 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor="g-req" className="label">
-                  Special requests <span className="font-normal text-muted">(optional)</span>
+                  {t('book.details.requests')} <span className="font-normal text-muted">{t('book.details.optional')}</span>
                 </label>
-                <textarea id="g-req" name="requests" rows={3} maxLength={1000} className="field py-2" placeholder="Arrival time, airport pickup, dietary needs…" />
+                <textarea id="g-req" name="requests" rows={3} maxLength={1000} className="field py-2" placeholder={t('book.details.requestsHint')} />
               </div>
             </div>
             <div>
               <label htmlFor="g-code" className="label">
-                Discount code <span className="font-normal text-muted">(optional)</span>
+                {t('book.code.label')} <span className="font-normal text-muted">{t('book.details.optional')}</span>
               </label>
               <div className="flex gap-2">
                 <input
@@ -364,43 +375,39 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
                   aria-describedby="g-code-msg"
                 />
                 <button type="button" className="btn-secondary shrink-0" onClick={() => void applyCode(code)}>
-                  Apply
+                  {t('book.code.apply')}
                 </button>
               </div>
               <p id="g-code-msg" aria-live="polite" className={`mt-1 text-sm ${promo ? 'text-ok' : 'text-bad'}`}>
-                {promo ? `${promo.code}: ${promo.pct}% off your stay.` : codeMsg}
+                {promo ? t('book.code.applied', { code: promo.code, pct: promo.pct }) : codeMsg}
               </p>
             </div>
             <div className="rounded-card bg-surface-2 p-4 text-sm">
-              <p className="font-semibold">What you pay and when</p>
+              <p className="font-semibold">{t('book.money.title')}</p>
               <p className="mt-1">
-                {choice.quote.deposit >= choice.quote.total ? (
-                  <>
-                    You pay the full <strong>{formatMoney(choice.quote.total, result!.baseCurrency)}</strong> now.
-                  </>
-                ) : (
-                  <>
-                    You pay <strong>{formatMoney(choice.quote.deposit, result!.baseCurrency)}</strong> now ({choice.quote.depositPct}%). The rest,{' '}
-                    <strong>{formatMoney(Math.round((choice.quote.total - choice.quote.deposit) * 100) / 100, result!.baseCurrency)}</strong>, is due by{' '}
-                    {fmtDate(balanceDue(from, choice.quote.cancellationPolicy))}.
-                  </>
-                )}
+                {choice.quote.deposit >= choice.quote.total
+                  ? rich(t('book.money.full'), { total: <strong>{formatMoney(choice.quote.total, result!.baseCurrency)}</strong> })
+                  : rich(t('book.money.split'), {
+                      deposit: <strong>{formatMoney(choice.quote.deposit, result!.baseCurrency)}</strong>,
+                      pct: choice.quote.depositPct,
+                      rest: <strong>{formatMoney(Math.round((choice.quote.total - choice.quote.deposit) * 100) / 100, result!.baseCurrency)}</strong>,
+                      date: t.date(balanceDue(from, choice.quote.cancellationPolicy)),
+                    })}
               </p>
-              <p className="mt-3 font-semibold">Cancellation policy</p>
-              <p className="mt-1 text-muted">{POLICY_TEXT[choice.quote.cancellationPolicy]}</p>
+              <p className="mt-3 font-semibold">{t('policy.title')}</p>
+              <p className="mt-1 text-muted">{policyText(t, choice.quote.cancellationPolicy)}</p>
               <label className="mt-3 flex items-start gap-2">
                 <input type="checkbox" name="accept" required className="mt-1 h-4 w-4 accent-[var(--brand)]" />
-                <span>
-                  I accept the cancellation policy and agree to pay a {choice.quote.depositPct}% deposit now.
-                </span>
+                <span>{t('book.money.accept', { pct: choice.quote.depositPct })}</span>
               </label>
             </div>
-            <button type="submit" className="g-cta w-full" disabled={submitting}>
-              {submitting ? 'Holding your room…' : 'Continue to payment'}
+            <button type="submit" className="g-cta w-full" disabled={submitting} data-testid="continue-to-pay">
+              {submitting ? t('book.holding') : t('book.continue')}
             </button>
             <p className="text-center text-xs text-muted">
-              Your room is held for 15 minutes while you pay
-              {property.paymentMethods.length ? ` by ${property.paymentMethods.map((m) => METHOD_LABEL[m]).join(', ')}` : ''}.
+              {property.paymentMethods.length
+                ? t('book.heldNoteMethods', { methods: property.paymentMethods.map((m) => methodName(t, m)).filter(Boolean).join(', ') })
+                : t('book.heldNote')}
             </p>
           </form>
           <div className="hidden lg:block">
@@ -415,6 +422,7 @@ export function BookFlow({ site, base, currency, property, initial, initialResul
 }
 
 function RoomOption({ room, ra, baseCurrency, onSelect }: { room: PublicRoom; ra: RoomAvailability; baseCurrency: string; onSelect: () => void }) {
+  const t = useGT();
   const d = ra.display;
   const approx = d && d.currency !== baseCurrency;
   return (
@@ -425,27 +433,27 @@ function RoomOption({ room, ra, baseCurrency, onSelect }: { room: PublicRoom; ra
       <div className="flex min-w-0 flex-1 flex-col">
         <p className="font-semibold">{room.name}</p>
         <p className="text-xs text-muted">
-          Sleeps {room.maxGuests}
+          {t('book.room.sleeps', { n: room.maxGuests })}
           {room.beds ? `, ${room.beds}` : ''}
         </p>
         {ra.available && d ? (
           <div className="mt-auto flex items-end justify-between gap-2 pt-2">
             <p className="text-sm">
-              <span className="text-lg font-semibold">
+              <span className="whitespace-nowrap text-lg font-semibold">
                 {approx && '≈ '}
                 {formatMoney(d.total, d.currency)}
               </span>
               <span className="block text-xs text-muted">
-                {formatMoney(d.deposit, d.currency)} deposit
-                {ra.quote?.discountLabel ? ` · ${ra.quote.discountLabel}` : ''}
+                {t('book.room.deposit', { amount: formatMoney(d.deposit, d.currency) })}
+                {ra.quote?.discountLabel ? `, ${ra.quote.discountLabel}` : ''}
               </span>
             </p>
-            <button type="button" className="g-cta min-h-10 px-4" onClick={onSelect} aria-label={`Choose ${room.name}`}>
-              Choose
+            <button type="button" className="g-cta min-h-10 px-4" onClick={onSelect} aria-label={t('book.room.chooseLabel', { room: room.name })} data-testid="choose-room">
+              {t('book.room.choose')}
             </button>
           </div>
         ) : (
-          <p className="mt-auto pt-2 text-sm font-medium text-bad">{ra.violations.map((v) => violationText(v, ra.quote?.minNights)).join('. ')}</p>
+          <p className="mt-auto pt-2 text-sm font-medium text-bad">{ra.violations.map((v) => violationText(t, v, ra.quote?.minNights)).join('. ')}</p>
         )}
       </div>
     </div>
@@ -472,29 +480,29 @@ function Summary({
   /** Phones: a one-line total that opens to the full breakdown. */
   collapsible?: boolean;
 }) {
+  const t = useGT();
   const q = ra.quote!;
   const d = ra.display;
   const showDisplay = d && d.currency !== baseCurrency;
+  const nights = t.n('common.nights', q.nightCount);
   if (collapsible) {
     return (
       <details className="card text-sm">
         <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 [&::-webkit-details-marker]:hidden">
           <span>
             <span className="block font-semibold">{room.name}</span>
-            <span className="text-muted">
-              {fmtDate(from)} to {fmtDate(to)}, {nightsLabel(q.nightCount)}
-            </span>
+            <span className="text-muted">{t('book.summary.dates', { from: t.date(from), to: t.date(to), nights })}</span>
           </span>
           <span className="text-right">
             <span className="block font-semibold tabular-nums">{formatMoney(q.total, baseCurrency)}</span>
-            <span className="text-xs text-brand underline underline-offset-2">Details</span>
+            <span className="text-xs text-brand underline underline-offset-2">{t('book.summary.details')}</span>
           </span>
         </summary>
         <div className="border-t border-line px-4 pb-4">
           <Lines q={q} baseCurrency={baseCurrency} promo={promo} />
           {showDisplay && (
             <p className="mt-2 text-xs text-muted">
-              ≈ {formatMoney(d.total, d.currency)} total, {formatMoney(d.deposit, d.currency)} deposit.
+              {t('book.summary.approx', { total: formatMoney(d.total, d.currency), deposit: formatMoney(d.deposit, d.currency) })}
             </p>
           )}
         </div>
@@ -502,20 +510,18 @@ function Summary({
     );
   }
   return (
-    <aside className="card h-fit space-y-3 p-5 text-sm lg:sticky lg:top-24" aria-label="Price summary">
+    <aside className="card h-fit space-y-3 p-5 text-sm lg:sticky lg:top-24" aria-label={t('book.summary.label')}>
       <p className="text-base font-semibold">{room.name}</p>
-      <p className="text-muted">
-        {fmtDate(from)} to {fmtDate(to)}, {nightsLabel(q.nightCount)}, {guests} guest{guests === 1 ? '' : 's'}
-      </p>
+      <p className="text-muted">{t('book.summary.datesGuests', { from: t.date(from), to: t.date(to), nights, guests: t.n('common.guests', guests) })}</p>
       <Lines q={q} baseCurrency={baseCurrency} promo={promo} />
       {promo && q.promoDiscount > 0 && (
         <p className="rounded-xl bg-ok-bg p-3 text-ok">
-          Code {promo.code} applied: you save {formatMoney(q.promoDiscount, baseCurrency)}.
+          {t('book.code.saved', { code: promo.code, amount: formatMoney(q.promoDiscount, baseCurrency) })}
         </p>
       )}
       {showDisplay && (
         <p className="text-xs text-muted">
-          ≈ {formatMoney(d.total, d.currency)} total, {formatMoney(d.deposit, d.currency)} deposit. The exact charge currency is shown before you pay.
+          {t('book.summary.approxNote', { total: formatMoney(d.total, d.currency), deposit: formatMoney(d.deposit, d.currency) })}
         </p>
       )}
     </aside>
@@ -523,15 +529,16 @@ function Summary({
 }
 
 function Lines({ q, baseCurrency, promo }: { q: NonNullable<RoomAvailability['quote']>; baseCurrency: string; promo: { code: string; pct: number } | null }) {
+  const t = useGT();
   return (
     <dl className="space-y-1.5 border-t border-line pt-3">
-      <Row label="Room" value={formatMoney(q.roomSubtotal, baseCurrency)} />
-      {q.extraGuestTotal > 0 && <Row label="Extra guests" value={formatMoney(q.extraGuestTotal, baseCurrency)} />}
-      {q.discount > 0 && <Row label={q.discountLabel ?? 'Discount'} value={`− ${formatMoney(q.discount, baseCurrency)}`} />}
-      {q.promoDiscount > 0 && <Row label={`Code ${promo?.code ?? ''} (${promo?.pct ?? ''}%)`} value={`− ${formatMoney(q.promoDiscount, baseCurrency)}`} />}
-      {q.taxes > 0 && <Row label="Taxes" value={formatMoney(q.taxes, baseCurrency)} />}
-      <Row label="Total" value={formatMoney(q.total, baseCurrency)} strong />
-      <Row label={`Deposit due now (${q.depositPct}%)`} value={formatMoney(q.deposit, baseCurrency)} strong />
+      <Row label={t('book.summary.room')} value={formatMoney(q.roomSubtotal, baseCurrency)} />
+      {q.extraGuestTotal > 0 && <Row label={t('book.summary.extraGuests')} value={formatMoney(q.extraGuestTotal, baseCurrency)} />}
+      {q.discount > 0 && <Row label={q.discountLabel ?? t('book.summary.discount')} value={`− ${formatMoney(q.discount, baseCurrency)}`} />}
+      {q.promoDiscount > 0 && <Row label={t('book.summary.code', { code: promo?.code ?? '', pct: promo?.pct ?? '' })} value={`− ${formatMoney(q.promoDiscount, baseCurrency)}`} />}
+      {q.taxes > 0 && <Row label={t('book.summary.taxes')} value={formatMoney(q.taxes, baseCurrency)} />}
+      <Row label={t('book.summary.total')} value={formatMoney(q.total, baseCurrency)} strong />
+      <Row label={t('book.summary.depositNow', { pct: q.depositPct })} value={formatMoney(q.deposit, baseCurrency)} strong />
     </dl>
   );
 }

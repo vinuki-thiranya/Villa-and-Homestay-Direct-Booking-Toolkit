@@ -11,15 +11,15 @@ type Props = {
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { property: p } = await siteContext((await params).site);
-  return { title: `Book ${p.name} — best price direct`, robots: { index: false } };
+  const { property: p, t } = await siteContext((await params).site);
+  return { title: t('book.metaTitle', { property: p.name }), robots: { index: false } };
 }
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 export default async function BookPage({ params, searchParams }: Props) {
-  const { property: p, base, currency, siteKey } = await siteContext((await params).site);
+  const { property: p, base, currency, siteKey, t } = await siteContext((await params).site);
   const q = await searchParams;
   const from = one(q.from);
   const to = one(q.to);
@@ -43,7 +43,7 @@ export default async function BookPage({ params, searchParams }: Props) {
   }
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="g-display text-4xl">Book your stay</h1>
+      <h1 className="g-display text-4xl">{t('book.title')}</h1>
       <BookFlow
         site={siteKey}
         base={base}

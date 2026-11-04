@@ -3,6 +3,8 @@ import { contrastChecks, resolvePalette, themeCss, THEME_KEYS, THEMES, type Them
 import { approxIn } from './format';
 import { canCheckIn, canCheckOut, monthGrid, monthsFrom, pick, selectable } from './calendar';
 import { currencyForCountry, guessCurrency, regionForCurrency, regionFromAcceptLanguage } from './guest-locale';
+import { makeGuestT } from '@/i18n/guest/t';
+import { countryOptions, policyText, violationText } from './guest-copy';
 import { paymentGroups } from './payment-groups';
 
 const headers = (h: Record<string, string>) => ({ get: (k: string) => h[k.toLowerCase()] ?? null });
@@ -62,15 +64,20 @@ describe('payment groups', () => {
 
   it("puts the guest's own group first and keeps only connected methods", () => {
     expect(paymentGroups(all, regionForCurrency('INR')).map((g) => g.region)).toEqual(['india', 'abroad', 'sri_lanka']);
-    expect(paymentGroups(all, regionForCurrency('EUR'))[0]!.options.map((o) => o.method)).toEqual(['payhere', 'paypal', 'bank']);
+    expect(paymentGroups(all, regionForCurrency('EUR'))[0]!.methods).toEqual(['payhere', 'paypal', 'bank']);
     expect(paymentGroups(['paypal'], 'sri_lanka').map((g) => g.region)).toEqual(['abroad']);
     expect(paymentGroups([], 'abroad')).toEqual([]);
   });
 
-  it('names UPI for Indian guests and wallets for Sri Lankan guests', () => {
+  it('names UPI for Indian guests and wallets for Sri Lankan guests, in English and Sinhala', () => {
     const groups = paymentGroups(all, 'india');
-    expect(groups.find((g) => g.region === 'india')!.options[0]).toMatchObject({ method: 'lankaqr', title: 'UPI' });
-    expect(groups.find((g) => g.region === 'sri_lanka')!.options[0]!.title).toContain('Genie');
+    expect(groups.find((g) => g.region === 'india')!.methods[0]).toBe('lankaqr');
+    const en = makeGuestT('en');
+    const si = makeGuestT('si');
+    expect(en('pay.options.india.lankaqr.title')).toBe('UPI');
+    expect(en('pay.options.sri_lanka.payhere.title')).toContain('Genie');
+    expect(si('pay.options.sri_lanka.payhere.title')).toContain('Genie');
+    expect(si('pay.groups.sri_lanka')).toBe('ශ්‍රී ලංකාවේ සිට ගෙවීම');
   });
 });
 
@@ -116,5 +123,17 @@ describe('approximate amounts on the pay step', () => {
     expect(approxIn(100, 'USD', { currency: 'USD', fx })).toBeNull();
     expect(approxIn(100, 'USD', null)).toBeNull();
     expect(approxIn(100, 'USD', { currency: 'EUR', fx })).toBeNull(); // no rate: no guess
+  });
+});
+
+describe('guest copy in Sinhala', () => {
+  it('translates policies, violations and country names', () => {
+    const si = makeGuestT('si');
+    expect(policyText(si, 'moderate')).toContain('50%');
+    expect(policyText(si, 'nonsense')).toBe('');
+    expect(violationText(si, 'min_nights', 3)).toContain('රාත්‍රී 3');
+    expect(violationText(makeGuestT('en'), 'whatever')).toBe('Not available');
+    expect(countryOptions('si').find(([c]) => c === 'LK')![1]).toBe('ශ්‍රී ලංකාව');
+    expect(countryOptions('en').find(([c]) => c === 'GB')![1]).toBe('United Kingdom');
   });
 });

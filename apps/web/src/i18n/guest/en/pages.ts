@@ -1,2 +1,66 @@
-// Guest site text: pages. Filled during the Sinhala translation (G1).
-export const pages = {};
+// Guest site text: experiences, location, contact, privacy and not-found pages.
+export const pages = {
+  experiences: {
+    metaTitle: 'Things to do in {place} — airport transfers, surf, safaris | {name}',
+    metaDescription: 'Book airport pickups, surf lessons, whale watching and safaris with {name} in {place}. Arranged with trusted local guides and drivers.',
+    title: 'Experiences & transfers',
+    intro: 'Arranged by {host} with drivers and guides we know personally. Book your stay first, then add these from your booking page or just ask us on WhatsApp.',
+    empty: 'Ask us on WhatsApp about transfers and day trips.',
+    bookYourStay: 'Book your stay',
+    categories: {
+      airport_pickup: 'Airport pickup',
+      driver: 'Driver',
+      tuk_tuk: 'Tuk-tuk',
+      surf_lesson: 'Surf',
+      whale_watching: 'Whale watching',
+      safari: 'Safari',
+      cooking_class: 'Cooking class',
+      laundry: 'Laundry',
+      bicycle: 'Bicycle',
+      other: 'Experience',
+    },
+  },
+  location: {
+    metaTitle: 'How to get to {name}, {place}',
+    metaDescription: 'Address, map and directions to {name} in {place}. Check-in from {in}, check-out by {out}.',
+    title: 'Location and how to get here',
+    mapTitle: 'Map of {name}',
+    mapSoon: 'Map coming soon.',
+    directions: 'Directions in Google Maps',
+    arrival: 'Arrival',
+    arrivalTimes: 'Check-in from {in}, check-out by {out}.',
+    arrivalHelp: 'Message the host on WhatsApp with your arrival time and we can arrange an airport or station pickup.',
+    houseRules: 'House rules',
+  },
+  contact: {
+    metaTitle: 'Contact {name}',
+    metaDescription: 'Message {name} on WhatsApp or by email about rooms, transfers and availability.',
+    title: 'Contact {name}',
+    fastest: 'The fastest way to reach {host} is WhatsApp.',
+    us: 'us',
+    whatsapp: 'WhatsApp',
+    email: 'Email',
+  },
+  privacy: {
+    metaTitle: 'Privacy notice — {name}',
+    title: 'Privacy notice',
+    controller:
+      "{name} ({address}) is the controller of the personal data you give when you book. The booking system is provided by {provider}, which processes the data on {name}'s behalf, on servers in Singapore.",
+    techProvider: 'a technology provider',
+    collectTitle: 'What we collect and why',
+    collect:
+      "Your name, email, phone number, country, preferred language, stay dates and any special requests — to take and manage your booking, send confirmations and arrival details, and meet Sri Lankan tourism registration rules. Card details are entered on the payment provider's page (PayHere or PayPal) and never reach us.",
+    keepTitle: 'How long we keep it',
+    keep: 'Messages are kept for 24 months. Your identity is anonymised 36 months after your last stay. Financial records are kept for 7 years as required by law.',
+    rightsTitle: 'Your rights',
+    rights:
+      "Under the EU GDPR and Sri Lanka's Personal Data Protection Act you may ask for a copy of your data, correct it, or have it deleted (except records we must keep by law). Contact {contact}{whatsapp}.",
+    theProperty: 'the property',
+    orWhatsapp: ' or WhatsApp {number}',
+  },
+  notFound: {
+    title: "We couldn't find that page",
+    body: 'The property or page may have moved.',
+    home: 'Go to the home page',
+  },
+};

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../main.dart';
-import '../sinhala.dart';
 import '../widgets.dart';
 
 /// Phone-OTP login (spec §5): phone number → 6-digit code by SMS.
@@ -94,7 +93,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       label: Text(locale.isSinhala ? l.languageEnglish : l.languageSinhala),
                     ),
                   ),
-                  const Center(child: SandakadaPahana()),
                   const SizedBox(height: 8),
                   Text('StayDirect', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),

@@ -7,13 +7,11 @@ import { X } from 'lucide-react';
 import type { SiteCalendar } from '@staydirect/shared';
 import { addDaysIso, monthGrid, monthsFrom, nightsIso, pick, selectable, type Range } from '@/lib/calendar';
 import { publicApi } from '@/lib/client-api';
-import { fmtDate, nightsLabel } from '@/lib/format';
 import { GuestMotion } from './GuestMotion';
+import { useGT } from './GuestI18n';
 
 const MONTHS = 12;
-const MONTH_FMT = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 const DAY_FMT = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 // Closed nights per site, shared by every picker on the page.
 const closedCache = new Map<string, Promise<Set<string>>>();
@@ -49,6 +47,7 @@ export default function RangeCalendar(props: RangeCalendarProps) {
 
 function Sheet({ site, value, focus, onClose, onChange }: RangeCalendarProps) {
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const t = useGT();
   const [closed, setClosed] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<Range>(focus === 'to' && value.from ? { from: value.from, to: null } : value);
@@ -120,10 +119,10 @@ function Sheet({ site, value, focus, onClose, onChange }: RangeCalendarProps) {
 
   const nights = range.from && range.to ? nightsIso(range.from, range.to) : 0;
   const status = !range.from
-    ? 'Choose your check-in date'
+    ? t('search.calChooseCheckIn')
     : !range.to
-      ? `Check-in ${fmtDate(range.from)}. Now choose check-out.`
-      : `${fmtDate(range.from)} to ${fmtDate(range.to)}, ${nightsLabel(nights)}`;
+      ? t('search.calChooseCheckOut', { date: t.date(range.from) })
+      : t('search.calRange', { from: t.date(range.from), to: t.date(range.to), nights: t.n('common.nights', nights) });
 
   // Portal to the site root: the search card's stacking context would otherwise trap the dialog under
   // the header and the WhatsApp button. Inside .g-site so the theme variables still apply.
@@ -152,26 +151,28 @@ function Sheet({ site, value, focus, onClose, onChange }: RangeCalendarProps) {
         <div className="flex items-start gap-3 border-b border-line px-4 pb-3 pt-4">
           <div className="min-w-0 flex-1">
             <h2 id="cal-title" className="g-display text-xl">
-              Your dates
+              {t('search.calTitle')}
             </h2>
             <p className="mt-0.5 text-sm text-muted" aria-live="polite">
-              {loading ? 'Loading free dates…' : status}
+              {loading ? t('search.calLoading') : status}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="-mr-1 flex h-11 w-11 items-center justify-center rounded-full hover:bg-surface-2" aria-label="Close">
+          <button type="button" onClick={onClose} className="-mr-1 flex h-11 w-11 items-center justify-center rounded-full hover:bg-surface-2" aria-label={t('search.calClose')}>
             <X aria-hidden className="h-5 w-5" />
           </button>
         </div>
 
         <div className="grid grid-cols-7 border-b border-line px-3 py-2 text-center text-xs font-medium text-muted" aria-hidden>
-          {WEEKDAYS.map((d) => (
-            <span key={d}>{d}</span>
-          ))}
+          {t('search.weekdays')
+            .split(' ')
+            .map((d) => (
+              <span key={d}>{d}</span>
+            ))}
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 pb-4">
           {monthsFrom(today, MONTHS).map(([y, mo]) => {
-            const label = MONTH_FMT.format(new Date(Date.UTC(y, mo, 1)));
+            const label = t.month(`${y}-${String(mo + 1).padStart(2, '0')}`);
             return (
               <section key={`${y}-${mo}`} aria-label={label} className="pt-4">
                 <h3 className="px-1 pb-2 text-sm font-semibold">{label}</h3>
@@ -208,10 +209,10 @@ function Sheet({ site, value, focus, onClose, onChange }: RangeCalendarProps) {
             onClick={() => setRange({ from: null, to: null })}
             disabled={!range.from}
           >
-            Clear
+            {t('search.calClear')}
           </button>
           <button type="button" className="g-cta ml-auto flex-1 sm:flex-none" onClick={onClose} disabled={!range.from || !range.to}>
-            {range.from && range.to ? `Use ${nightsLabel(nights)}` : 'Choose dates'}
+            {range.from && range.to ? t.n('search.calUse', nights) : t('search.calChooseDates')}
           </button>
         </div>
       </m.div>
@@ -240,9 +241,9 @@ function Day({
   const inRange = !!range.from && !!range.to && day > range.from && day < range.to;
   const enabled = selectable(range, day, today, closed);
   const isClosed = closed.has(day);
-  const label = `${DAY_FMT.format(new Date(`${day}T00:00:00Z`))}${isFrom ? ', check-in' : isTo ? ', check-out' : ''}${
-    day < today ? '' : isClosed ? ', booked' : ''
-  }`;
+  const t = useGT();
+  const dayName = t.lang === 'en' ? DAY_FMT.format(new Date(`${day}T00:00:00Z`)) : `${t.weekday(day)}, ${t.date(day)}`;
+  const label = `${dayName}${isFrom ? t('search.dayCheckIn') : isTo ? t('search.dayCheckOut') : ''}${day < today ? '' : isClosed ? t('search.dayBooked') : ''}`;
   return (
     <div role="gridcell" aria-selected={isFrom || isTo || inRange} className={`relative flex justify-center ${inRange ? 'bg-brand/12' : ''} ${isFrom && range.to ? 'rounded-l-full bg-brand/12' : ''} ${isTo ? 'rounded-r-full bg-brand/12' : ''}`}>
       <button

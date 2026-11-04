@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useGT } from './GuestI18n';
 
 /**
  * Swipeable photos: native scroll-snap does the swiping (no gesture library), the dots follow the
@@ -25,6 +26,7 @@ export function RoomGallery({
 }) {
   const track = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
+  const t = useGT();
 
   useEffect(() => {
     const el = track.current;
@@ -49,7 +51,7 @@ export function RoomGallery({
   if (photos.length === 0) return <div className={`${aspect} bg-surface-2 ${className}`} />;
 
   return (
-    <div className={`group relative ${className}`} role="region" aria-roledescription="carousel" aria-label={`Photos of ${name}`}>
+    <div className={`group relative ${className}`} role="region" aria-roledescription="carousel" aria-label={t('rooms.photosOf', { name })}>
       <div ref={track} className={`g-gallery flex overflow-x-auto ${aspect}`} tabIndex={-1}>
         {photos.map((src, i) => (
           <div
@@ -58,9 +60,9 @@ export function RoomGallery({
             className="relative h-full w-full shrink-0 bg-surface-2"
             role="group"
             aria-roledescription="slide"
-            aria-label={`${i + 1} of ${photos.length}`}
+            aria-label={t('rooms.slide', { i: i + 1, n: photos.length })}
           >
-            <Image src={src} alt={i === 0 ? name : `${name}, photo ${i + 1}`} fill sizes={sizes} preload={priority && i === 0} quality={60} className="object-cover" />
+            <Image src={src} alt={i === 0 ? name : t('rooms.photoAlt', { name, i: i + 1 })} fill sizes={sizes} preload={priority && i === 0} quality={60} className="object-cover" />
           </div>
         ))}
       </div>
@@ -70,7 +72,7 @@ export function RoomGallery({
             type="button"
             onClick={() => go(index - 1)}
             disabled={index === 0}
-            aria-label="Previous photo"
+            aria-label={t('rooms.prevPhoto')}
             className="absolute left-2 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition-opacity disabled:opacity-0 sm:flex"
           >
             <ChevronLeft aria-hidden className="h-5 w-5" />
@@ -79,7 +81,7 @@ export function RoomGallery({
             type="button"
             onClick={() => go(index + 1)}
             disabled={index === photos.length - 1}
-            aria-label="Next photo"
+            aria-label={t('rooms.nextPhoto')}
             className="absolute right-2 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition-opacity disabled:opacity-0 sm:flex"
           >
             <ChevronRight aria-hidden className="h-5 w-5" />
@@ -90,7 +92,7 @@ export function RoomGallery({
             ))}
           </div>
           <p className="sr-only" aria-live="polite">
-            Photo {index + 1} of {photos.length}
+            {t('rooms.photoOf', { i: index + 1, n: photos.length })}
           </p>
         </>
       )}

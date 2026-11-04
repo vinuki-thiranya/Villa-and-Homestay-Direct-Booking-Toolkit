@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { BedDouble, Users } from 'lucide-react';
 import type { PublicRoom } from '@staydirect/shared';
 import { displayPrice } from '@/lib/format';
+import { guestT } from '@/lib/site';
 import { RoomGallery } from './RoomGallery';
 
-export function RoomCard({
+export async function RoomCard({
   room,
   base,
   baseCurrency,
@@ -17,6 +18,7 @@ export function RoomCard({
   currency: string;
   fx: Record<string, number>;
 }) {
+  const t = await guestT();
   const price = displayPrice(room.baseRate, baseCurrency, currency, fx);
   const href = `${base}/rooms/${room.id}`;
   return (
@@ -36,7 +38,7 @@ export function RoomCard({
         </h3>
         <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
           <span className="inline-flex items-center gap-1.5">
-            <Users aria-hidden className="h-4 w-4" /> Sleeps {room.maxGuests}
+            <Users aria-hidden className="h-4 w-4" /> {t('rooms.sleeps', { n: room.maxGuests })}
           </span>
           {room.beds && (
             <span className="inline-flex items-center gap-1.5">
@@ -51,10 +53,10 @@ export function RoomCard({
               {price.approx && '≈ '}
               {price.text}
             </span>{' '}
-            a night
+            {t('rooms.aNight')}
           </p>
-          <Link href={`${base}/book?room=${room.id}`} className="g-cta min-h-10 px-4" aria-label={`Book ${room.name}`}>
-            Book
+          <Link href={`${base}/book?room=${room.id}`} className="g-cta min-h-10 px-4" aria-label={t('rooms.bookRoom', { room: room.name })}>
+            {t('rooms.book')}
           </Link>
         </div>
       </div>

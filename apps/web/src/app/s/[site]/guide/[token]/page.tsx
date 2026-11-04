@@ -29,8 +29,9 @@ export const metadata: Metadata = { title: 'House guide', robots: { index: false
 
 export default async function GuidePage({ params, searchParams }: Props) {
   const { site, token } = await params;
-  const { base } = await siteContext(site);
-  const lang: GuestLang = guestLang((await searchParams).lang);
+  const { base, lang: siteLang, t } = await siteContext(site);
+  // ?lang= (the link in the guest's messages), else the language they browse the site in.
+  const lang: GuestLang = guestLang((await searchParams).lang, siteLang);
   let data: PublicGuide;
   try {
     data = await apiFetch<PublicGuide>(`/public/guide/${encodeURIComponent(token)}`);
@@ -50,14 +51,14 @@ export default async function GuidePage({ params, searchParams }: Props) {
           <p className="text-sm text-muted">{data.propertyName}</p>
           <h1 className="font-display text-3xl font-semibold">{gt(lang, 'guide')}</h1>
         </div>
-        <nav aria-label="Language" className="flex gap-1">
+        <nav aria-label={t('common.language')} className="flex flex-wrap gap-1">
           {LANGUAGES.map(([code, name]) => (
             <Link
               key={code}
               href={`${base}/guide/${token}?lang=${code}`}
               hrefLang={code}
               aria-current={lang === code ? 'true' : undefined}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium ${lang === code ? 'bg-brand text-brand-fg' : 'border border-line text-muted hover:bg-surface-2'}`}
+              className={`flex min-h-11 items-center rounded-full px-3 text-sm font-medium ${lang === code ? 'bg-brand text-brand-fg' : 'border border-line text-muted hover:bg-surface-2'}`}
             >
               {name}
             </Link>

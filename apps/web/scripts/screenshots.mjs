@@ -5,6 +5,7 @@
  * confirmation. Doubles as the end-to-end smoke test in CI: any missing step fails the run.
  *
  *   WEB=http://localhost:3000 API=http://localhost:4000 OUT=./screenshots node scripts/screenshots.mjs
+ *   LANG=si … (or GUEST_LANG=si) books in Sinhala; files are then named si-<theme>-<step>.jpg
  *
  * Needs the seeded demo (npm run db:seed), the API with OTP_DEV_CODE, and Chrome installed
  * (playwright-core drives the system Chrome; no browser download). Themes are switched with the
@@ -21,6 +22,10 @@ const OWNER_PHONE = process.env.OWNER_PHONE ?? '0770000000';
 const OTP = process.env.OTP ?? '123456';
 const OUT = resolve(process.env.OUT ?? 'screenshots');
 const THEMES = (process.env.THEMES ?? 'lagoon,jungle,surf').split(',');
+// Guest site language. LANG is often a system locale (en_US.UTF-8), so only its first two letters count.
+const GUEST_LANG = (process.env.GUEST_LANG ?? process.env.LANG ?? 'en').slice(0, 2) === 'si' ? 'si' : 'en';
+const PREFIX = GUEST_LANG === 'si' ? 'si-' : '';
+const langCookie = (ctx) => ctx.addCookies([{ name: 'sd_glang', value: GUEST_LANG, url: WEB }]);
 
 mkdirSync(OUT, { recursive: true });
 
@@ -63,12 +68,13 @@ const browser = await chromium.launch({ channel: process.env.CHROME_CHANNEL ?? '
 try {
   for (const [i, theme] of THEMES.entries()) {
     const q = `previewTheme=${theme}`;
-    const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2, colorScheme: 'light', locale: 'en-GB' });
+    const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2, colorScheme: 'light', locale: GUEST_LANG === 'si' ? 'si-LK' : 'en-GB' });
+    await langCookie(ctx);
     const page = await ctx.newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
     const shot = async (name, opts = {}) => {
-      const file = `${theme}-${name}.jpg`;
+      const file = `${PREFIX}${theme}-${name}.jpg`;
       // Full-page captures from the top, so the sticky header is not stamped mid-page.
       if (opts.fullPage) await page.evaluate(() => window.scrollTo(0, 0));
       await page.screenshot({ path: resolve(OUT, file), type: 'jpeg', quality: 72, ...opts });
@@ -102,11 +108,11 @@ try {
     // Checkout step 1: rooms and prices for the dates.
     const stay = await freeStay(40 + i * 11);
     await page.goto(`${WEB}/s/${SITE}/book?from=${stay.from}&to=${stay.to}&guests=2&${q}`, { waitUntil: 'networkidle' });
-    await page.waitForSelector('button:has-text("Choose")');
+    await page.waitForSelector('[data-testid="choose-room"]');
     await shot('checkout-1', { fullPage: true });
 
     // Step 2: details, money and policy before payment.
-    await page.locator('button:has-text("Choose"):not([aria-disabled=true])').first().click();
+    await page.locator('[data-testid="choose-room"]').first().click();
     await page.waitForSelector('#g-name');
     await page.fill('#g-name', 'Emma Taylor');
     await page.fill('#g-email', `emma+${theme}-${Date.now()}@example.co.uk`);
@@ -117,12 +123,12 @@ try {
     await shot('checkout-2', { fullPage: true });
 
     // Step 3: pay.
-    await Promise.all([page.waitForURL(/\/booking\//), page.click('button:has-text("Continue to payment")')]);
+    await Promise.all([page.waitForURL(/\/booking\//), page.click('[data-testid="continue-to-pay"]')]);
     const url = new URL(page.url());
     const reference = decodeURIComponent(url.pathname.split('/').pop());
     url.searchParams.set('previewTheme', theme);
     await page.goto(url.toString(), { waitUntil: 'networkidle' });
-    await page.waitForSelector('text=How would you like to pay?');
+    await page.waitForSelector('[data-testid="pay-heading"]');
     await shot('pay', { fullPage: true });
 
     // Confirmation: the owner records the deposit (bank transfer), then the guest page reloads.
@@ -136,16 +142,17 @@ try {
       json: { method: 'bank', amount: pub.deposit, reference: `screenshot-${reference}` },
     });
     await page.goto(url.toString(), { waitUntil: 'networkidle' });
-    await page.waitForSelector("text=You're booked");
+    await page.waitForSelector('[data-testid="booked-heading"]');
     await shot('confirmed', { fullPage: true });
 
     // Dark mode first view.
     const dark = await browser.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2, colorScheme: 'dark' });
+    await langCookie(dark);
     const dp = await dark.newPage();
     await dp.goto(`${WEB}/s/${SITE}?${q}`, { waitUntil: 'networkidle' });
-    await dp.screenshot({ path: resolve(OUT, `${theme}-home-dark.jpg`), type: 'jpeg', quality: 72 });
-    shots.push({ theme, name: 'home-dark', file: `${theme}-home-dark.jpg` });
-    console.log(`  ${theme}-home-dark.jpg`);
+    await dp.screenshot({ path: resolve(OUT, `${PREFIX}${theme}-home-dark.jpg`), type: 'jpeg', quality: 72 });
+    shots.push({ theme, name: 'home-dark', file: `${PREFIX}${theme}-home-dark.jpg` });
+    console.log(`  ${PREFIX}${theme}-home-dark.jpg`);
     await dark.close();
 
     if (errors.length) throw new Error(`${theme}: page errors\n${errors.join('\n')}`);
@@ -155,5 +162,5 @@ try {
   await browser.close();
 }
 
-writeFileSync(resolve(OUT, 'manifest.json'), JSON.stringify({ site: SITE, viewport: '375x812@2x', shots }, null, 2));
+writeFileSync(resolve(OUT, `${PREFIX}manifest.json`), JSON.stringify({ site: SITE, lang: GUEST_LANG, viewport: '375x812@2x', shots }, null, 2));
 console.log(`${shots.length} screenshots in ${OUT}`);

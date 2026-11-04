@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { publicApi } from '@/lib/client-api';
-import { fmtDate, formatMoney } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
+import { useGT } from './GuestI18n';
 
 interface CatalogueItem {
   id: string;
@@ -39,6 +40,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 /** Stars + comment for an experience that has happened (provider ratings, spec §3.7). */
 function RateOrder({ reference, token, orderId, name, onRated }: { reference: string; token: string; orderId: string; name: string; onRated: () => void }) {
+  const t = useGT();
   const [rating, setRating] = useState(0);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -46,7 +48,7 @@ function RateOrder({ reference, token, orderId, name, onRated }: { reference: st
   if (!open) {
     return (
       <button type="button" className="min-h-11 text-sm font-medium text-brand underline-offset-2 hover:underline" onClick={() => setOpen(true)}>
-        Rate it
+        {t('addons.rate.open')}
       </button>
     );
   }
@@ -55,7 +57,7 @@ function RateOrder({ reference, token, orderId, name, onRated }: { reference: st
       className="w-full space-y-2 pt-2"
       onSubmit={async (e) => {
         e.preventDefault();
-        if (!rating) return setError('Choose 1 to 5 stars');
+        if (!rating) return setError(t('addons.rate.choose'));
         setBusy(true);
         setError(null);
         try {
@@ -64,22 +66,22 @@ function RateOrder({ reference, token, orderId, name, onRated }: { reference: st
           });
           onRated();
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Could not save your rating');
+          setError(err instanceof Error ? err.message : t('addons.rate.failed'));
         } finally {
           setBusy(false);
         }
       }}
     >
       <fieldset>
-        <legend className="text-sm font-medium">How was {name}?</legend>
-        <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+        <legend className="text-sm font-medium">{t('addons.rate.how', { name })}</legend>
+        <div className="flex gap-1" role="radiogroup" aria-label={t('addons.rate.rating')}>
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
               role="radio"
               aria-checked={rating === n}
-              aria-label={`${n} star${n === 1 ? '' : 's'}`}
+              aria-label={t.n('addons.rate.star', n)}
               onClick={() => setRating(n)}
               className={`h-11 w-11 text-2xl ${n <= rating ? 'text-accent' : 'text-line'}`}
             >
@@ -89,22 +91,20 @@ function RateOrder({ reference, token, orderId, name, onRated }: { reference: st
         </div>
       </fieldset>
       <label htmlFor={`c-${orderId}`} className="sr-only">
-        Comment
+        {t('addons.rate.comment')}
       </label>
-      <textarea id={`c-${orderId}`} name="comment" rows={2} maxLength={1000} className="field py-2" placeholder="Anything the host should know? (optional)" />
+      <textarea id={`c-${orderId}`} name="comment" rows={2} maxLength={1000} className="field py-2" placeholder={t('addons.rate.commentHint')} />
       {error && (
         <p role="alert" className="text-sm text-bad">
           {error}
         </p>
       )}
       <button type="submit" className="btn-primary" disabled={busy}>
-        {busy ? 'Sending…' : 'Send rating'}
+        {busy ? t('addons.rate.sending') : t('addons.rate.send')}
       </button>
     </form>
   );
 }
-
-const STATUS: Record<string, string> = { requested: 'Requested', confirmed: 'Confirmed', done: 'Done', cancelled: 'Cancelled' };
 
 function minus1(iso: string) {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -114,6 +114,7 @@ function minus1(iso: string) {
 
 /** Experiences the guest can add to a confirmed stay (spec §3.7). Paid with the balance. */
 export function AddOnsPanel({ reference, token, onOrdered }: { reference: string; token: string; onOrdered?: () => void }) {
+  const t = useGT();
   const [data, setData] = useState<GuestAddOns | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -148,12 +149,12 @@ export function AddOnsPanel({ reference, token, onOrdered }: { reference: string
           notes: String(fd.get('notes') ?? ''),
         },
       });
-      setMsg({ ok: true, text: `${item.name} requested. The provider will confirm, and the amount is added to your balance.` });
+      setMsg({ ok: true, text: t('addons.requested', { name: item.name }) });
       setOpen(null);
       await load();
       onOrdered?.();
     } catch (err) {
-      setMsg({ ok: false, text: err instanceof Error ? err.message : 'Could not place the order' });
+      setMsg({ ok: false, text: err instanceof Error ? err.message : t('addons.orderFailed') });
     } finally {
       setBusy(false);
     }
@@ -162,7 +163,7 @@ export function AddOnsPanel({ reference, token, onOrdered }: { reference: string
   return (
     <section id="addons" className="card scroll-mt-24 p-5" aria-labelledby="addons-title">
       <h2 id="addons-title" className="flex items-center gap-2 text-lg font-semibold">
-        <Sparkles aria-hidden className="h-5 w-5 text-brand" /> Make the most of your stay
+        <Sparkles aria-hidden className="h-5 w-5 text-brand" /> {t('addons.title')}
       </h2>
 
       {data.orders.length > 0 && (
@@ -170,20 +171,20 @@ export function AddOnsPanel({ reference, token, onOrdered }: { reference: string
           {data.orders.map((o) => (
             <li key={o.id} className="flex flex-wrap items-center gap-2 px-3 py-2">
               <span className="flex-1">
-                {o.addOnName} × {o.qty} · {fmtDate(o.date)}
+                {t('addons.qtyDate', { name: o.addOnName ?? '', qty: o.qty, date: t.date(o.date) })}
                 {o.time ? ` ${o.time}` : ''}
               </span>
               <span>{formatMoney(o.amount, o.currency)}</span>
               <span className={`pill ${o.status === 'confirmed' || o.status === 'done' ? 'bg-ok-bg text-ok' : o.status === 'cancelled' ? 'bg-bad-bg text-bad' : 'bg-warn-bg text-warn'}`}>
-                {STATUS[o.status]}
+                {t(`addons.status.${o.status}`)}
               </span>
               {o.rating != null && (
-                <span className="text-xs text-muted" aria-label={`You rated ${o.rating} of 5`}>
+                <span className="text-xs text-muted" aria-label={t('addons.youRated', { n: o.rating })}>
                   {'★'.repeat(o.rating)}
                 </span>
               )}
               {o.rating == null && (o.status === 'done' || (o.status === 'confirmed' && o.date <= today())) && (
-                <RateOrder reference={reference} token={token} orderId={o.id} name={o.addOnName ?? 'this experience'} onRated={load} />
+                <RateOrder reference={reference} token={token} orderId={o.id} name={o.addOnName ?? t('addons.thisExperience')} onRated={load} />
               )}
             </li>
           ))}
@@ -216,13 +217,13 @@ export function AddOnsPanel({ reference, token, onOrdered }: { reference: string
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label htmlFor={`d-${item.id}`} className="label">
-                        Date
+                        {t('addons.form.date')}
                       </label>
                       <input id={`d-${item.id}`} name="date" type="date" required min={minus1(data.stay.from)} max={data.stay.to} defaultValue={data.stay.from} className="field" />
                     </div>
                     <div>
                       <label htmlFor={`t-${item.id}`} className="label">
-                        Time <span className="font-normal text-muted">(optional)</span>
+                        {t('addons.form.time')} <span className="font-normal text-muted">{t('addons.form.optional')}</span>
                       </label>
                       <input id={`t-${item.id}`} name="time" type="time" className="field" />
                     </div>
@@ -230,30 +231,30 @@ export function AddOnsPanel({ reference, token, onOrdered }: { reference: string
                   <div className="grid grid-cols-[6rem_1fr] gap-2">
                     <div>
                       <label htmlFor={`q-${item.id}`} className="label">
-                        Qty
+                        {t('addons.form.qty')}
                       </label>
                       <input id={`q-${item.id}`} name="qty" type="number" min={1} max={20} defaultValue={1} className="field" />
                     </div>
                     <div>
                       <label htmlFor={`n-${item.id}`} className="label">
-                        Notes
+                        {t('addons.form.notes')}
                       </label>
-                      <input id={`n-${item.id}`} name="notes" maxLength={500} placeholder="Flight no., pickup point…" className="field" />
+                      <input id={`n-${item.id}`} name="notes" maxLength={500} placeholder={t('addons.form.notesHint')} className="field" />
                     </div>
                   </div>
-                  {item.leadTimeHours > 0 && <p className="text-xs text-muted">Please order at least {item.leadTimeHours} hours ahead.</p>}
+                  {item.leadTimeHours > 0 && <p className="text-xs text-muted">{t('addons.form.leadTime', { hours: item.leadTimeHours })}</p>}
                   <div className="flex gap-2">
                     <button type="submit" className="btn-primary" disabled={busy}>
-                      {busy ? 'Ordering…' : 'Request'}
+                      {busy ? t('addons.form.ordering') : t('addons.form.request')}
                     </button>
                     <button type="button" className="btn-secondary" onClick={() => setOpen(null)}>
-                      Cancel
+                      {t('addons.form.cancel')}
                     </button>
                   </div>
                 </form>
               ) : (
                 <button type="button" className="btn-secondary mt-3 min-h-10 px-4" onClick={() => setOpen(item.id)}>
-                  Add to my stay
+                  {t('addons.form.add')}
                 </button>
               )}
             </li>
