@@ -3,27 +3,34 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { ActionForm } from '@/components/owner/ActionForm';
+import { OwnerI18nProvider } from '@/components/owner/I18n';
+import { LanguageSwitch } from '@/components/owner/LanguageSwitch';
+import { Liyawela } from '@/components/owner/motifs';
 import { OwnerNav } from '@/components/owner/OwnerNav';
 import { hiddenNav } from '@/components/owner/nav-items';
 import { getMe } from '@/lib/owner-r3';
 import { PropertyFields } from '@/components/owner/PropertyFields';
 import { SyncIndicator } from '@/components/owner/SyncIndicator';
 import { currentProperty, getToken, listProperties, ownerApi } from '@/lib/owner';
+import { getT } from '@/lib/owner-i18n';
+import { FONT_VARIABLES } from '@/themes/fonts';
 import type { Conversation } from '@/lib/owner-types';
 import { createPropertyAction, logoutAction, selectPropertyAction } from '../actions';
+import '../owner.css';
 
 export const metadata: Metadata = { title: 'StayDirect LK — owner', robots: { index: false } };
 export const dynamic = 'force-dynamic';
 
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
   if (!(await getToken())) redirect('/owner/login');
-  const [properties, property, me] = await Promise.all([listProperties(), currentProperty(), getMe()]);
+  const [properties, property, me, t] = await Promise.all([listProperties(), currentProperty(), getMe(), getT()]);
   const hidden = hiddenNav({ role: me.user.role, properties: properties.length, flags: me.flags });
   const waiting = property ? await inboxWaiting(property.id) : 0;
   const badges: Record<string, number> = waiting ? { '/owner/inbox': waiting } : {};
 
   return (
-    <div className="owner min-h-dvh bg-bg text-fg">
+    <OwnerI18nProvider lang={t.lang}>
+    <div className={`owner ${FONT_VARIABLES} min-h-dvh bg-bg text-fg`} lang={t.lang}>
       <div className="mx-auto flex max-w-7xl">
         <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line p-4 md:flex">
           <Link href="/owner" className="mb-6 px-3 font-display text-lg font-semibold">
@@ -56,8 +63,9 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
             ) : (
               <p className="min-w-0 truncate font-semibold">{property?.name ?? 'Welcome'}</p>
             )}
-            <div className="ml-auto flex items-center gap-1">
+            <div className="ml-auto flex items-center gap-1.5">
               {property && <SyncIndicator propertyId={property.id} />}
+              <LanguageSwitch lang={t.lang} compact />
             </div>
             <form action={logoutAction} className="md:hidden">
               <button className="flex h-11 w-11 items-center justify-center text-sm text-muted" aria-label="Log out">
@@ -65,6 +73,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
               </button>
             </form>
           </header>
+          <Liyawela lang={t.lang} />
           <main className="px-4 py-5 sm:px-6">
             {property ? (
               children
@@ -84,6 +93,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
       </div>
       {property && <OwnerNav variant="bottom" badges={badges} hidden={hidden} />}
     </div>
+    </OwnerI18nProvider>
   );
 }
 

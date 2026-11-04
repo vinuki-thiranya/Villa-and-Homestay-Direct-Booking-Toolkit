@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
-import { OtpRequestSchema, OtpVerifySchema, type SessionUser } from '@staydirect/shared';
+import { Body, Controller, Get, HttpCode, Patch, Post, UseGuards } from '@nestjs/common';
+import { MeUpdateSchema, OtpRequestSchema, OtpVerifySchema, type SessionUser } from '@staydirect/shared';
 import type { z } from 'zod';
 import { AuthGuard, CurrentUser, Roles } from '../../common/auth.js';
 import { ZodPipe } from '../../common/zod.pipe.js';
@@ -33,5 +33,13 @@ export class AuthController {
   @Roles('owner', 'manager', 'staff')
   me(@CurrentUser() user: SessionUser) {
     return this.auth.me(user);
+  }
+
+  /** The signed-in user's own settings: UI language for the owner web and app (en | si). */
+  @Patch('me')
+  @UseGuards(AuthGuard)
+  @Roles('owner', 'manager', 'staff')
+  updateMe(@CurrentUser() user: SessionUser, @Body(new ZodPipe(MeUpdateSchema)) body: z.infer<typeof MeUpdateSchema>) {
+    return this.auth.updateMe(user, body);
   }
 }

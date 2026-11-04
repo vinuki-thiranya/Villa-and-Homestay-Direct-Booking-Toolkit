@@ -54,6 +54,12 @@ export const THEMES = ['lagoon', 'jungle', 'surf'] as const;
 export type Theme = (typeof THEMES)[number];
 
 /** Fonts the guest site ships (self-hosted with next/font). Theme tokens may only pick from these. */
+/** Owner web/Flutter UI languages (guest sites use LANGUAGES). */
+export const OWNER_LANGUAGES = ['en', 'si'] as const;
+export type OwnerLanguage = (typeof OWNER_LANGUAGES)[number];
+
+export const HOLIDAY_TYPES = ['public', 'bank', 'mercantile'] as const;
+
 export const THEME_FONTS = ['cormorant', 'manrope', 'lora', 'work-sans', 'barlow-condensed', 'barlow'] as const;
 export type ThemeFont = (typeof THEME_FONTS)[number];
 

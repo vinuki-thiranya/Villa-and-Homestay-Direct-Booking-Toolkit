@@ -107,4 +107,11 @@ export class AuthService {
     });
     return { ...base, propertyIds: user.propertyIds ?? null, flags: await this.flags.forTenant(user.tenantId) };
   }
+
+  async updateMe(user: SessionUser, input: { language: 'en' | 'si' }) {
+    await this.db.withTenant(user.tenantId, (tx) =>
+      this.db.query(`update app_user set language = $2 where id = $1`, [user.id, input.language], tx),
+    );
+    return this.me(user);
+  }
 }

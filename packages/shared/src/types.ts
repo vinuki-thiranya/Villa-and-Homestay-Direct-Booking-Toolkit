@@ -74,6 +74,15 @@ export interface PublicProperty {
   themeTokens: Record<string, string> | null;
 }
 
+/** A Sri Lankan public holiday (Poya days marked), for owner calendars. */
+export interface Holiday {
+  date: string;
+  nameEn: string;
+  nameSi: string;
+  isPoya: boolean;
+  types: string[];
+}
+
 /** Nights on which no room can be booked, for greying out the date picker. */
 export interface SiteCalendar {
   from: string;

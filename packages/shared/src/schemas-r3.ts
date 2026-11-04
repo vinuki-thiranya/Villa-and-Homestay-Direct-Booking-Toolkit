@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FEATURE_FLAGS, INVITE_ROLES, LANGUAGES, PLANS, THEME_FONTS, TICKET_STATUSES, UTILITY_METERS } from './enums.js';
+import { FEATURE_FLAGS, HOLIDAY_TYPES, INVITE_ROLES, LANGUAGES, OWNER_LANGUAGES, PLANS, THEME_FONTS, TICKET_STATUSES, UTILITY_METERS } from './enums.js';
 import { isoDate, normalizePhone, phone } from './schemas.js';
 
 const intlPhone = z.string().min(6).max(20).transform((p) => normalizePhone(p)).pipe(phone);
@@ -118,6 +118,16 @@ export const AdminTenantPatchSchema = z.object({
   billingStatus: z.enum(['trial', 'active', 'grace', 'suspended']).optional(),
   billingModel: z.enum(['flat', 'pct']).optional(),
 });
+export const MeUpdateSchema = z.object({ language: z.enum(OWNER_LANGUAGES) });
+export const HolidaySchema = z.object({
+  date: isoDate,
+  nameEn: z.string().min(2).max(120),
+  nameSi: z.string().min(2).max(160),
+  isPoya: z.boolean().default(false),
+  types: z.array(z.enum(HOLIDAY_TYPES)).min(1).default(['public', 'bank']),
+});
+export const HolidayRangeSchema = z.object({ from: isoDate, to: isoDate });
+
 export const FlagDefinitionSchema = z.object({
   description: z.string().min(3).max(200).optional(),
   defaultEnabled: z.boolean().optional(),
