@@ -208,6 +208,8 @@ export interface GuestDetail {
   country: string | null;
   language: string;
   notes: string;
+  keepProfile: boolean;
+  anonymizedAt: string | null;
   bookings: { id: string; reference: string; status: string; from: string; to: string; roomName: string; total: number; paid: number; currency: string }[];
   discountCodes: DiscountCode[];
   reviews: Review[];

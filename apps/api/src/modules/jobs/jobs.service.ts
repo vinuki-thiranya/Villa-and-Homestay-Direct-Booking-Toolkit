@@ -8,11 +8,14 @@ import { OpsService } from '../ops/ops.service.js';
 import { SequencesService } from '../sequences/sequences.service.js';
 import { BillingService } from '../billing/billing.service.js';
 import { ChannelsService } from '../channels/channels.service.js';
+import { OpsDigestService } from '../admin/ops-digest.service.js';
+import { PrivacyService, type RetentionResult } from '../guests/privacy.service.js';
 
 /** The recurring jobs. Each is safe to run concurrently with itself and idempotent. */
 @Injectable()
 export class JobsService {
   private readonly log = new Logger(JobsService.name);
+  private lastRetention: RetentionResult | null = null;
 
   constructor(
     private readonly db: DbService,
@@ -24,6 +27,8 @@ export class JobsService {
     private readonly sequences: SequencesService,
     private readonly channels: ChannelsService,
     private readonly billing: BillingService,
+    private readonly privacy: PrivacyService,
+    private readonly digest: OpsDigestService,
   ) {}
 
   /** Every minute: expire holds, abandon their pending bookings (spec §6 hold). */
@@ -85,6 +90,18 @@ export class JobsService {
   refreshFx(): Promise<number> {
     return this.fx.refresh();
   }
+
+  /** Daily: delete guest messages after 24 months, anonymise guests 36 months after their last stay (spec §6). */
+  async privacyRetention(): Promise<RetentionResult> {
+    this.lastRetention = await this.privacy.retention();
+    return this.lastRetention;
+  }
+
+  /** Daily: the founder's ops email (OPS_EMAIL). */
+  async opsDigest(): Promise<void> {
+    const r = await this.digest.send(this.lastRetention);
+    this.log.log(`ops digest: ${r.subject}${r.sent ? '' : ' (not sent: OPS_EMAIL unset or email failed)'}`);
+  }
 }
 
 export const SCHEDULE = [
@@ -97,4 +114,6 @@ export const SCHEDULE = [
   { name: 'repeat-guest-codes', everyMs: 24 * 3_600_000, run: (j: JobsService) => j.repeatGuestCodes() },
   { name: 'channel-sync', everyMs: 60_000, run: (j: JobsService) => j.syncChannels() },
   { name: 'billing-ledger', everyMs: 24 * 3_600_000, run: (j: JobsService) => j.runBilling() },
+  { name: 'privacy-retention', everyMs: 24 * 3_600_000, run: (j: JobsService) => j.privacyRetention() },
+  { name: 'ops-digest', everyMs: 24 * 3_600_000, run: (j: JobsService) => j.opsDigest() },
 ] as const;

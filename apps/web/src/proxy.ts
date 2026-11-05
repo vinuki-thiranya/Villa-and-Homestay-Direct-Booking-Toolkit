@@ -21,7 +21,6 @@ import { langPrefix, MARKETING_LANGS, MOVED_PATHS, PREFIXED_LANGS, previewAllowe
 const ROOT_DOMAIN = (process.env.ROOT_DOMAIN ?? 'staydirect.lk').toLowerCase();
 const OWNER_HOST = (process.env.OWNER_HOST ?? `app.${ROOT_DOMAIN}`).toLowerCase();
 const ADMIN_HOST = (process.env.ADMIN_HOST ?? `admin.${ROOT_DOMAIN}`).toLowerCase();
-const YEAR = 60 * 60 * 24 * 365;
 
 export function proxy(request: NextRequest) {
   const host = (request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? '').toLowerCase().split(':')[0]!;
@@ -93,7 +92,8 @@ function guest(request: NextRequest, site: string, path: string, direct: boolean
   const preview = request.nextUrl.searchParams.get('previewTheme');
   const variant = siteParam({ site, preview: preview && previewAllowed() && /^[a-z]{2,20}$/.test(preview) ? preview : null, direct, currency });
   const res = rewrite(request, `/s/${encodeURIComponent(variant)}/${lang}${rest}`);
-  if (guessed) res.cookies.set('sd_cur', guessed, { path: '/', maxAge: YEAR, sameSite: 'lax' });
+  // A guess lasts for the browser session only; the guest's own choice (Currency.tsx) is kept a year.
+  if (guessed) res.cookies.set('sd_cur', guessed, { path: '/', sameSite: 'lax' });
   return res;
 }
 

@@ -23,6 +23,8 @@ import { BookingsService } from './modules/bookings/bookings.service.js';
 import { ConciergeService, LLM_CLIENT, llmClientFactory } from './modules/concierge/concierge.service.js';
 import { DashboardService } from './modules/dashboard/dashboard.service.js';
 import { GuestsService } from './modules/guests/guests.service.js';
+import { PrivacyService } from './modules/guests/privacy.service.js';
+import { OpsDigestService } from './modules/admin/ops-digest.service.js';
 import { InboxService } from './modules/inbox/inbox.service.js';
 import { SetupService } from './modules/inbox/setup.service.js';
 import { SeoController } from './modules/seo/seo.controller.js';
@@ -78,6 +80,7 @@ export const DOMAIN_PROVIDERS = [
   OpsService,
   AddOnsService,
   GuestsService,
+  PrivacyService,
   SequencesService,
   InvoicesService,
   StatementsService,
@@ -86,6 +89,7 @@ export const DOMAIN_PROVIDERS = [
   PortfolioService,
   SupportService,
   AdminService,
+  OpsDigestService,
   JobsService,
   { provide: LLM_CLIENT, useFactory: (config: AppConfig) => llmClientFactory(config), inject: [CONFIG] },
 ];

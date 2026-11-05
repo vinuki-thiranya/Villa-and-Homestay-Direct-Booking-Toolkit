@@ -101,6 +101,8 @@ CI runs both on every push (job `guest-site`) and uploads the screenshots and re
 
 ## Deploy
 
-See spec §11 and [docs/plan.md §4–5](docs/plan.md). In short: API and workers on Fly.io Singapore (`fly.toml`,
+Step by step: [docs/go-live-checklist.md](docs/go-live-checklist.md). After CI passes on `main`,
+`.github/workflows/deploy.yml` deploys the API to Fly and the web app to Vercel (skipped until the secrets are set).
+See also spec §11 and [docs/plan.md §4–5](docs/plan.md). In short: API and workers on Fly.io Singapore (`fly.toml`,
 `apps/api/Dockerfile`, migrations run as the release command), web on Vercel Pro with `*.staydirect.lk`,
 Postgres on Supabase Singapore, Redis on Upstash, photos and slips on Cloudflare R2.

@@ -101,11 +101,13 @@ DTO interfaces for every public/owner endpoint, zod request schemas, and pure fu
 | api | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` | Photos and slips; unset → local disk in dev |
 | api | `FX_FEED_URL` | default `https://open.er-api.com/v6/latest/USD` |
 | api | `WEB_REVALIDATE_URL`, `REVALIDATE_SECRET` | API tells Next.js to revalidate a property's pages |
-| api | `SENTRY_DSN` | optional |
+| api | `SENTRY_DSN`, `SENTRY_ENVIRONMENT` | error reporting; off when empty (`src/instrument.ts`) |
+| api | `OPS_EMAIL` | daily ops email to the founder; off when empty |
 | web | `NEXT_PUBLIC_API_URL`, `API_URL` | public vs server-side API base |
 | web | `ROOT_DOMAIN`, `OWNER_HOST` (`app.staydirect.lk`) | hostname routing |
 | web | `REVALIDATE_SECRET` | matches api |
 | web | `NEXT_PUBLIC_PAYPAL_ENV` | `sandbox`/`live` |
+| web | `SENTRY_DSN`, `SENTRY_ENVIRONMENT` | server-side error reporting (`src/instrumentation.ts`) |
 
 ## 4. Hostname routing and caching
 
@@ -178,7 +180,7 @@ Cloudflare Pages is the fallback if Vercel Pro is not wanted (free wildcards via
 | 14 | Webhook spoofing/replay | PayHere `md5sig` verification; PayPal capture verified server-to-server; `webhook_event(provider,event_id)` unique for idempotency. |
 | 15 | Concierge/AI confirming bookings | Out of scope for Phase 1; rule recorded: only a confirmed payment changes inventory. |
 | 16 | Tenant data leakage | RLS on every table with `SET LOCAL ROLE` per request; guest-site endpoints expose an explicit public projection only. |
-| 17 | GDPR for EU guests | Minimal guest data (no passport images), privacy notice link in every footer, export/delete endpoints (Phase 3), retention job anonymizes after 24/36 months. |
+| 17 | GDPR for EU guests | Minimal guest data (no passport images), privacy notice link in every footer, export and erase in the owner app, daily retention job (messages 24 months, identity 36 months after the last stay); see §11. |
 | 18 | Timezones | All stay dates are `date` (property-local nights, Asia/Colombo default); timestamps `timestamptz`; "today" computed in the property timezone. |
 | 19 | Rate-plan overlaps | Highest `priority` wins per night, ties → most recent; stay-level discounts (long-stay, last-minute) apply the single best one. Covered by unit tests. |
 | 20 | Guest page speed on 4G | Static per-site pages, client-side availability, image budget 150 KB, no heavy client libraries on the first view; Lighthouse in CI (Phase 2). |
@@ -286,3 +288,33 @@ Built on branch `phase-4-guest-site`; schema change in [0004_guest_site.sql](../
 **Launch:** `docs/seo-launch-checklist.md` (StayDirect once, each owner at launch, first backlink
 targets). Lighthouse reports: `docs/lighthouse/seo/` (guest site, en and de) and
 `docs/lighthouse/marketing/`.
+
+## 11. Release 6 — go-live readiness (privacy, monitoring, deploy, restore drill)
+
+**Guest privacy (spec §3.12, §5, §6 Retention)** in `PrivacyService` (`apps/api/src/modules/guests/privacy.service.ts`):
+- **Export:** `GET /guests/:id/export` returns everything held about a guest as JSON: profile, bookings, payments, invoices, conversations and messages, reviews, add-on orders, discount codes. Owner and managers. Owner app: Guests → *guest* → Privacy → Download.
+- **Erase:** `POST /guests/:id/erase` is owner only. It is refused while a booking is open.
+  - It anonymises the guest row and deletes their messages and conversations. That includes owner alerts, which are stored without links: those quoting the booking reference or phone go now, while those naming the guest only are left for the 24-month retention (other guests share names).
+  - It clears review text (the rating still counts), special requests, add-on notes, task titles, and guest fields in OTA event payloads.
+  - It keeps payments, slips, invoices and their PDFs, and gateway webhooks for 7 years; their append-only triggers stay on.
+  - The audit row holds counts only.
+  - Not touched: the simulated OTA partner's own store (`sim_partner_booking`), which is test infrastructure.
+- **Retention (daily job `privacy-retention`):** deletes messages older than 24 months, then anonymises guests 36 months after their last stay unless `guest.keep_profile` (owner: "Keep as a repeat guest").
+  - Spec §5 says "EU guests 24 months then anonymized"; §6 and the published privacy page say messages 24 months and identity 36 months. We follow §6 and the page.
+  - Deleting money rows after 7 years is not built; the first fall due in 2033.
+- **Cookies:** guest sites set only `sd_glang` and `sd_cur`. A guessed currency is a session cookie. There is no analytics, so no consent banner; the privacy page says so in all five languages.
+
+**Monitoring**
+- **Sentry:** `@sentry/node` in the API and worker (`src/instrument.ts`, `SentryFilter` for 5xx, failed jobs). `@sentry/nextjs` on the web server only (`src/instrumentation.ts`, `onRequestError`), so no SDK reaches the browser.
+  - Events carry no request bodies, cookies, auth headers or query strings, and only the user id.
+  - `@sentry/nestjs` is not used: it does not support Nest 12 yet.
+- **Health:** `/health` checks the database (2 s) and returns 503 when it is down.
+- **Ops email (`ops-digest`, daily):** iCal feeds failing, open conflicts, failed messages, OTA errors, failed jobs (`common/job-health.ts`), billing and tickets, new bookings, and what retention removed.
+
+**Deploy and backups**
+- **Deploy:** `.github/workflows/deploy.yml` runs after CI passes on `main`: Fly (`flyctl deploy`, migrations as release command), then Vercel (`vercel build` / `deploy --prebuilt`), then smoke checks. Deploys are skipped with a notice until the secrets exist.
+- **Restore drill:** `apps/api/scripts/restore-drill.ts` (`npm run restore-drill`).
+  - Dump mode runs `pg_dump` → `pg_restore` into an empty database; CI runs it on every push.
+  - Compare mode checks a Supabase restore against production: migrations, tables, row counts, RLS, policies, append-only triggers, a booking query.
+
+**Launch steps:** [go-live-checklist.md](go-live-checklist.md).

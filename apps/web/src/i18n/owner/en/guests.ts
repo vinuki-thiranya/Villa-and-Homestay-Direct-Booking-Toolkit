@@ -21,6 +21,18 @@ export const guests = {
   codeLine: '{pct}% · until {date} · used {uses}/{max}',
   off: 'Off',
   reviews: 'Reviews',
+  privacy: {
+    title: 'Privacy',
+    intro: 'Guests may ask for a copy of their data or for it to be deleted (GDPR, Sri Lanka PDPA). Messages are deleted after 24 months, and guests are anonymised 36 months after their last stay.',
+    keep: 'Keep as a repeat guest (not anonymised after 36 months)',
+    keepSave: 'Save',
+    download: 'Download their data (JSON)',
+    erase: 'Delete personal data',
+    eraseIntro: 'Removes their name, email, phone, passport digits, your notes, messages, WhatsApp chats and review text. Kept for 7 years by law: payments and invoices. Star ratings still count in your average.',
+    eraseOwnerOnly: 'Only the owner can delete guest data.',
+    eraseConfirm: 'Delete all personal data of {name}? This cannot be undone.',
+    erased: 'Personal data deleted on {date}. Bookings, payments and invoices are kept.',
+  },
   codesPage: {
     title: 'Discount codes',
     create: 'Create a code',

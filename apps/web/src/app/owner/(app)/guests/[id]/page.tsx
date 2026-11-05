@@ -3,13 +3,14 @@ import { notFound } from 'next/navigation';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { PaidPill, StatusBadge } from '@/components/owner/BookingList';
 import { Stars } from '@/components/Stars';
-import { Section, TextArea } from '@/components/owner/fields';
+import { Check, Section, TextArea } from '@/components/owner/fields';
 import { ApiError } from '@/lib/api';
 import { money, waLink } from '@/lib/format';
 import { ownerApi } from '@/lib/owner';
 import { getT } from '@/lib/owner-i18n';
+import { getMe } from '@/lib/owner-r3';
 import { LANGUAGE_LABEL, type GuestDetail } from '@/lib/owner-types';
-import { guestNotesAction } from '../../../actions-r2';
+import { eraseGuestAction, guestNotesAction, keepGuestAction } from '../../../actions-r2';
 
 export async function generateMetadata() {
   return { title: (await getT())('shared.guest') };
@@ -26,6 +27,7 @@ export default async function GuestPage({ params }: { params: Promise<{ id: stri
     throw err;
   }
   const wa = waLink(g.phone);
+  const isOwner = (await getMe()).user.role === 'owner';
 
   return (
     <div className="space-y-5">
@@ -49,11 +51,13 @@ export default async function GuestPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      <Section title={t('guests.notes')}>
-        <ActionForm action={guestNotesAction.bind(null, g.id)} submitLabel={t('guests.saveNotes')}>
-          <TextArea label={t('guests.privateNotes')} name="notes" rows={3} defaultValue={g.notes} hint={t('guests.notesHint')} />
-        </ActionForm>
-      </Section>
+      {!g.anonymizedAt && (
+        <Section title={t('guests.notes')}>
+          <ActionForm action={guestNotesAction.bind(null, g.id)} submitLabel={t('guests.saveNotes')}>
+            <TextArea label={t('guests.privateNotes')} name="notes" rows={3} defaultValue={g.notes} hint={t('guests.notesHint')} />
+          </ActionForm>
+        </Section>
+      )}
 
       <Section title={t('guests.staysTitle', { n: g.bookings.length })}>
         <ul className="divide-y divide-line">
@@ -99,6 +103,35 @@ export default async function GuestPage({ params }: { params: Promise<{ id: stri
           </ul>
         </Section>
       )}
+
+      <Section id="privacy" title={t('guests.privacy.title')}>
+        {g.anonymizedAt ? (
+          <p className="text-sm text-muted">{t('guests.privacy.erased', { date: t.date(g.anonymizedAt) })}</p>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-muted">{t('guests.privacy.intro')}</p>
+            <ActionForm action={keepGuestAction.bind(null, g.id)} submitLabel={t('guests.privacy.keepSave')} variant="secondary" inline>
+              <Check label={t('guests.privacy.keep')} name="keep" defaultChecked={g.keepProfile} />
+            </ActionForm>
+            <a href={`/owner/export/guest?id=${g.id}`} className="btn-secondary inline-flex min-h-11 items-center px-4" download>
+              {t('guests.privacy.download')}
+            </a>
+            <div className="border-t border-line pt-4">
+              <p className="mb-3 text-sm">{t('guests.privacy.eraseIntro')}</p>
+              {isOwner ? (
+                <ActionForm
+                  action={eraseGuestAction.bind(null, g.id)}
+                  submitLabel={t('guests.privacy.erase')}
+                  variant="danger"
+                  confirm={t('guests.privacy.eraseConfirm', { name: g.name })}
+                />
+              ) : (
+                <p className="text-sm text-muted">{t('guests.privacy.eraseOwnerOnly')}</p>
+              )}
+            </div>
+          </div>
+        )}
+      </Section>
     </div>
   );
 }

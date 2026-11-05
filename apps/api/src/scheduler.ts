@@ -1,5 +1,7 @@
 import { Logger, type INestApplicationContext } from '@nestjs/common';
 import { Queue, Worker } from 'bullmq';
+import * as Sentry from '@sentry/node';
+import { recordJobFailure } from './common/job-health.js';
 import { JobsService, SCHEDULE } from './modules/jobs/jobs.service.js';
 
 const QUEUE = 'staydirect-jobs';
@@ -17,6 +19,8 @@ export function startScheduler(app: INestApplicationContext): () => void {
         await s.run(jobs);
       } catch (err) {
         log.error(`${s.name} failed: ${(err as Error).message}`);
+        recordJobFailure(s.name, err);
+        Sentry.captureException(err, { tags: { job: s.name } });
       } finally {
         running.delete(s.name);
       }
@@ -55,7 +59,11 @@ export async function startBullWorker(app: INestApplicationContext, redisUrl: st
     },
     { connection, concurrency: 4 },
   );
-  worker.on('failed', (job, err) => log.error(`${job?.name} failed: ${err.message}`));
+  worker.on('failed', (job, err) => {
+    log.error(`${job?.name} failed: ${err.message}`);
+    recordJobFailure(job?.name ?? 'unknown', err);
+    Sentry.captureException(err, { tags: { job: job?.name ?? 'unknown' } });
+  });
   log.log(`BullMQ worker started on ${url.hostname}`);
   return async () => {
     await worker.close();

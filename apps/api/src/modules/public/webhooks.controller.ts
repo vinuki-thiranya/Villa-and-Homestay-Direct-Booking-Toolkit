@@ -1,5 +1,6 @@
-import { Body, Controller, ForbiddenException, Get, Header, Headers, HttpCode, Inject, NotFoundException, Param, Post, Query, Req, type RawBodyRequest } from '@nestjs/common';
-import type { Request } from 'express';
+import { Body, Controller, ForbiddenException, Get, Header, Headers, HttpCode, Inject, NotFoundException, Param, Post, Query, Req, Res, type RawBodyRequest } from '@nestjs/common';
+import type { Request, Response } from 'express';
+import { DbService } from '../../common/db.service.js';
 import { CONFIG, type AppConfig } from '../../config.js';
 import { InboxService } from '../inbox/inbox.service.js';
 import { IcalService } from '../ical/ical.service.js';
@@ -13,6 +14,7 @@ export class WebhooksController {
     private readonly ical: IcalService,
     private readonly inbox: InboxService,
     @Inject(CONFIG) private readonly config: AppConfig,
+    private readonly db: DbService,
   ) {}
 
   /** Meta webhook subscription handshake. */
@@ -31,9 +33,19 @@ export class WebhooksController {
     return this.inbox.handleWebhook(body);
   }
 
+  /** Fly's health check and the uptime monitor: 503 when the database does not answer within 2 s. */
   @Get('health')
-  health() {
-    return { ok: true };
+  async health(@Res({ passthrough: true }) res: Response) {
+    try {
+      await Promise.race([
+        this.db.query('select 1'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2_000).unref()),
+      ]);
+      return { ok: true, db: 'ok' };
+    } catch {
+      res.status(503);
+      return { ok: false, db: 'down' };
+    }
   }
 
   /** PayHere notify_url (application/x-www-form-urlencoded). Signature verified in the service. */

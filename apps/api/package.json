@@ -14,13 +14,15 @@
     "db:seed": "npm run build && node --env-file-if-exists=.env dist/scripts/seed.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "whatsapp:templates": "npm run build && node --env-file-if-exists=.env dist/scripts/submit-whatsapp-templates.js"
+    "whatsapp:templates": "npm run build && node --env-file-if-exists=.env dist/scripts/submit-whatsapp-templates.js",
+    "restore-drill": "npm run build && node --env-file-if-exists=.env dist/scripts/restore-drill.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
     "@nestjs/common": "^12.3.2",
     "@nestjs/core": "^12.3.2",
     "@nestjs/platform-express": "^12.3.2",
+    "@sentry/node": "10.76.2",
     "@staydirect/shared": "*",
     "aws4fetch": "^1.0.20",
     "bullmq": "^6.6.0",

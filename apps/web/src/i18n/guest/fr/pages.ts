@@ -62,6 +62,9 @@ export const pages: Dict<typeof en> = {
       'En vertu du RGPD de l’Union européenne et de la loi sri-lankaise sur la protection des données personnelles (Personal Data Protection Act), vous pouvez demander une copie de vos données, leur rectification ou leur suppression (sauf pour les documents que la loi nous impose de conserver). Contact : {contact}{whatsapp}.',
     theProperty: 'l’établissement',
     orWhatsapp: ' ou WhatsApp {number}',
+    cookiesTitle: 'Cookies',
+    cookies:
+      'Ce site n’utilise que deux petits cookies : l’un mémorise la langue choisie, l’autre la devise (une devise devinée pour vous est oubliée à la fermeture du navigateur). Aucun cookie de mesure d’audience, de publicité ou de suivi : aucun consentement n’est donc nécessaire.',
   },
   notFound: {
     title: 'Page introuvable',

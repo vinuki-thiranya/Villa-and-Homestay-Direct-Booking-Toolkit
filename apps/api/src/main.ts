@@ -1,12 +1,16 @@
 import 'reflect-metadata';
+import { initSentry } from './instrument.js';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
 import { requestContextMiddleware } from './common/request-context.js';
+import { SentryFilter } from './common/sentry.filter.js';
 import { loadConfig } from './config.js';
 import { LOCAL_UPLOAD_DIR } from './modules/storage/storage.service.js';
 import { startScheduler } from './scheduler.js';
+
+initSentry('api');
 
 async function bootstrap() {
   const config = loadConfig();
@@ -20,6 +24,7 @@ async function bootstrap() {
   // owner endpoints use bearer tokens, not cookies, so this does not expose credentials.
   app.enableCors({ origin: true, credentials: false });
   if (!config.R2_ACCOUNT_ID) app.useStaticAssets(LOCAL_UPLOAD_DIR, { prefix: '/uploads/' });
+  app.useGlobalFilters(new SentryFilter(app.getHttpAdapter()));
   app.enableShutdownHooks();
   await app.listen(config.PORT);
   Logger.log(`API listening on :${config.PORT}`, 'Bootstrap');

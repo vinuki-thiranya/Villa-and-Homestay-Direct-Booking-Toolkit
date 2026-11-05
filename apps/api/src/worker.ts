@@ -1,9 +1,12 @@
 import 'reflect-metadata';
+import { initSentry } from './instrument.js';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DomainModule } from './app.module.js';
 import { loadConfig } from './config.js';
 import { startBullWorker, startScheduler } from './scheduler.js';
+
+initSentry('worker');
 
 /** Separate Fly.io process group: iCal sync, hold sweeper, follow-ups, FX refresh. */
 async function bootstrap() {

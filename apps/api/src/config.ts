@@ -53,6 +53,11 @@ const ConfigSchema = z.object({
   FX_FEED_URL: z.string().default('https://open.er-api.com/v6/latest/USD'),
   WEB_REVALIDATE_URL: z.string().optional().default(''),
   REVALIDATE_SECRET: z.string().optional().default(''),
+  /** Error reporting (src/instrument.ts); off when empty. */
+  SENTRY_DSN: z.string().optional().default(''),
+  SENTRY_ENVIRONMENT: z.string().optional().default(''),
+  /** Founder's inbox for the daily ops digest (OpsDigestService); off when empty. */
+  OPS_EMAIL: z.string().optional().default(''),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;

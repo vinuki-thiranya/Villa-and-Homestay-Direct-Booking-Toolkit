@@ -90,6 +90,14 @@ jobs:
           curl -sf -H 'Host: villa-lagoon.localhost:3100' localhost:3100/robots.txt | grep -q 'Disallow: /booking/'
           curl -sf -H 'Host: villa-lagoon.localhost:3100' localhost:3100/de/rooms | grep -q 'hrefLang="x-default"'
           curl -sf localhost:3100/sitemap.xml | grep -q '/si/blog/'
+      - name: Backup restore drill (dump the seeded database, restore it into a fresh one, check it)
+        run: |
+          pkill -f apps/api/dist/src/main.js || true  # its in-process jobs would change row counts mid-drill
+          sudo apt-get install -y -qq postgresql-common > /dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y > /dev/null
+          sudo apt-get install -y -qq postgresql-client-17 > /dev/null
+          PGPASSWORD=postgres psql -h localhost -U postgres -c 'create database drill'
+          SOURCE_DATABASE_URL=$DATABASE_URL TARGET_DATABASE_URL=postgres://postgres:postgres@localhost:5432/drill PG_BIN=/usr/lib/postgresql/17/bin node apps/api/dist/scripts/restore-drill.js
       - if: always()
         uses: actions/upload-artifact@v4
         with:

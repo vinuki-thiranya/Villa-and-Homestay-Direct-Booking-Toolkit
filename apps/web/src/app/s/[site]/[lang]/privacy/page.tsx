@@ -29,6 +29,8 @@ export default async function PrivacyPage() {
           whatsapp: p.whatsappNumber ? t('pages.privacy.orWhatsapp', { number: p.whatsappNumber }) : '',
         })}
       </p>
+      <h2 className="mt-6 text-lg font-semibold">{t('pages.privacy.cookiesTitle')}</h2>
+      <p className="mt-2">{t('pages.privacy.cookies')}</p>
     </article>
   );
 }

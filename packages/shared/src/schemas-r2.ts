@@ -172,6 +172,9 @@ export const DiscountCodeSchema = z.object({
 });
 
 export const GuestNotesSchema = z.object({ notes: z.string().max(3000) });
+/** Guest privacy (spec §3.12): keep a repeat guest past the 36-month retention, erase on request. */
+export const GuestKeepProfileSchema = z.object({ keep: z.boolean() });
+export const GuestEraseSchema = z.object({ confirm: z.literal(true) });
 
 /** Provider job card / cleaner actions from their no-login links. */
 export const JobCardActionSchema = z.object({ action: z.enum(['confirm', 'done', 'decline']) });

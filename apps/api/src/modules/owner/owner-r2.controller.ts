@@ -23,6 +23,8 @@ import {
   ConversationUpdateSchema,
   DateRangeQuerySchema,
   DiscountCodeSchema,
+  GuestEraseSchema,
+  GuestKeepProfileSchema,
   GuestNotesSchema,
   KnowledgeEntrySchema,
   OwnerAddOnOrderSchema,
@@ -43,6 +45,7 @@ import { AuthGuard, CurrentUser, Roles } from '../../common/auth.js';
 import { ZodPipe } from '../../common/zod.pipe.js';
 import { AddOnsService } from '../addons/addons.service.js';
 import { GuestsService } from '../guests/guests.service.js';
+import { PrivacyService } from '../guests/privacy.service.js';
 import { InboxService } from '../inbox/inbox.service.js';
 import { SetupService } from '../inbox/setup.service.js';
 import { OpsService } from '../ops/ops.service.js';
@@ -62,6 +65,7 @@ export class OwnerR2Controller {
     private readonly ops: OpsService,
     private readonly addOns: AddOnsService,
     private readonly guests: GuestsService,
+    private readonly privacy: PrivacyService,
   ) {}
 
   // ---------------------------------------------------------------- inbox
@@ -280,6 +284,23 @@ export class OwnerR2Controller {
   @Patch('guests/:id')
   guestNotes(@CurrentUser() u: SessionUser, @Param('id', Uuid) id: string, @Body(new ZodPipe(GuestNotesSchema)) b: Body<typeof GuestNotesSchema>) {
     return this.guests.updateGuestNotes(u, id, b.notes);
+  }
+
+  @Get('guests/:id/export')
+  exportGuest(@CurrentUser() u: SessionUser, @Param('id', Uuid) id: string) {
+    return this.privacy.export(u, id);
+  }
+
+  @Put('guests/:id/keep-profile')
+  keepGuest(@CurrentUser() u: SessionUser, @Param('id', Uuid) id: string, @Body(new ZodPipe(GuestKeepProfileSchema)) b: Body<typeof GuestKeepProfileSchema>) {
+    return this.privacy.setKeepProfile(u, id, b.keep);
+  }
+
+  @Post('guests/:id/erase')
+  @HttpCode(200)
+  @Roles('owner')
+  eraseGuest(@CurrentUser() u: SessionUser, @Param('id', Uuid) id: string, @Body(new ZodPipe(GuestEraseSchema)) _b: Body<typeof GuestEraseSchema>) {
+    return this.privacy.erase(u, id);
   }
 
   @Get('properties/:id/discount-codes')

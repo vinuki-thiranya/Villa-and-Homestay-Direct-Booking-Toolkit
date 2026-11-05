@@ -60,6 +60,9 @@ export const pages = {
       "Under the EU GDPR and Sri Lanka's Personal Data Protection Act you may ask for a copy of your data, correct it, or have it deleted (except records we must keep by law). Contact {contact}{whatsapp}.",
     theProperty: 'the property',
     orWhatsapp: ' or WhatsApp {number}',
+    cookiesTitle: 'Cookies',
+    cookies:
+      'This site uses two small cookies and nothing else: one remembers the language you chose, the other your currency (a currency we guessed for you is forgotten when you close the browser). There are no analytics, advertising or tracking cookies, so there is nothing to consent to.',
   },
   notFound: {
     title: "We couldn't find that page",

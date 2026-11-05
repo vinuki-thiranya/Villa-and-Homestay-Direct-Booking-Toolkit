@@ -1,5 +1,10 @@
-# Fly.io (Singapore). Deploy from the repo root: fly deploy
-# Secrets: fly secrets set DATABASE_URL=... REDIS_URL=... JWT_SECRET=... ENCRYPTION_KEY=... RESEND_API_KEY=... ...
+# Fly.io (Singapore). Deployed by .github/workflows/deploy.yml after CI passes on main, or by hand
+# from the repo root: fly deploy. Secrets (docs/go-live-checklist.md):
+#   fly secrets set DATABASE_URL=... REDIS_URL=... JWT_SECRET=... ENCRYPTION_KEY=... \
+#     RESEND_API_KEY=... NOTIFYLK_USER_ID=... NOTIFYLK_API_KEY=... NOTIFYLK_SENDER_ID=... \
+#     WHATSAPP_TOKEN=... WHATSAPP_PHONE_NUMBER_ID=... WHATSAPP_APP_SECRET=... WHATSAPP_VERIFY_TOKEN=... \
+#     WHATSAPP_BUSINESS_ACCOUNT_ID=... ANTHROPIC_API_KEY=... R2_ACCOUNT_ID=... R2_ACCESS_KEY_ID=... \
+#     R2_SECRET_ACCESS_KEY=... R2_PUBLIC_URL=... REVALIDATE_SECRET=... SENTRY_DSN=... OPS_EMAIL=...
 app = "staydirect-api"
 primary_region = "sin"
 
@@ -15,6 +20,8 @@ primary_region = "sin"
   PAYHERE_SANDBOX = "false"
   PAYPAL_SANDBOX = "false"
   SMS_PROVIDER = "notifylk"
+  WEB_REVALIDATE_URL = "https://staydirect.lk/api/revalidate"
+  SENTRY_ENVIRONMENT = "production"
 
 [deploy]
   release_command = "node dist/scripts/migrate.js"

@@ -71,6 +71,8 @@ export const actions = {
   ordered: 'Ordered. The provider has been sent a job card',
   replySaved: 'Reply saved',
   notesSaved: 'Notes saved',
+  guestKept: 'Saved',
+  guestErased: 'Personal data deleted',
   codeCreated: 'Code created',
   codeOff: 'Code switched off',
 };

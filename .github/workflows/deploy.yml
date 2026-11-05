@@ -1,0 +1,86 @@
+name: Deploy
+# main → production, only after CI passed on that commit (spec §11 CI/CD). API first: fly.toml's
+# release_command migrates the database before new machines start, then the web app goes live.
+# Until the accounts exist the deploys are skipped with a notice (docs/go-live-checklist.md).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      fly: ${{ steps.secrets.outputs.fly }}
+      vercel: ${{ steps.secrets.outputs.vercel }}
+    steps:
+      - id: secrets
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -n "$FLY_API_TOKEN" ]; then echo "fly=yes" >> "$GITHUB_OUTPUT"; else
+            echo "fly=no" >> "$GITHUB_OUTPUT"; echo "::notice::FLY_API_TOKEN is not set: API deploy skipped (docs/go-live-checklist.md)"; fi
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then echo "vercel=yes" >> "$GITHUB_OUTPUT"; else
+            echo "vercel=no" >> "$GITHUB_OUTPUT"; echo "::notice::VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID not set: web deploy skipped (docs/go-live-checklist.md)"; fi
+
+  api:
+    needs: check
+    if: needs.check.outputs.fly == 'yes'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Install flyctl
+        run: curl -fsSL https://fly.io/install.sh | sh && echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
+      - name: Deploy API and worker to Fly (migrations run first)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only --config fly.toml
+
+  web:
+    needs: [check, api]
+    # Runs when the API deployed, or when only Vercel is set up yet.
+    if: always() && needs.check.outputs.vercel == 'yes' && (needs.api.result == 'success' || needs.api.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # The Vercel project's Root Directory is apps/web; its env vars live in Vercel (checklist §4).
+      - run: npx --yes vercel@64.7.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - run: npx --yes vercel@64.7.0 build --prod --token="$VERCEL_TOKEN"
+      - run: npx --yes vercel@64.7.0 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+  smoke:
+    needs: [api, web]
+    if: always() && (needs.api.result == 'success' || needs.web.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: API health
+        if: needs.api.result == 'success'
+        run: for i in $(seq 1 20); do curl -sf https://api.staydirect.lk/health && exit 0; sleep 6; done; exit 1
+      - name: Marketing site
+        if: needs.web.result == 'success'
+        run: |
+          curl -sf -o /dev/null https://staydirect.lk/
+          curl -sf -o /dev/null https://staydirect.lk/sitemap.xml

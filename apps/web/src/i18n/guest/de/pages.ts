@@ -62,6 +62,9 @@ export const pages: Dict<typeof en> = {
       'Nach der EU-Datenschutz-Grundverordnung (DSGVO) und dem sri-lankischen Personal Data Protection Act können Sie eine Kopie Ihrer Daten anfordern, Ihre Daten berichtigen oder löschen lassen (ausgenommen Unterlagen, die wir gesetzlich aufbewahren müssen). Wenden Sie sich dazu an {contact}{whatsapp}.',
     theProperty: 'die Unterkunft',
     orWhatsapp: ' oder per WhatsApp an {number}',
+    cookiesTitle: 'Cookies',
+    cookies:
+      'Diese Website verwendet nur zwei kleine Cookies: eines merkt sich die gewählte Sprache, das andere die Währung (eine automatisch erkannte Währung wird beim Schließen des Browsers vergessen). Es gibt keine Analyse-, Werbe- oder Tracking-Cookies, daher ist keine Einwilligung nötig.',
   },
   notFound: {
     title: 'Diese Seite haben wir leider nicht gefunden',

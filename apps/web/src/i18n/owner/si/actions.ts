@@ -73,6 +73,8 @@ export const actions: Dict<typeof en> = {
   ordered: 'ඇණවුම් කළා. සේවා සපයන්නාට රැකියා කාඩ්පතක් යැව්වා',
   replySaved: 'පිළිතුර සුරැකිණි',
   notesSaved: 'සටහන් සුරැකිණි',
+  guestKept: 'සුරැකිණි',
+  guestErased: 'පෞද්ගලික දත්ත මකා දමන ලදී',
   codeCreated: 'කේතය සෑදුවා',
   codeOff: 'කේතය අක්‍රිය කළා',
 };

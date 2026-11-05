@@ -237,6 +237,14 @@ export async function guestNotesAction(guestId: string, _: Prev, fd: FormData): 
   return attempt(() => ownerApi(`/guests/${guestId}`, { method: 'PATCH', body: { notes: str(fd, 'notes') } }), 'actions.notesSaved');
 }
 
+export async function keepGuestAction(guestId: string, _: Prev, fd: FormData): Promise<ActionResult> {
+  return attempt(() => ownerApi(`/guests/${guestId}/keep-profile`, { method: 'PUT', body: { keep: bool(fd, 'keep') } }), 'actions.guestKept');
+}
+
+export async function eraseGuestAction(guestId: string): Promise<ActionResult> {
+  return attempt(() => ownerApi(`/guests/${guestId}/erase`, { method: 'POST', body: { confirm: true } }), 'actions.guestErased');
+}
+
 export async function createCodeAction(propertyId: string, _: Prev, fd: FormData): Promise<ActionResult> {
   const body = {
     code: str(fd, 'code'),
