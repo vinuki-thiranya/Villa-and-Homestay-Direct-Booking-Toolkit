@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 /* Guest-site theme layouts; every rule is scoped to .g-site/[data-theme], so other apps are unaffected. */
-@import './s/[site]/guest.css';
+@import './s/[site]/[lang]/guest.css';
 
 /*
  * Design tokens. Guest sites pick a theme with data-theme on <html>/<div>

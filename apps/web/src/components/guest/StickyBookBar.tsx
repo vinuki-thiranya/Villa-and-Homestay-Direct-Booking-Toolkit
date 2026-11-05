@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Price } from './Currency';
 import { useGT } from './GuestI18n';
 
 /**
@@ -16,7 +17,8 @@ export function StickyBookBar({
   watch = 'search-card',
 }: {
   href: string;
-  price: string | null;
+  /** The "from" rate in the property's currency; shown in the guest's. */
+  price: { amount: number; currency: string } | null;
   note?: string;
   label?: string;
   watch?: string;
@@ -47,7 +49,9 @@ export function StickyBookBar({
         {price && (
           <p className="min-w-0 flex-1 leading-tight">
             <span className="block text-xs text-muted">{note ?? t('home.bookbarFrom')}</span>
-            <span className="text-lg font-semibold tabular-nums">{price}</span>
+            <span className="text-lg font-semibold">
+              <Price amount={price.amount} from={price.currency} />
+            </span>
           </p>
         )}
         <Link href={href} className={`g-cta ${price ? '' : 'flex-1'}`}>

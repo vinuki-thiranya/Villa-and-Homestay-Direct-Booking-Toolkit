@@ -35,6 +35,7 @@ export const home = {
   welcome: 'Welcome to {name}',
   howToGet: 'How to get to {place}',
   howToGetUs: 'How to get to us',
+  bestTime: 'Best time to visit {place}',
   theRoom: 'The room',
   rooms: 'Rooms',
   seeAllRooms: 'See all {n} rooms',

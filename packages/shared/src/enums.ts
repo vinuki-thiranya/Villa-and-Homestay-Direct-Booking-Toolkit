@@ -144,9 +144,18 @@ export const FEATURE_FLAGS = [
   'owner_statements',
   'white_label',
   'ota_direct_api',
+  'ai_site_content',
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
 export const UTILITY_METERS = ['electricity', 'water', 'gas', 'other'] as const;
 export const INVITE_ROLES = ['manager', 'staff'] as const;
 export const TICKET_STATUSES = ['open', 'pending', 'closed'] as const;
+
+/** Local content blocks on every guest site (SEO, spec Prompt 6). */
+export const SITE_CONTENT_BLOCKS = ['getting_here', 'things_to_do', 'best_time'] as const;
+export type SiteContentBlock = (typeof SITE_CONTENT_BLOCKS)[number];
+
+/** Guest-site languages: each has its own URL (/si, /de, /fr, /hi; English unprefixed). */
+export const SITE_LANGUAGES = ['en', 'si', 'de', 'fr', 'hi'] as const;
+export type SiteLanguage = (typeof SITE_LANGUAGES)[number];

@@ -39,5 +39,6 @@ export const billing: Dict<typeof en> = {
     owner_statements: 'දේපළ හිමිකරුවන් හා ප්‍රකාශන',
     white_label: 'අමුත්තන්ගේ වෙබ් අඩවිවල ඔබගේම සන්නාමය',
     ota_direct_api: 'Booking.com හා Airbnb සජීවී සම්බන්ධතාව',
+    ai_site_content: 'ප්‍රදේශ මාර්ගෝපදේශය හා පරිවර්තන AI මඟින් කෙටුම්පත් කිරීම',
   },
 };

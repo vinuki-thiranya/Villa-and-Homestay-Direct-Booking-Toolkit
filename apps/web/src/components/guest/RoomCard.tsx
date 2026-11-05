@@ -1,25 +1,20 @@
 import Link from 'next/link';
 import { BedDouble, Users } from 'lucide-react';
 import type { PublicRoom } from '@staydirect/shared';
-import { displayPrice } from '@/lib/format';
 import { guestT } from '@/lib/site';
+import { Price } from './Currency';
 import { RoomGallery } from './RoomGallery';
 
 export async function RoomCard({
   room,
   base,
   baseCurrency,
-  currency,
-  fx,
 }: {
   room: PublicRoom;
   base: string;
   baseCurrency: string;
-  currency: string;
-  fx: Record<string, number>;
 }) {
   const t = await guestT();
-  const price = displayPrice(room.baseRate, baseCurrency, currency, fx);
   const href = `${base}/rooms/${room.id}`;
   return (
     <article className="flex flex-col">
@@ -49,9 +44,8 @@ export async function RoomCard({
         {room.amenities.length > 0 && <p className="text-sm text-muted">{room.amenities.slice(0, 4).join(', ')}</p>}
         <div className="mt-auto flex items-center justify-between gap-3 pt-3">
           <p className="text-sm text-muted">
-            <span className="text-lg font-semibold tabular-nums text-fg">
-              {price.approx && '≈ '}
-              {price.text}
+            <span className="text-lg font-semibold text-fg">
+              <Price amount={room.baseRate} from={baseCurrency} />
             </span>{' '}
             {t('rooms.aNight')}
           </p>

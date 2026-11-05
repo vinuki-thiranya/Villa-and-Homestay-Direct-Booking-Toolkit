@@ -38,5 +38,6 @@ export const billing = {
     owner_statements: 'Property owners and statements',
     white_label: 'Your own brand on guest sites',
     ota_direct_api: 'Live Booking.com and Airbnb connection',
+    ai_site_content: 'AI drafts of your local guide and translations',
   },
 };

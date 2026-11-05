@@ -1,5 +1,6 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Atkinson_Hyperlegible } from 'next/font/google';
+import '../globals.css';
 import './admin.css';
 
 /**
@@ -14,6 +15,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0f6e6b' };
+
 export default function AdminRootLayout({ children }: { children: React.ReactNode }) {
-  return <div className={`adm ${atkinson.className}`}>{children}</div>;
+  return (
+    <html lang="en">
+      <body className="min-h-dvh">
+        <div className={`adm ${atkinson.className}`}>{children}</div>
+      </body>
+    </html>
+  );
 }

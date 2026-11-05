@@ -3,6 +3,8 @@ import type { PublicProperty } from '@staydirect/shared';
 import { guestT } from '@/lib/site';
 import type { ThemeKey } from '@/themes/registry';
 import { BookingPaused } from './BookingPaused';
+import { Price } from './Currency';
+import { rich } from './rich';
 import { HeroVideo } from './HeroVideo';
 import { SearchForm } from './SearchForm';
 
@@ -12,7 +14,8 @@ interface Props {
   base: string;
   siteKey: string;
   typeLabel: string;
-  fromPrice: { text: string; approx: boolean } | null;
+  /** Lowest nightly rate in the property's currency. */
+  fromRate: number | null;
 }
 
 /**
@@ -20,11 +23,11 @@ interface Props {
  * stages it differently (guest.css): lagoon over the water, jungle in a verandah arch, surf on a
  * yellow band.
  */
-export async function Hero({ p, theme, base, siteKey, typeLabel, fromPrice }: Props) {
+export async function Hero({ p, theme, base, siteKey, typeLabel, fromRate }: Props) {
   const t = await guestT();
   const area = p.area || t('home.sriLanka');
   const place = t('home.place', { type: typeLabel, place: area });
-  const price = fromPrice ? t('home.roomsFrom', { price: `${fromPrice.approx ? '≈ ' : ''}${fromPrice.text}` }) : null;
+  const price = fromRate != null ? rich(t('home.roomsFrom'), { price: <Price amount={fromRate} from={p.baseCurrency} /> }) : null;
   const media = (
     <>
       {p.photos[0] && (

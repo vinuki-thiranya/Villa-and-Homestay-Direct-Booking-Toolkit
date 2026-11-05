@@ -25,6 +25,8 @@ import { DashboardService } from './modules/dashboard/dashboard.service.js';
 import { GuestsService } from './modules/guests/guests.service.js';
 import { InboxService } from './modules/inbox/inbox.service.js';
 import { SetupService } from './modules/inbox/setup.service.js';
+import { SeoController } from './modules/seo/seo.controller.js';
+import { SeoContentService } from './modules/seo/seo-content.service.js';
 import { FxService } from './modules/fx/fx.service.js';
 import { IcalService } from './modules/ical/ical.service.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
@@ -71,6 +73,7 @@ export const DOMAIN_PROVIDERS = [
   AuthService,
   InboxService,
   SetupService,
+  SeoContentService,
   ConciergeService,
   OpsService,
   AddOnsService,
@@ -97,6 +100,6 @@ export class DomainModule {}
 
 @Module({
   imports: [DomainModule],
-  controllers: [AuthController, PublicController, PublicR2Controller, WebhooksController, OwnerController, OwnerR2Controller, OwnerR3Controller, AdminController, HolidaysController],
+  controllers: [AuthController, PublicController, PublicR2Controller, WebhooksController, OwnerController, OwnerR2Controller, OwnerR3Controller, AdminController, HolidaysController, SeoController],
 })
 export class AppModule {}

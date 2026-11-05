@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { AvailabilityQuerySchema, GuideSchema, isIsoDate, todayIn } from '@staydirect/shared';
+import { monthCostUsd, recordAiUsage } from '../../common/ai-usage.js';
 import { DbService, type Row } from '../../common/db.service.js';
 import { CONFIG, type AppConfig } from '../../config.js';
 import { AvailabilityService } from '../availability/availability.service.js';
@@ -15,24 +16,18 @@ type Tool = Anthropic.Beta.Messages.BetaTool;
 type ToolResult = Anthropic.Beta.Messages.BetaToolResultBlockParam;
 type CreateParams = Anthropic.Beta.Messages.MessageCreateParamsNonStreaming;
 
-/** The one call the concierge makes; swapped for a stub in tests. */
+/** The one call the concierge (and the site-content drafter) makes; swapped for a stub in tests. */
 export interface LlmClient {
-  create(params: CreateParams): Promise<Msg>;
+  create(params: CreateParams, opts?: { timeout?: number }): Promise<Msg>;
 }
 export const LLM_CLIENT = Symbol('LLM_CLIENT');
 
 export function llmClientFactory(config: AppConfig): LlmClient | null {
   if (!config.ANTHROPIC_API_KEY) return null;
   const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY, timeout: 60_000, maxRetries: 2 });
-  return { create: (params) => client.beta.messages.create(params) };
+  return { create: (params, opts) => client.beta.messages.create(params, opts) };
 }
 
-/** USD per million tokens: input, cache write (5 min), cache read, output. Unknown models use Opus 5.5 pricing. */
-const PRICES: Record<string, [number, number, number, number]> = {
-  'claude-opus-5-5': [4, 5, 0.2, 20],
-  'claude-sonnet-5-5': [2, 2.5, 0.2, 10],
-  'claude-haiku-5-5': [0.1, 0.125, 0.01, 0.5],
-};
 const MAX_TOOL_ROUNDS = 6;
 const HISTORY_MESSAGES = 24;
 
@@ -338,26 +333,10 @@ ${knowledge.length ? knowledge.map((k) => `## ${k.title}\n${k.body}`).join('\n\n
   // ------------------------------------------------------------------ budget
 
   private async overBudget(propertyId: string): Promise<boolean> {
-    const row = await this.db.one<{ cost_usd: number }>(
-      `select cost_usd from ai_usage where property_id = $1 and month = $2`,
-      [propertyId, new Date().toISOString().slice(0, 7)],
-    );
-    return (row?.cost_usd ?? 0) >= this.config.CONCIERGE_MONTHLY_BUDGET_USD;
+    return (await monthCostUsd(this.db, propertyId)) >= this.config.CONCIERGE_MONTHLY_BUDGET_USD;
   }
 
   private async recordUsage(conv: Row, response: Msg) {
-    const u = response.usage;
-    const [pin, pwrite, pread, pout] = PRICES[response.model] ?? PRICES[this.config.CONCIERGE_MODEL] ?? PRICES['claude-opus-5-5']!;
-    const write = u.cache_creation_input_tokens ?? 0;
-    const read = u.cache_read_input_tokens ?? 0;
-    const cost = (u.input_tokens * pin + write * pwrite + read * pread + u.output_tokens * pout) / 1_000_000;
-    await this.db.query(
-      `insert into ai_usage (tenant_id, property_id, month, requests, input_tokens, cache_read_tokens, output_tokens, cost_usd)
-       values ($1, $2, $3, 1, $4, $5, $6, $7)
-       on conflict (property_id, month) do update set requests = ai_usage.requests + 1,
-         input_tokens = ai_usage.input_tokens + excluded.input_tokens, cache_read_tokens = ai_usage.cache_read_tokens + excluded.cache_read_tokens,
-         output_tokens = ai_usage.output_tokens + excluded.output_tokens, cost_usd = ai_usage.cost_usd + excluded.cost_usd`,
-      [conv.tenant_id, conv.property_id, new Date().toISOString().slice(0, 7), u.input_tokens + write, read, u.output_tokens, cost],
-    );
+    await recordAiUsage(this.db, { tenantId: conv.tenant_id, propertyId: conv.property_id }, response, this.config.CONCIERGE_MODEL);
   }
 }

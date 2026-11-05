@@ -6,6 +6,7 @@ export const layout = {
   menu: 'Menu',
   rooms: 'Rooms',
   experiences: 'Experiences',
+  thingsToDo: 'Things to do',
   location: 'Location',
   contact: 'Contact',
   book: 'Book',

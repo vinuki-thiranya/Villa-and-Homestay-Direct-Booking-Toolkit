@@ -31,6 +31,18 @@ export function guessCurrency(h: { get(name: string): string | null }): Currency
   return currencyForCountry(h.get('cf-ipcountry') ?? h.get('x-vercel-ip-country')) ?? currencyForCountry(regionFromAcceptLanguage(h.get('accept-language')));
 }
 
+/**
+ * The currency a page shows before the guest's own choice is known: what most readers of that
+ * language pay in. proxy.ts sets the guest's real guess (country, browser region) as a cookie on
+ * their first visit, so this is mainly what crawlers see.
+ */
+export function defaultCurrency(lang: string): Currency {
+  if (lang === 'si') return 'LKR';
+  if (lang === 'hi') return 'INR';
+  if (lang === 'de' || lang === 'fr') return 'EUR';
+  return 'USD';
+}
+
 export type GuestRegion = 'abroad' | 'india' | 'sri_lanka';
 
 /** Which payment group to show first. */

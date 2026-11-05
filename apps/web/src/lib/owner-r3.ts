@@ -29,6 +29,7 @@ export const FEATURE_INFO: Record<FeatureFlag, { label: string; plan: string }> 
   owner_statements: { label: 'Property owners and statements', plan: 'Manager' },
   white_label: { label: 'Your own brand on guest sites', plan: 'Manager' },
   ota_direct_api: { label: 'Live Booking.com and Airbnb connection', plan: 'an add-on (LKR 4,000 / month)' },
+  ai_site_content: { label: 'AI drafts of your local guide and translations', plan: 'Pro' },
 };
 
 /** A 403 the API sends when a feature is not in the tenant's plan. */
