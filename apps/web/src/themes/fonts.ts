@@ -32,15 +32,16 @@ const notoDevanagari = Noto_Sans_Devanagari({ subsets: ['devanagari'], weight: [
 export const FONT_VARIABLES = [cormorant, manrope, lora, workSans, barlowCondensed, barlow, notoSinhala, abhaya, notoDevanagari].map((f) => f.variable).join(' ');
 
 /**
- * Each Latin face falls back per glyph for Sinhala characters: serif faces to Abhaya Libre (a serif
+ * Each Latin face falls back first to size-matched system fonts (next/font's, then globals.css 'Fallback
+ * Open' for Android/Linux), so text does not re-wrap when it loads; then per glyph for Sinhala characters: serif faces to Abhaya Libre (a serif
  * Sinhala), sans faces to Noto Sans Sinhala; Devanagari to Noto Sans Devanagari. So every theme keeps
  * its look and only the font changes.
  */
 export const FONT_STACK: Record<ThemeFont, string> = {
-  cormorant: 'var(--f-cormorant), var(--f-abhaya), var(--f-sinhala), var(--f-devanagari), ui-serif, Georgia, serif',
-  manrope: 'var(--f-manrope), var(--f-sinhala), var(--f-devanagari), ui-sans-serif, system-ui, sans-serif',
-  lora: 'var(--f-lora), var(--f-abhaya), var(--f-sinhala), var(--f-devanagari), ui-serif, Georgia, serif',
-  'work-sans': 'var(--f-work-sans), var(--f-sinhala), var(--f-devanagari), ui-sans-serif, system-ui, sans-serif',
-  'barlow-condensed': 'var(--f-barlow-condensed), var(--f-sinhala), var(--f-devanagari), ui-sans-serif, system-ui, sans-serif',
-  barlow: 'var(--f-barlow), var(--f-sinhala), var(--f-devanagari), ui-sans-serif, system-ui, sans-serif',
+  cormorant: "var(--f-cormorant), 'Cormorant Fallback Open', var(--f-abhaya), var(--f-sinhala), var(--f-devanagari), ui-serif, Georgia, serif",
+  manrope: "var(--f-manrope), 'Manrope Fallback Open', var(--f-sinhala), var(--f-devanagari), ui-sans-serif, system-ui, sans-serif",
+  lora: "var(--f-lora), 'Lora Fallback Open', var(--f-abhaya), var(--f-sinhala), var(--f-devanagari), ui-serif, Georgia, serif",
+  'work-sans': "var(--f-work-sans), 'Work Sans Fallback Open', var(--f-sinhala), var(--f-devanagari), ui-sans-serif, system-ui, sans-serif",
+  'barlow-condensed': "var(--f-barlow-condensed), 'Barlow Condensed Fallback Open', var(--f-sinhala), var(--f-devanagari), ui-sans-serif, system-ui, sans-serif",
+  barlow: "var(--f-barlow), 'Barlow Fallback Open', var(--f-sinhala), var(--f-devanagari), ui-sans-serif, system-ui, sans-serif",
 };
