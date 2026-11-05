@@ -10,7 +10,8 @@ import { langPrefix, type MarketingLang } from '@/lib/site-routing';
 const PLAN_NAMES: Record<(typeof PLANS)[number], string> = { basic: 'Basic', pro: 'Pro', pro_multi: 'Pro Multi', manager: 'Manager' };
 
 /** The four plans from shared PLAN_PRICING (spec §8), so the site never disagrees with billing. */
-export function PlansGrid({ lang }: { lang: MarketingLang }) {
+export function PlansGrid({ lang, level = 3 }: { lang: MarketingLang; level?: 2 | 3 }) {
+  const H = level === 2 ? 'h2' : 'h3';
   const t = MARKETING_TEXT[lang].plans;
   return (
     <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -21,7 +22,7 @@ export function PlansGrid({ lang }: { lang: MarketingLang }) {
         return (
           <div key={key} className={`card flex flex-col p-6 ${featured ? 'border-brand ring-2 ring-brand/20' : ''}`}>
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-semibold">{PLAN_NAMES[key]}</h3>
+              <H className="font-semibold">{PLAN_NAMES[key]}</H>
               {featured && <span className="pill bg-brand/10 text-brand">{t.popular}</span>}
             </div>
             <p className="mt-3">

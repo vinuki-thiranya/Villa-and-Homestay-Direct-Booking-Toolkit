@@ -64,7 +64,7 @@ export default async function RoomPage({ params }: Props) {
             })}
           </p>
           <h1 className="g-display mt-1 text-4xl leading-tight sm:text-5xl">{room.name}</h1>
-          <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:flex sm:flex-wrap sm:gap-x-5">
             {facts.map((f) => (
               <li key={f.text} className="inline-flex items-center gap-1.5">
                 <f.icon aria-hidden className="h-4 w-4 text-brand" /> {f.text}

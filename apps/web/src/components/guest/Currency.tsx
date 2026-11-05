@@ -5,9 +5,9 @@ import { createContext, useContext, useSyncExternalStore } from 'react';
 import { displayPrice, isCurrency, type Currency } from '@/lib/format';
 
 /*
- * The guest's display currency, read in the browser. Indexable pages are cached for everyone (ISR),
- * so the server renders the language's default currency and the guest's own choice (the sd_cur
- * cookie, first set by proxy.ts from their country) replaces it after hydration.
+ * The guest's display currency. proxy.ts puts it in the cached page's key (the sd_cur cookie, first set
+ * from their country), so the server already renders it; the browser only takes over when the guest
+ * switches currency on the page.
  */
 
 interface CurrencyState {

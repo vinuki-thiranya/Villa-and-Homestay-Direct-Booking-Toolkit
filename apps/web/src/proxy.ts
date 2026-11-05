@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { currencyForCountry, regionFromAcceptLanguage } from '@/lib/guest-locale';
+import { isCurrency } from '@/lib/format';
+import { currencyForCountry, defaultCurrency, regionFromAcceptLanguage } from '@/lib/guest-locale';
 import { langPrefix, MARKETING_LANGS, MOVED_PATHS, PREFIXED_LANGS, previewAllowed, siteParam, splitLang } from '@/lib/site-routing';
 
 /**
@@ -79,17 +80,20 @@ function guest(request: NextRequest, site: string, path: string, direct: boolean
     return redirect(request, `${root}/${chosen}${rest}`, 307);
   }
 
-  const preview = request.nextUrl.searchParams.get('previewTheme');
-  const variant = siteParam({ site, preview: preview && previewAllowed() && /^[a-z]{2,20}$/.test(preview) ? preview : null, direct });
-  const res = rewrite(request, `/s/${encodeURIComponent(variant)}/${lang}${rest}`);
+  // The guest's display currency: their choice, else a guess from country or browser region (kept as a
+  // cookie from the first visit), else the language's usual one. It is part of the cached page's key,
+  // so prices arrive already converted and never jump after load.
+  const chosenCurrency = request.cookies.get('sd_cur')?.value;
+  const h = request.headers;
+  const guessed = isCurrency(chosenCurrency)
+    ? null
+    : (currencyForCountry(h.get('cf-ipcountry') ?? h.get('x-vercel-ip-country')) ?? currencyForCountry(regionFromAcceptLanguage(h.get('accept-language'))));
+  const currency = isCurrency(chosenCurrency) ? chosenCurrency : (guessed ?? defaultCurrency(lang));
 
-  // First visit: remember the likely currency (country, else browser region). Pages are cached for
-  // everyone, so prices are converted in the browser from this cookie.
-  if (!request.cookies.has('sd_cur')) {
-    const h = request.headers;
-    const cur = currencyForCountry(h.get('cf-ipcountry') ?? h.get('x-vercel-ip-country')) ?? currencyForCountry(regionFromAcceptLanguage(h.get('accept-language')));
-    if (cur) res.cookies.set('sd_cur', cur, { path: '/', maxAge: YEAR, sameSite: 'lax' });
-  }
+  const preview = request.nextUrl.searchParams.get('previewTheme');
+  const variant = siteParam({ site, preview: preview && previewAllowed() && /^[a-z]{2,20}$/.test(preview) ? preview : null, direct, currency });
+  const res = rewrite(request, `/s/${encodeURIComponent(variant)}/${lang}${rest}`);
+  if (guessed) res.cookies.set('sd_cur', guessed, { path: '/', maxAge: YEAR, sameSite: 'lax' });
   return res;
 }
 

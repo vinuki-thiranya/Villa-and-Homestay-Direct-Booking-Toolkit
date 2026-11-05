@@ -53,9 +53,9 @@ export function GuestLanguageSwitch({ root }: { root: string }) {
     <details className="relative">
       <summary
         className="flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-[var(--btn-radius,9999px)] border border-line bg-surface px-2.5 text-sm font-semibold [&::-webkit-details-marker]:hidden"
-        aria-label={t('common.language')}
       >
         <Languages aria-hidden className="h-4 w-4" />
+        <span className="sr-only">{t('common.language')}: </span>
         <span style={SYSTEM_FONT}>{LANG_CODES[lang]}</span>
       </summary>
       <ul className="absolute right-0 top-12 z-40 w-44 rounded-card border border-line bg-surface p-1.5 shadow-xl">

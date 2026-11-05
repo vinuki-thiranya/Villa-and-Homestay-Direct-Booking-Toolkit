@@ -29,7 +29,7 @@ interface SiteContentList {
   ai: { enabled: boolean; configured: boolean; used: number; limit: number };
 }
 
-const BACKLINKS = ['drivers', 'surf', 'tours', 'food', 'wellness', 'blogs', 'association', 'events', 'tripadvisor', 'social'] as const;
+const BACKLINKS = ['srilankaTravel', 'drivers', 'surf', 'tours', 'food', 'wellness', 'blogs', 'association', 'events', 'tripadvisor', 'social'] as const;
 const CHECKLIST = ['domain', 'searchConsole', 'sitemap', 'gbp', 'guide', 'reviews', 'backlinks'] as const;
 
 /**

@@ -8,6 +8,7 @@
  * Internally a guest page lives at /s/[site]/[lang]/…, where [site] is the site key plus variants:
  *   villa-lagoon~t-jungle   theme preview (dev, or ALLOW_THEME_PREVIEW=1)
  *   villa-lagoon~d          path-routed (/s/villa-lagoon/… on localhost and preview deployments)
+ *   villa-lagoon~c-EUR      the guest's display currency, so a cached page already shows their prices
  */
 
 export const SITE_LANGS = ['en', 'si', 'de', 'fr', 'hi'] as const;
@@ -59,21 +60,24 @@ export interface SiteVariant {
   site: string;
   preview: string | null;
   direct: boolean;
+  currency?: string | null;
 }
 
-export function siteParam({ site, preview, direct }: SiteVariant): string {
-  return `${site}${preview ? `~t-${preview}` : ''}${direct ? '~d' : ''}`;
+export function siteParam({ site, preview, direct, currency }: SiteVariant): string {
+  return `${site}${preview ? `~t-${preview}` : ''}${direct ? '~d' : ''}${currency ? `~c-${currency}` : ''}`;
 }
 
 export function parseSiteParam(raw: string): SiteVariant {
   const [site, ...mods] = decodeURIComponent(raw).split('~');
   let preview: string | null = null;
   let direct = false;
+  let currency: string | null = null;
   for (const m of mods) {
     if (m === 'd') direct = true;
     else if (m.startsWith('t-') && /^[a-z]{2,20}$/.test(m.slice(2))) preview = m.slice(2);
+    else if (/^c-[A-Z]{3}$/.test(m)) currency = m.slice(2);
   }
-  return { site: site ?? '', preview, direct };
+  return { site: site ?? '', preview, direct, currency };
 }
 
 /** Theme previews: always in dev; in a production build only with ALLOW_THEME_PREVIEW=1 (Lighthouse, screenshots). */

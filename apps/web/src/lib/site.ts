@@ -24,7 +24,7 @@ export interface SiteContext {
   base: string;
   /** `base` without the language: the site root, for links to the same page in another language. */
   root: string;
-  /** Currency shown before the guest's own choice (cookie) is read in the browser. */
+  /** The guest's display currency, from the URL variant proxy.ts adds (cookie or country), else the language's usual one. */
   defaultCurrency: Currency;
   siteKey: string;
   theme: GuestTheme;
@@ -52,7 +52,7 @@ export async function guestT(): Promise<GuestTranslator> {
 export const siteContext = cache(async (): Promise<SiteContext> => {
   const raw = await rootSite();
   if (!raw) notFound();
-  const { site, preview, direct } = parseSiteParam(raw);
+  const { site, preview, direct, currency } = parseSiteParam(raw);
   const [property, lang] = await Promise.all([getSite(site), guestLang()]);
   if (!property) notFound();
   const root = direct ? `/s/${encodeURIComponent(site)}` : '';
@@ -61,7 +61,7 @@ export const siteContext = cache(async (): Promise<SiteContext> => {
     property,
     base: root + langPrefix(lang),
     root,
-    defaultCurrency: defaultCurrency(lang),
+    defaultCurrency: isCurrency(currency) ? currency : defaultCurrency(lang),
     siteKey: site,
     theme: THEMES[key],
     lang,

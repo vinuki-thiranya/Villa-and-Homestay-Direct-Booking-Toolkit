@@ -26,7 +26,7 @@ export default async function PricingPage({ params }: Props) {
         <p className="mt-3 max-w-2xl text-lg text-muted">{t.pricing.lede}</p>
         <p className="mt-2 text-sm text-muted">{t.home.pricingIntro}</p>
         <div className="mt-8">
-          <PlansGrid lang={lang} />
+          <PlansGrid lang={lang} level={2} />
         </div>
       </section>
       <section className="mx-auto max-w-3xl px-4 pt-16" aria-labelledby="calc">

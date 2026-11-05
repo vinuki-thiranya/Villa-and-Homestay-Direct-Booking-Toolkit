@@ -51,7 +51,10 @@ export function renderMarkdown(md: string): string {
   return html
     .replace(/<table>/g, '<div class="m-table"><table>')
     .replace(/<\/table>/g, '</table></div>')
-    .replace(/<a href="(https?:\/\/[^"]+)"/g, '<a href="$1" target="_blank" rel="noopener"');
+    .replace(/<a href="(https?:\/\/[^"]+)"/g, '<a href="$1" target="_blank" rel="noopener"')
+    // Checklists ("- [ ]") are for reading, not forms: a mark instead of an unlabelled checkbox.
+    .replace(/<input checked="" disabled="" type="checkbox"> ?/g, '<span aria-hidden="true">☑ </span>')
+    .replace(/<input disabled="" type="checkbox"> ?/g, '<span aria-hidden="true">☐ </span>');
 }
 
 function read(lang: MarketingLang, rel: string): { raw: string; fallback: boolean } | null {

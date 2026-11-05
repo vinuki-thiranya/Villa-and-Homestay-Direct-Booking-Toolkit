@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 /**
- * Lighthouse (mobile, simulated slow 4G) and the 150 KB image budget for the guest site, per theme:
- * the home page and checkout step 1. Run against a production build started with
- * ALLOW_THEME_PREVIEW=1 so ?previewTheme= works:
+ * Lighthouse (mobile, simulated slow 4G) and the 150 KB image budget. SET picks the pages:
+ *   guest      (default) per theme: home and checkout step 1
+ *   seo        one guest site in English and German: home, a room, location (Prompt 6 report)
+ *   marketing  staydirect.lk: home, pricing, an area page, a guide, and the Sinhala home
+ *   all        all of the above
+ * Run against a production build started with ALLOW_THEME_PREVIEW=1 so ?previewTheme= works:
  *
  *   npm run build && ALLOW_THEME_PREVIEW=1 npx next start --port 3100
  *   WEB=http://localhost:3100 OUT=../../docs/lighthouse node scripts/lighthouse.mjs
@@ -32,10 +35,30 @@ const stay = `from=${plus(60)}&to=${plus(63)}&guests=2`;
 // Warm the API cache so the first run is not penalised for a cold start.
 await fetch(`${API}/public/sites/${SITE}`);
 
-const pages = THEMES.flatMap((t) => [
+const SET = process.env.SET ?? 'guest';
+const site = await (await fetch(`${API}/public/sites/${SITE}`)).json();
+const room = site.rooms?.[0]?.id;
+const guest = THEMES.flatMap((t) => [
   { theme: t, page: 'home', url: `${WEB}/s/${SITE}?previewTheme=${t}` },
   { theme: t, page: 'checkout', url: `${WEB}/s/${SITE}/book?${stay}&previewTheme=${t}` },
 ]);
+const seo = ['en', 'de'].flatMap((l) => {
+  const base = `${WEB}/s/${SITE}${l === 'en' ? '' : `/${l}`}`;
+  return [
+    { theme: l, page: 'home', url: base },
+    { theme: l, page: 'room', url: `${base}/rooms/${room}` },
+    { theme: l, page: 'location', url: `${base}/location` },
+  ];
+});
+// On localhost the marketing site is served by path (proxy.ts).
+const marketing = [
+  { theme: 'marketing', page: 'home', url: `${WEB}/` },
+  { theme: 'marketing', page: 'pricing', url: `${WEB}/pricing` },
+  { theme: 'marketing', page: 'area', url: `${WEB}/direct-booking/mirissa` },
+  { theme: 'marketing', page: 'guide', url: `${WEB}/blog/ical-sync-double-bookings` },
+  { theme: 'marketing-si', page: 'home', url: `${WEB}/si` },
+];
+const pages = { guest, seo, marketing, all: [...guest, ...seo, ...marketing] }[SET] ?? guest;
 
 const chrome = await chromeLauncher.launch({ chromeFlags: ['--headless=new', '--no-sandbox'] });
 const rows = [];

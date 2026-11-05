@@ -19,10 +19,14 @@ export function MarketingLangSwitch({ lang, label }: { lang: MarketingLang; labe
       hrefLang={other}
       lang={other}
       className="flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-sm font-semibold hover:bg-surface-2"
-      aria-label={`${label}: ${LANG_NAMES[other]}`}
+      title={`${label}: ${LANG_NAMES[other]}`}
     >
       <Languages aria-hidden className="h-4 w-4" />
       <span style={SYSTEM_FONT}>{LANG_CODES[other]}</span>
+      <span className="sr-only" style={SYSTEM_FONT}>
+        {' '}
+        {LANG_NAMES[other]}
+      </span>
     </a>
   );
 }

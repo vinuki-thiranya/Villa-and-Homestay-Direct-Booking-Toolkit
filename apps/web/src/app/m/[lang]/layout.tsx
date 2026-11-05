@@ -24,8 +24,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0f6e6b' };
 
-// Lagoon's colours with a serif display face; Sinhala falls back per glyph to Abhaya Libre / Noto Sans Sinhala.
-const FONTS = `:root{--g-sans:${FONT_STACK.manrope};--g-display:${FONT_STACK.lora}}`;
+// Lagoon's colours with a serif display face. Sinhala pages use one family (Noto Sans Sinhala) for
+// headings and text: two font files instead of three on an owner's phone.
+const fonts = (lang: MarketingLang) => `:root{--g-sans:${FONT_STACK.manrope};--g-display:${lang === 'si' ? FONT_STACK.manrope : FONT_STACK.lora}}`;
 
 export default async function MarketingRootLayout({ children, params }: { children: React.ReactNode; params: Promise<{ lang: string }> }) {
   const { lang: raw } = await params;
@@ -36,7 +37,7 @@ export default async function MarketingRootLayout({ children, params }: { childr
   return (
     <html lang={lang} data-theme="lagoon" className={FONT_VARIABLES}>
       <body className="min-h-dvh bg-bg">
-        <style dangerouslySetInnerHTML={{ __html: FONTS }} />
+        <style dangerouslySetInnerHTML={{ __html: fonts(lang) }} />
         <header className="sticky top-0 z-30 border-b border-line/70 bg-bg/95 backdrop-blur">
           <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
             <Link href={p || '/'} className="font-display text-xl font-semibold">

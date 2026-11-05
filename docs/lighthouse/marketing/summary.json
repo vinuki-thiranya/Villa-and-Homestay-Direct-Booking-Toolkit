@@ -1,0 +1,101 @@
+{
+  "site": "villa-lagoon",
+  "at": "2026-11-05T05:30:27.625Z",
+  "min": {
+    "performance": 85,
+    "accessibility": 100,
+    "best-practices": 95
+  },
+  "rows": [
+    {
+      "page": "marketing-home",
+      "runs": [
+        75,
+        89,
+        96
+      ],
+      "performance": 89,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 2974,
+      "fcpMs": 1409,
+      "cls": 0,
+      "totalKb": 276,
+      "largestImageKb": 0,
+      "heavyImages": []
+    },
+    {
+      "page": "marketing-pricing",
+      "runs": [
+        95,
+        96,
+        96
+      ],
+      "performance": 96,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 2655,
+      "fcpMs": 1382,
+      "cls": 0,
+      "totalKb": 270,
+      "largestImageKb": 0,
+      "heavyImages": []
+    },
+    {
+      "page": "marketing-area",
+      "runs": [
+        97,
+        97,
+        97
+      ],
+      "performance": 97,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 2544,
+      "fcpMs": 1372,
+      "cls": 0,
+      "totalKb": 272,
+      "largestImageKb": 0,
+      "heavyImages": []
+    },
+    {
+      "page": "marketing-guide",
+      "runs": [
+        97,
+        97,
+        97
+      ],
+      "performance": 97,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 2568,
+      "fcpMs": 1369,
+      "cls": 0.002,
+      "totalKb": 272,
+      "largestImageKb": 0,
+      "heavyImages": []
+    },
+    {
+      "page": "marketing-si-home",
+      "runs": [
+        86,
+        88,
+        89
+      ],
+      "performance": 88,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 3320,
+      "fcpMs": 2270,
+      "cls": 0.08,
+      "totalKb": 420,
+      "largestImageKb": 0,
+      "heavyImages": []
+    }
+  ]
+}
