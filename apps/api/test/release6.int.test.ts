@@ -6,6 +6,7 @@ import { CONFIG, type AppConfig } from '../src/config.js';
 import { BookingsService } from '../src/modules/bookings/bookings.service.js';
 import type { LlmClient } from '../src/modules/concierge/concierge.service.js';
 import { FlagsService } from '../src/modules/flags/flags.service.js';
+import { SiteFactsService } from '../src/modules/public/site-facts.service.js';
 import { SeoContentService } from '../src/modules/seo/seo-content.service.js';
 import { bookingInput, futureStay, setupApp, type TestCtx } from './helpers.js';
 
@@ -126,6 +127,19 @@ describe('site content (local guide blocks and translations)', () => {
     const saved = await service(null).setVerification(owner, propertyId, tag.code);
     expect(saved.googleSiteVerification).toBe('AbC_123-xyzXYZ987');
     await service(null).setVerification(owner, propertyId, null);
+  });
+});
+
+describe('API site caches', () => {
+  it('drop a property’s review summary as soon as its data changes', async () => {
+    const facts = ctx.get(SiteFactsService);
+    const before = await facts.facts(propertyId);
+    await ctx.db.query(`insert into review (tenant_id, property_id, booking_id, rating, body, public, guest_name)
+      select tenant_id, property_id, id, 1, 'Cache test', false, 'Test' from booking where property_id = $1
+      and not exists (select 1 from review r where r.booking_id = booking.id) limit 1`, [propertyId]);
+    expect((await facts.facts(propertyId)).count).toBe(before.count); // still cached
+    ctx.get(RevalidateService).property(propertyId);
+    expect((await facts.facts(propertyId)).count).toBe(before.count + 1);
   });
 });
 

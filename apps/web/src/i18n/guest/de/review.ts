@@ -10,6 +10,7 @@ export const review: Dict<typeof en> = {
   publicHint: 'Ihre Bewertung hilft anderen Reisenden, {property} zu entdecken.',
   google: 'Bewerten Sie uns auch auf Google',
   privateHint: 'Ihr Feedback ging vertraulich an den Gastgeber. Jede Nachricht wird gelesen, und vielleicht meldet sich der Gastgeber bei Ihnen, um es wiedergutzumachen.',
+  alsoGoogle: 'Gern können Sie Ihre Bewertung auch auf Google teilen.',
   opensOn: 'Bewertungen ab {date} möglich',
   opensHint: 'Ihr Aufenthalt: {from} bis {to}. Öffnen Sie diesen Link an Ihrem Abreisetag erneut.',
   chooseStars: 'Bitte wählen Sie eine Sternebewertung.',

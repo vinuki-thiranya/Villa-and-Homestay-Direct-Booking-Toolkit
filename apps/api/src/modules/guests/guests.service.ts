@@ -187,13 +187,15 @@ export class GuestsService {
       /** Reviews open on the check-out day. */
       opensOn: b.to_date,
       review: existing ? { rating: existing.rating, body: existing.body, public: existing.public } : null,
-      googleReviewUrl: existing?.public ? p.google_review_url : null,
+      googleReviewUrl: existing ? p.google_review_url : null,
     };
   }
 
   /**
-   * 4–5 stars: published on the site and the guest is invited to Google. 1–3 stars: kept private
-   * and routed to the owner first (spec §3.8).
+   * Every guest who reviews is offered the Google link, whatever the rating: Google's contribution
+   * policy forbids asking only happy guests (support.google.com/contributionpolicy/answer/7400114).
+   * 4–5 stars are also published on the property's site; 1–3 stars go privately to the owner first
+   * (spec §3.8), who may publish them later. Every rating counts in the site's average.
    */
   async submitReview(reference: string, input: { token: string; rating: number; body: string }) {
     const b = await this.bookings.findByReference(reference, input.token);
@@ -208,7 +210,7 @@ export class GuestsService {
       if (isUniqueViolation(err)) throw new ConflictException('You already reviewed this stay. Thank you!');
       throw err;
     }
-    if (isPublic) this.revalidate.property(b.property_id);
+    this.revalidate.property(b.property_id); // the average changes with every rating
     const p = (await this.db.one(`select google_review_url from property where id = $1`, [b.property_id]))!;
     this.notify.run(
       this.notify.ownerAlert(
@@ -219,7 +221,7 @@ export class GuestsService {
         '/reviews',
       ),
     );
-    return { public: isPublic, googleReviewUrl: isPublic ? p.google_review_url : null };
+    return { public: isPublic, googleReviewUrl: p.google_review_url as string | null };
   }
 
   listReviews(user: SessionUser, propertyId: string) {
@@ -252,8 +254,9 @@ export class GuestsService {
       `select rating, body, guest_name, owner_reply, created_at from review where property_id = $1 and public order by created_at desc limit 50`,
       [propertyId],
     );
+    // Texts: published reviews only. Average and count: every rating, so the score is not selective.
     const stats = await this.db.one<{ avg: number | null; n: number }>(
-      `select round(avg(rating)::numeric, 2) as avg, count(*)::int as n from review where property_id = $1 and public`,
+      `select round(avg(rating)::numeric, 2) as avg, count(*)::int as n from review where property_id = $1`,
       [propertyId],
     );
     return {

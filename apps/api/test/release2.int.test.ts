@@ -7,6 +7,7 @@ import { AvailabilityService } from '../src/modules/availability/availability.se
 import { BookingsService } from '../src/modules/bookings/bookings.service.js';
 import { ConciergeService, type LlmClient } from '../src/modules/concierge/concierge.service.js';
 import { FlagsService } from '../src/modules/flags/flags.service.js';
+import { SiteFactsService } from '../src/modules/public/site-facts.service.js';
 import { GuestsService } from '../src/modules/guests/guests.service.js';
 import { InboxService } from '../src/modules/inbox/inbox.service.js';
 import { NotificationsService } from '../src/modules/notifications/notifications.service.js';
@@ -241,11 +242,14 @@ describe('add-on marketplace', () => {
 });
 
 describe('reviews and repeat guests', () => {
-  it('routes low ratings privately and invites high ratings to Google', async () => {
+  it('invites every guest to Google, keeps low ratings private and counts them in the average', async () => {
     const guests = ctx.get(GuestsService);
     const b2 = (await ctx.db.one(`update booking set status = 'checked_out' where reference = 'SD-DEMO2' returning access_token`))!;
     const low = await guests.submitReview('SD-DEMO2', { token: b2.access_token, rating: 2, body: 'Hot water was cold.' });
-    expect(low).toEqual({ public: false, googleReviewUrl: null });
+    // Google's policy: no asking only happy guests. The text still goes to the owner privately.
+    expect(low.public).toBe(false);
+    expect(low.googleReviewUrl).toContain('g.page');
+    expect((await guests.reviewContext('SD-DEMO2', b2.access_token)).googleReviewUrl).toContain('g.page');
     await expect(guests.submitReview('SD-DEMO2', { token: b2.access_token, rating: 5, body: '' })).rejects.toThrow(/already/);
 
     const b3 = (await ctx.db.one(`update booking set status = 'checked_out' where reference = 'SD-DEMO3' returning access_token`))!;
@@ -253,8 +257,14 @@ describe('reviews and repeat guests', () => {
     expect(high.public).toBe(true);
     expect(high.googleReviewUrl).toContain('g.page');
     const pub = await guests.publicReviews(ctx.propertyId);
-    expect(pub.count).toBe(7); // six seeded past stays (seedRelease4) plus this one
+    expect(pub.count).toBe(8); // six seeded past stays (seedRelease4), the 2★ and the 5★
+    expect(pub.reviews).toHaveLength(7); // the 2★ text is not published
+    expect(pub.reviews.some((r) => r.body.includes('Hot water'))).toBe(false);
     expect(pub.reviews[0]!.guestName).toBe('Claire D.');
+    const all = (await ctx.db.one<{ avg: string }>(`select round(avg(rating)::numeric, 2) as avg from review where property_id = $1`, [ctx.propertyId]))!;
+    expect(Number(pub.average)).toBe(Number(all.avg));
+    const facts = await ctx.get(SiteFactsService).facts(ctx.propertyId);
+    expect(facts.count).toBe(8);
   });
 
   it('issues one "book direct next time" code about 11 months after a stay', async () => {

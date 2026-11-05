@@ -16,7 +16,8 @@ export default async function ReviewsPage() {
   if (!property) return null;
   const [reviews, t] = await Promise.all([ownerApi<Review[]>(`/properties/${property.id}/reviews`), getT()]);
   const published = reviews.filter((r) => r.public);
-  const avg = published.length ? published.reduce((s, r) => s + r.rating, 0) / published.length : null;
+  // Same as the guest site: every rating counts, whether or not its text is shown.
+  const avg = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : null;
   const privateCount = reviews.length - published.length;
 
   return (
@@ -24,7 +25,7 @@ export default async function ReviewsPage() {
       <div>
         <h1 className="text-2xl font-semibold">{t('reviews.title')}</h1>
         <p className="text-sm text-muted">
-          {avg != null ? t.n('reviews.summary', published.length, { avg: avg.toFixed(1) }) : t('reviews.noPublic')}
+          {avg != null ? t.n('reviews.summary', reviews.length, { avg: avg.toFixed(1) }) : t('reviews.noPublic')}
           {privateCount > 0 && ` · ${t('reviews.privateCount', { n: privateCount })}`}. {t('reviews.how')}
         </p>
       </div>

@@ -1,11 +1,11 @@
 // Owner app text: guest reviews.
 export const reviews = {
   title: 'Reviews',
-  summary_one: '★ {avg} from {n} public review',
-  summary_other: '★ {avg} from {n} public reviews',
-  noPublic: 'No public reviews yet',
-  privateCount: '{n} private',
-  how: 'Guests are asked on check-out day; 4–5★ are shown on your site and invited to Google, 1–3★ come only to you.',
+  summary_one: '★ {avg} from {n} review',
+  summary_other: '★ {avg} from {n} reviews',
+  noPublic: 'No reviews yet',
+  privateCount: '{n} not shown on your site',
+  how: 'Guests are asked on check-out day and every guest is offered your Google review link. 4–5★ are shown on your site; 1–3★ come to you first and you choose whether to show them. Every rating counts in your average.',
   empty: 'No reviews yet. The check-out message asks every direct guest for one.',
   public: 'Public',
   private: 'Private',
