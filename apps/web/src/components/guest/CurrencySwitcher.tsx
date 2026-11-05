@@ -3,15 +3,17 @@
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { CURRENCIES } from '@/lib/format';
+import { useGT } from './GuestI18n';
 
 export function CurrencySwitcher({ current }: { current: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const t = useGT();
   return (
     <label className="flex items-center gap-1 text-sm">
-      <span className="sr-only">Currency</span>
+      <span className="sr-only">{t('layout.currency')}</span>
       <select
-        className="min-h-9 rounded-full border border-line bg-surface px-2 text-sm font-medium"
+        className="min-h-11 rounded-[var(--btn-radius,9999px)] border border-line bg-surface px-2 text-sm font-medium"
         value={current}
         disabled={pending}
         onChange={(e) => {

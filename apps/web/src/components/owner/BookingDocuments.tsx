@@ -1,17 +1,13 @@
 import { FileText } from 'lucide-react';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { Empty, Field, Section, Select } from '@/components/owner/fields';
-import { fmtDate, money } from '@/lib/format';
+import { money } from '@/lib/format';
 import { ownerApi } from '@/lib/owner';
+import { getT } from '@/lib/owner-i18n';
 import type { InvoiceRow, UtilityReading } from '@/lib/owner-r3';
 import { addReadingAction, deleteReadingAction, issueInvoiceAction, passportAction } from '@/app/owner/actions-r3';
 
-const METERS: [string, string][] = [
-  ['electricity', 'Electricity'],
-  ['water', 'Water'],
-  ['gas', 'Gas'],
-  ['other', 'Other'],
-];
+const METERS = ['electricity', 'water', 'gas', 'other'] as const;
 
 interface Props {
   bookingId: string;
@@ -29,22 +25,26 @@ interface Props {
  */
 export async function BookingDocuments({ bookingId, status, currency, from, to, monthly, guest }: Props) {
   const invoiceable = ['confirmed', 'checked_in', 'checked_out'].includes(status);
-  const [invoices, readings] = await Promise.all([
+  const [invoices, readings, t] = await Promise.all([
     ownerApi<InvoiceRow[]>(`/bookings/${bookingId}/invoices`),
     monthly ? ownerApi<UtilityReading[]>(`/bookings/${bookingId}/utility-readings`) : Promise.resolve([] as UtilityReading[]),
+    getT(),
   ]);
+  const meterLabel = (m: string) => ((METERS as readonly string[]).includes(m) ? t(`documents.meters.${m as (typeof METERS)[number]}`) : m);
 
   return (
     <>
-      <Section title={monthly ? 'Invoices (long stay)' : 'Invoices'}>
+      <Section title={monthly ? t('documents.invoicesLongStay') : t('documents.invoices')}>
         {monthly && (
           <p className="mb-3 text-sm text-muted">
-            {monthly.name} · utilities {monthly.utilities}. Long-stay invoices carry the residence wording immigration asks for when guests renew a Digital
-            Nomad Visa.
+            {t('documents.longStayNote', {
+              plan: monthly.name,
+              utilities: monthly.utilities === 'metered' ? t('documents.utilitiesMetered') : t('documents.utilitiesIncluded'),
+            })}
           </p>
         )}
         {invoices.length === 0 ? (
-          <Empty>No invoices yet.</Empty>
+          <Empty>{t('documents.empty')}</Empty>
         ) : (
           <ul className="divide-y divide-line text-sm">
             {invoices.map((i) => (
@@ -52,7 +52,7 @@ export async function BookingDocuments({ bookingId, status, currency, from, to, 
                 <FileText aria-hidden className="h-4 w-4 text-brand" />
                 <span className="font-medium">{i.number}</span>
                 <span className="flex-1 text-muted">
-                  {i.periodStart ? `${fmtDate(i.periodStart)} – ${fmtDate(i.periodEnd)} · ` : ''}
+                  {i.periodStart ? `${t.date(i.periodStart)} – ${t.date(i.periodEnd)}, ` : ''}
                   {money(i.total, i.currency)}
                 </span>
                 {i.pdfUrl && (
@@ -66,11 +66,19 @@ export async function BookingDocuments({ bookingId, status, currency, from, to, 
         )}
         {invoiceable && (
           <div className="mt-4 border-t border-line pt-4">
-            <ActionForm action={issueInvoiceAction.bind(null, bookingId)} submitLabel="Issue invoice" pendingLabel="Issuing…">
+            <ActionForm action={issueInvoiceAction.bind(null, bookingId)} submitLabel={t('documents.issue')} pendingLabel={t('documents.issuing')}>
               {monthly && (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Period from (optional)" name="periodStart" id={`inv-from-${bookingId}`} type="date" min={from} max={to} />
-                  <Field label="Period to" name="periodEnd" id={`inv-to-${bookingId}`} type="date" min={from} max={to} hint="Leave both empty to invoice the whole stay" />
+                  <Field label={t('documents.periodFrom')} name="periodStart" id={`inv-from-${bookingId}`} type="date" min={from} max={to} />
+                  <Field
+                    label={t('documents.periodTo')}
+                    name="periodEnd"
+                    id={`inv-to-${bookingId}`}
+                    type="date"
+                    min={from}
+                    max={to}
+                    hint={t('documents.periodHint')}
+                  />
                 </div>
               )}
             </ActionForm>
@@ -79,39 +87,63 @@ export async function BookingDocuments({ bookingId, status, currency, from, to, 
       </Section>
 
       {monthly && (
-        <Section title="Utility readings">
-          {monthly.utilities === 'included' && <p className="mb-3 text-sm text-muted">Utilities are included in this plan; add readings only for extra charges.</p>}
+        <Section title={t('documents.readings')}>
+          {monthly.utilities === 'included' && <p className="mb-3 text-sm text-muted">{t('documents.includedNote')}</p>}
           {readings.length === 0 ? (
-            <Empty>No readings yet. Add the meter readings at the end of each month.</Empty>
+            <Empty>{t('documents.readingsEmpty')}</Empty>
           ) : (
             <ul className="divide-y divide-line text-sm">
               {readings.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center gap-2 py-2">
                   <span className="min-w-0 flex-1">
-                    <span className="font-medium capitalize">{r.meter}</span>{' '}
+                    <span className="font-medium capitalize">{meterLabel(r.meter)}</span>{' '}
                     <span className="text-muted">
-                      {fmtDate(r.periodStart)} – {fmtDate(r.periodEnd)} · {r.startReading} → {r.endReading} × {r.unitRate}
+                      {t.date(r.periodStart)} – {t.date(r.periodEnd)}: {r.startReading} → {r.endReading} × {r.unitRate}
                     </span>
                   </span>
                   <span className="tabular-nums font-medium">{money(r.amount, currency)}</span>
                   {r.invoiceId ? (
-                    <span className="pill bg-ok-bg text-ok">Invoiced</span>
+                    <span className="pill bg-ok-bg text-ok">{t('documents.invoiced')}</span>
                   ) : (
-                    <ActionForm action={deleteReadingAction.bind(null, r.id)} submitLabel="Delete" variant="secondary" inline confirm="Delete this reading?" />
+                    <ActionForm
+                      action={deleteReadingAction.bind(null, r.id)}
+                      submitLabel={t('common.delete')}
+                      variant="secondary"
+                      inline
+                      confirm={t('documents.deleteReading')}
+                    />
                   )}
                 </li>
               ))}
             </ul>
           )}
           <div className="mt-4 border-t border-line pt-4">
-            <ActionForm action={addReadingAction.bind(null, bookingId)} submitLabel="Add reading">
+            <ActionForm action={addReadingAction.bind(null, bookingId)} submitLabel={t('documents.addReading')}>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Select label="Meter" name="meter" id={`m-${bookingId}`} options={METERS} />
-                <Field label="From" name="periodStart" id={`ps-${bookingId}`} type="date" required min={from} max={to} defaultValue={from} />
-                <Field label="To" name="periodEnd" id={`pe-${bookingId}`} type="date" required min={from} max={to} />
-                <Field label="Start reading" name="startReading" id={`sr-${bookingId}`} type="number" min={0} step="0.01" required inputMode="decimal" />
-                <Field label="End reading" name="endReading" id={`er-${bookingId}`} type="number" min={0} step="0.01" required inputMode="decimal" />
-                <Field label={`Price per unit (${currency})`} name="unitRate" id={`ur-${bookingId}`} type="number" min={0} step="0.0001" required inputMode="decimal" />
+                <Select label={t('documents.meter')} name="meter" id={`m-${bookingId}`} options={METERS.map((m) => [m, meterLabel(m)] as [string, string])} />
+                <Field label={t('documents.from')} name="periodStart" id={`ps-${bookingId}`} type="date" required min={from} max={to} defaultValue={from} />
+                <Field label={t('documents.to')} name="periodEnd" id={`pe-${bookingId}`} type="date" required min={from} max={to} />
+                <Field
+                  label={t('documents.startReading')}
+                  name="startReading"
+                  id={`sr-${bookingId}`}
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  required
+                  inputMode="decimal"
+                />
+                <Field label={t('documents.endReading')} name="endReading" id={`er-${bookingId}`} type="number" min={0} step="0.01" required inputMode="decimal" />
+                <Field
+                  label={t('documents.unitPrice', { currency })}
+                  name="unitRate"
+                  id={`ur-${bookingId}`}
+                  type="number"
+                  min={0}
+                  step="0.0001"
+                  required
+                  inputMode="decimal"
+                />
               </div>
             </ActionForm>
           </div>
@@ -119,17 +151,17 @@ export async function BookingDocuments({ bookingId, status, currency, from, to, 
       )}
 
       {monthly && guest && (
-        <Section title="Guest identity for the visa invoice">
-          <ActionForm action={passportAction.bind(null, guest.id)} submitLabel="Save" inline>
+        <Section title={t('documents.identity')}>
+          <ActionForm action={passportAction.bind(null, guest.id)} submitLabel={t('common.save')} inline>
             <Field
-              label="Last 4 characters of the passport number"
+              label={t('documents.passport')}
               name="passportLast4"
               id={`pp-${bookingId}`}
               defaultValue={guest.passportLast4 ?? ''}
               maxLength={4}
               pattern="[A-Za-z0-9]{4}"
               autoComplete="off"
-              hint="We store only these 4 characters (GDPR: minimal data)."
+              hint={t('documents.passportHint')}
             />
           </ActionForm>
         </Section>

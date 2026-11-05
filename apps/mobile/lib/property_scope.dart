@@ -19,11 +19,14 @@ class PropertyScope extends ChangeNotifier {
   String? _currentId;
   bool showAll = false;
 
+  /// "All properties" in the app's language; the shell sets it on every build.
+  String allLabel = 'All properties';
+
   String get currentId => _currentId ?? (properties.isNotEmpty ? properties.first.id : '');
   bool get isMulti => properties.length > 1;
 
   String get currentName {
-    if (showAll) return 'All properties';
+    if (showAll) return allLabel;
     for (final p in properties) {
       if (p.id == currentId) return p.name;
     }

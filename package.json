@@ -20,7 +20,7 @@
     "db:local": "npm run db:local -w @staydirect/api",
     "db:migrate": "npm run db:migrate -w @staydirect/api",
     "db:seed": "npm run db:seed -w @staydirect/api",
-    "test": "npm test -w @staydirect/shared && npm test -w @staydirect/api",
+    "test": "npm test -w @staydirect/shared && npm test -w @staydirect/web && npm test -w @staydirect/api",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "allowScripts": {

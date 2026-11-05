@@ -260,6 +260,6 @@ describe('admin console', () => {
     const branding = ctx.get(BrandingService);
     expect(await branding.forTenant(managerTenantId)).toMatchObject({ whiteLabel: true, displayName: 'Southern Coast Stays' });
     expect((await branding.forTenant(villaOwner.tenantId)).whiteLabel).toBe(false);
-    expect(await branding.themeTokens('surf')).toMatchObject({ brand: '#1d4ed8' });
+    expect(await branding.themeTokens('surf')).toMatchObject({ brand: '#0a4a7a' });
   });
 });

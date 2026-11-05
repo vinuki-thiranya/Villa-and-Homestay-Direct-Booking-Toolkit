@@ -1,9 +1,12 @@
 import Link from 'next/link';
 import { UpgradeNote } from '@/components/owner/Upgrade';
-import { fmtShort, fmtWeekday, SOURCE_LABEL } from '@/lib/format';
+import { SOURCE_LABEL } from '@/lib/format';
+import { getT } from '@/lib/owner-i18n';
 import { getMe, ownerTry, type MultiCalendar } from '@/lib/owner-r3';
 
-export const metadata = { title: 'Calendar — all properties' };
+export async function generateMetadata() {
+  return { title: (await getT())('portfolio.calendarTitle') };
+}
 
 const DAYS = 21;
 const CELL: Record<string, string> = {
@@ -25,7 +28,7 @@ function addDays(iso: string, n: number) {
 /** Rooms × days for every property the user may see, grouped by property (spec §3.9 R3). */
 export default async function AllCalendarPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const q = await searchParams;
-  const me = await getMe();
+  const [me, t] = await Promise.all([getMe(), getT()]);
   if (!me.flags.multi_property) return <UpgradeNote feature="multi_property" />;
   const today = new Date().toISOString().slice(0, 10);
   const start = q.start && /^\d{4}-\d{2}-\d{2}$/.test(q.start) ? q.start : today;
@@ -34,36 +37,38 @@ export default async function AllCalendarPage({ searchParams }: { searchParams: 
   const cal = res.data;
   const dates = Array.from({ length: DAYS }, (_, i) => addDays(start, i));
   const byKey = new Map(cal.nights.map((n) => [`${n.roomId}|${n.date}`, n]));
+  const weekdayFmt = new Intl.DateTimeFormat(t.locale, { weekday: 'short', timeZone: 'UTC' });
+  const dayNum = (iso: string) => String(Number(iso.slice(8, 10)));
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Calendar — all properties</h1>
-        <nav aria-label="Calendar dates" className="flex items-center gap-2">
+        <h1 className="text-2xl font-semibold">{t('portfolio.calendarTitle')}</h1>
+        <nav aria-label={t('portfolio.datesNav')} className="flex items-center gap-2">
           <Link className="btn-secondary min-h-11 px-3" href={`/owner/portfolio/calendar?start=${addDays(start, -7)}`}>
-            ← Week
+            {t('portfolio.prevWeek')}
           </Link>
           <Link className="btn-secondary min-h-11 px-3" href="/owner/portfolio/calendar">
-            Today
+            {t('portfolio.today')}
           </Link>
           <Link className="btn-secondary min-h-11 px-3" href={`/owner/portfolio/calendar?start=${addDays(start, 7)}`}>
-            Week →
+            {t('portfolio.nextWeek')}
           </Link>
         </nav>
       </div>
 
       <div className="card overflow-x-auto">
         <table className="w-max border-collapse text-xs">
-          <caption className="sr-only">All rooms of all properties from {start} for {DAYS} days</caption>
+          <caption className="sr-only">{t('portfolio.caption', { start: t.date(start), days: DAYS })}</caption>
           <thead>
             <tr>
               <th scope="col" className="sticky left-0 z-10 min-w-36 bg-surface p-2 text-left font-semibold">
-                Room
+                {t('portfolio.room')}
               </th>
               {dates.map((d) => (
                 <th key={d} scope="col" className={`w-11 p-1 text-center font-medium ${d === today ? 'text-brand' : 'text-muted'}`}>
-                  <span className="block">{fmtWeekday(d)}</span>
-                  <span className="block">{fmtShort(d).split(' ')[0]}</span>
+                  <span className="block">{weekdayFmt.format(new Date(`${d}T00:00:00Z`))}</span>
+                  <span className="block">{dayNum(d)}</span>
                 </th>
               ))}
             </tr>
@@ -82,11 +87,11 @@ export default async function AllCalendarPage({ searchParams }: { searchParams: 
                   </th>
                   {dates.map((d) => {
                     const n = byKey.get(`${r.id}|${d}`);
-                    if (!n) return <td key={d} className="h-10 border-l border-line" aria-label={`${p.name} ${r.name} ${d} free`} />;
+                    if (!n) return <td key={d} className="h-10 border-l border-line" aria-label={`${p.name} ${r.name} ${t.date(d)} ${t('portfolio.free')}`} />;
                     const tone = n.status === 'held' ? 'bg-amber-300 text-amber-950' : n.status === 'blocked' ? CELL.manual : (CELL[n.source] ?? CELL.other);
-                    const label = n.status === 'held' ? 'Hold' : n.status === 'blocked' ? 'Blocked' : SOURCE_LABEL[n.source] ?? n.source;
+                    const label = n.status === 'held' ? t('portfolio.hold') : n.status === 'blocked' ? t('portfolio.blocked') : (SOURCE_LABEL[n.source] ?? n.source);
                     const who = n.guestName ?? n.bookingReference ?? n.note ?? '';
-                    const title = `${p.name} · ${r.name} · ${d} · ${label}${who ? ` · ${who}` : ''}`;
+                    const title = `${p.name}, ${r.name}, ${t.date(d)}: ${label}${who ? `, ${who}` : ''}`;
                     const short = n.guestName ? n.guestName.split(' ')[0]!.slice(0, 3) : label.slice(0, 2);
                     return (
                       <td key={d} className="h-10 border-l border-line p-0.5">
@@ -108,7 +113,7 @@ export default async function AllCalendarPage({ searchParams }: { searchParams: 
           ))}
         </table>
       </div>
-      <p className="text-xs text-muted">Booking links open in the property they belong to; switch property at the top to act on them.</p>
+      <p className="text-xs text-muted">{t('portfolio.footnote')}</p>
     </div>
   );
 }

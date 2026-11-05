@@ -29,6 +29,68 @@ jobs:
       - run: npm test
       - run: npm run build -w @staydirect/web
 
+  # The guest booking site end to end: seeded stack, a real booking in each theme (screenshots at
+  # 375 px), then Lighthouse mobile and the 150 KB image budget on a production build.
+  guest-site:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: staydirect
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/staydirect
+      JWT_SECRET: ci-only-secret-not-for-production
+      OTP_DEV_CODE: '123456'
+      SMS_PROVIDER: console
+      PORT: '4000'
+      PUBLIC_API_URL: http://localhost:4000
+      WEB_URL: http://localhost:3100/s
+      CORS_ORIGINS: http://localhost:3100
+      API_URL: http://localhost:4000
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w @staydirect/shared
+      - run: npm run db:migrate -w @staydirect/api
+      - run: npm run db:seed -w @staydirect/api
+      - name: Start the API
+        run: |
+          node apps/api/dist/src/main.js > api.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf localhost:4000/health && exit 0; sleep 1; done; cat api.log; exit 1
+      - run: npm run build -w @staydirect/web
+      - name: Start the web app (theme previews on)
+        working-directory: apps/web
+        run: |
+          ALLOW_THEME_PREVIEW=1 npx next start --port 3100 > ../../web.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null localhost:3100/s/villa-lagoon && exit 0; sleep 1; done; cat ../../web.log; exit 1
+      - name: Book in every theme (screenshots)
+        working-directory: apps/web
+        run: WEB=http://localhost:3100 OUT=../../ci-screenshots node scripts/screenshots.mjs
+      - name: Lighthouse and image budget
+        working-directory: apps/web
+        # Shared runners are slower and noisier than a phone-class lab: 85 guards against regressions;
+        # the 95 target is checked locally (docs/lighthouse/).
+        run: WEB=http://localhost:3100 OUT=../../ci-lighthouse MIN_PERF=85 RUNS=3 node scripts/lighthouse.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guest-site
+          path: |
+            ci-screenshots
+            ci-lighthouse
+            api.log
+            web.log
+
   mobile:
     runs-on: ubuntu-latest
     defaults:

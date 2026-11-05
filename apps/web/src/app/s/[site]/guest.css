@@ -1,0 +1,266 @@
+/*
+ * Guest-site theme layouts (design-system/staydirect-guest/). Colours and fonts come from the
+ * variables that themes/registry.ts writes on .g-site; this file only shapes each theme's signature
+ * moments: lagoon's horizon line, jungle's verandah arches, surf's yellow band. One block per theme,
+ * so a Claude Design handoff can replace a theme without touching the others.
+ */
+
+/* In the components layer so Tailwind utilities (hidden, w-full, px-4…) still win. */
+@layer components {
+  .g-site {
+    font-family: var(--g-sans);
+    --btn-radius: 9999px;
+    --hero-scrim: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.28) 50%, rgb(0 0 0 / 0) 75%);
+  }
+
+  .g-site :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  .g-display {
+    font-family: var(--g-display);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-wrap-style: balance;
+  }
+
+  /* The main call to action: brand colour, or the accent where a theme leads with it. */
+  .g-cta {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--btn-radius);
+    padding-inline: 1.25rem;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    background: var(--brand);
+    color: var(--brand-fg);
+    transition: background-color 150ms ease, transform 150ms ease;
+  }
+  .g-cta:hover {
+    background: var(--brand-strong);
+  }
+  .g-cta:active {
+    transform: translateY(1px);
+  }
+  .g-cta:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  /* ---------------------------------------------------------------- hero (shared) */
+  .g-hero-media {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-2);
+  }
+  .g-hero-media img,
+  .g-hero-media video {
+    object-fit: cover;
+  }
+  .g-hero-scrim {
+    position: absolute;
+    inset: 0;
+    background: var(--hero-scrim);
+    pointer-events: none;
+  }
+  .g-name {
+    font-family: var(--g-display);
+    font-weight: 600;
+    line-height: 0.95;
+    text-wrap-style: balance;
+  }
+  .g-search {
+    position: relative;
+    z-index: 10;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    box-shadow: 0 18px 40px -24px rgb(0 0 0 / 0.35);
+  }
+
+  /* ---------------------------------------------------------------- lagoon: the horizon */
+  [data-theme='lagoon'] .g-hero-media {
+    height: 56svh;
+    min-height: 19rem;
+    max-height: 46rem;
+  }
+  [data-theme='lagoon'] .g-name {
+    font-size: clamp(2.9rem, 12vw, 6rem);
+    font-weight: 500;
+    letter-spacing: -0.015em;
+  }
+  /* A brass rule where sky meets water. */
+  [data-theme='lagoon'] .g-horizon {
+    display: block;
+    width: 4.5rem;
+    height: 2px;
+    margin-top: 1rem;
+    background: var(--accent);
+  }
+  [data-theme='lagoon'] .g-search-wrap {
+    margin-top: -3rem;
+  }
+  @media (min-width: 640px) {
+    [data-theme='lagoon'] .g-hero-media {
+      height: 74vh;
+    }
+    [data-theme='lagoon'] .g-search-wrap {
+      margin-top: -4.5rem;
+    }
+  }
+
+  /* ---------------------------------------------------------------- jungle: verandah arches */
+  [data-theme='jungle'] {
+    --btn-radius: 6px;
+  }
+  [data-theme='jungle'] .g-name {
+    font-size: clamp(2.4rem, 10vw, 4.75rem);
+    font-style: italic;
+    line-height: 1.02;
+  }
+  [data-theme='jungle'] .g-arch {
+    /* Percent radii: px values this large get scaled down and the arch flattens. */
+    border-radius: 50% 50% var(--radius) var(--radius) / 38% 38% var(--radius) var(--radius);
+    overflow: hidden;
+  }
+  [data-theme='jungle'] .g-hero-media {
+    height: 36svh;
+    min-height: 15rem;
+  }
+  .g-jungle-hero {
+    display: grid;
+    grid-template-areas: 'text' 'media' 'search';
+  }
+  @media (min-width: 768px) {
+    .g-jungle-hero {
+      grid-template-columns: 1fr 1.1fr;
+      grid-template-rows: auto 1fr;
+      grid-template-areas: 'text media' 'search media';
+      column-gap: 3rem;
+    }
+  }
+  [data-theme='jungle'] .g-search-wrap {
+    margin-top: -2.25rem;
+  }
+  @media (min-width: 768px) {
+    [data-theme='jungle'] .g-hero-media {
+      height: 70vh;
+      max-height: 44rem;
+    }
+    [data-theme='jungle'] .g-search-wrap {
+      margin-top: 0;
+    }
+  }
+  /* Room photos share the arch only on the cards, never in the full gallery. */
+  [data-theme='jungle'] .g-room-media {
+    border-radius: 50% 50% 0 0 / 30% 30% 0 0;
+  }
+
+  /* ---------------------------------------------------------------- surf: the yellow band */
+  [data-theme='surf'] {
+    --btn-radius: 10px;
+  }
+  [data-theme='surf'] .g-cta {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+  [data-theme='surf'] .g-cta:hover {
+    background: color-mix(in srgb, var(--accent) 88%, black);
+  }
+  [data-theme='surf'] .g-hero-media {
+    height: 52svh;
+    min-height: 18rem;
+    max-height: 46rem;
+  }
+  [data-theme='surf'] .g-name {
+    font-size: clamp(3.4rem, 17vw, 8.5rem);
+    font-weight: 800;
+    line-height: 0.82;
+    letter-spacing: -0.005em;
+  }
+  /* Search sits on a band of tuk-tuk yellow with a cut top edge, like a board's rail. */
+  [data-theme='surf'] .g-search-band {
+    margin-top: -1.75rem;
+    background: var(--accent);
+    clip-path: polygon(0 1.25rem, 100% 0, 100% 100%, 0 100%);
+    padding-top: 2.25rem;
+    padding-bottom: 1.25rem;
+  }
+  [data-theme='surf'] .g-search {
+    border-color: transparent;
+    box-shadow: none;
+  }
+  [data-theme='surf'] .g-search .g-cta {
+    background: var(--fg);
+    color: var(--bg);
+  }
+  @media (min-width: 640px) {
+    [data-theme='surf'] .g-hero-media {
+      height: 72vh;
+    }
+  }
+
+  /* ---------------------------------------------------------------- galleries */
+  .g-gallery {
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .g-gallery::-webkit-scrollbar {
+    display: none;
+  }
+  .g-gallery > * {
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+
+  /* ---------------------------------------------------------------- confirmation chat bubble */
+  .g-chat {
+    background:
+      radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--brand) 6%, transparent) 0 2px, transparent 3px) 0 0 / 22px 22px,
+      var(--surface-2);
+  }
+  .g-bubble {
+    position: relative;
+    background: var(--surface);
+    border-radius: 0 var(--radius) var(--radius) var(--radius);
+  }
+  .g-bubble::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 0;
+    border-top: 10px solid var(--surface);
+    border-left: 8px solid transparent;
+  }
+
+  /* ---------------------------------------------------------------- sticky book bar */
+  .g-bookbar {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  /* ---------------------------------------------------------------- Sinhala (any theme)
+   * Only the font changes (themes/fonts.ts falls back per glyph). Sinhala vowel signs sit above and
+   * below the letters, so the tight display leading of each theme would clip them: open it up. */
+  .g-site[lang='si'] {
+    line-height: 1.7;
+  }
+  .g-site[lang='si'] :is(.g-name, .g-display, h1, h2, h3) {
+    line-height: 1.3;
+    letter-spacing: 0;
+  }
+  [data-theme='surf'][lang='si'] .g-name {
+    font-size: clamp(2.6rem, 12vw, 6rem);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .g-gallery {
+      scroll-behavior: auto;
+    }
+  }
+}

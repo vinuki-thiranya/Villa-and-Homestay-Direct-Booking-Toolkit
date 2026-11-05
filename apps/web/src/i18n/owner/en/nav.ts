@@ -1,0 +1,21 @@
+// Owner navigation labels (sidebar, bottom bar, More page). Keys match NAV_ITEMS in components/owner/nav-items.ts.
+export const nav = {
+  owner: 'Owner',
+  today: 'Today',
+  bookings: 'Bookings',
+  inbox: 'Inbox',
+  tasks: 'Tasks',
+  calendar: 'Calendar',
+  addOns: 'Add-ons',
+  guests: 'Guests',
+  reviews: 'Reviews',
+  channels: 'Channels',
+  portfolio: 'All properties',
+  owners: 'Owners & statements',
+  team: 'Team',
+  setup: 'Setup',
+  billing: 'Plan & billing',
+  support: 'Support',
+  more: 'More',
+  waiting: 'waiting',
+};

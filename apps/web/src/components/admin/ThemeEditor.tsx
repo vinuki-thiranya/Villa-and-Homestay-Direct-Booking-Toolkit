@@ -3,6 +3,8 @@
 import { useMemo, useState, useTransition } from 'react';
 import { saveThemeAction } from '@/app/admin/actions';
 import type { AdminTheme, ThemeTokens } from '@/lib/admin';
+import { FONT_STACK, FONT_VARIABLES } from '@/themes/fonts';
+import { isThemeFont, THEME_FONTS, type ThemeFont } from '@/themes/registry';
 
 const GUEST_FG = '#14201f'; // guest-site body text (globals.css --fg)
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -10,7 +12,7 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 const COLOR_FIELDS: { key: keyof ThemeTokens; label: string; help: string }[] = [
   { key: 'brand', label: 'Brand', help: 'Buttons, links, header. White text sits on it.' },
   { key: 'brandStrong', label: 'Brand, pressed', help: 'Button hover and pressed state.' },
-  { key: 'accent', label: 'Accent', help: 'Focus rings and small highlights.' },
+  { key: 'accent', label: 'Accent', help: 'Stars, highlights, and the main button on the surf theme.' },
   { key: 'bg', label: 'Page background', help: 'Behind everything. Body text sits on it.' },
   { key: 'surface2', label: 'Soft panel', help: 'Search box, badges, alternating sections.' },
 ];
@@ -55,7 +57,7 @@ export function ThemeEditor({ themes }: { themes: AdminTheme[] }) {
       { label: 'White text on pressed buttons', ratio: contrast('#ffffff', tokens.brandStrong), min: 4.5 },
       { label: 'Body text on page background', ratio: contrast(GUEST_FG, tokens.bg), min: 4.5 },
       { label: 'Body text on soft panels', ratio: contrast(GUEST_FG, tokens.surface2), min: 4.5 },
-      { label: 'Accent focus ring on background', ratio: contrast(tokens.accent, tokens.bg), min: 3 },
+      { label: 'Brand focus ring on background', ratio: contrast(tokens.brand, tokens.bg), min: 3 },
     ],
     [tokens],
   );
@@ -79,8 +81,8 @@ export function ThemeEditor({ themes }: { themes: AdminTheme[] }) {
     '--p-bg': tokens.bg,
     '--p-surface2': tokens.surface2,
     '--p-radius': tokens.radius || '14px',
-    '--p-display': tokens.fontDisplay || "ui-serif, Georgia, 'Times New Roman', serif",
-    '--p-sans': tokens.fontSans || 'ui-sans-serif, system-ui, sans-serif',
+    '--p-display': isThemeFont(tokens.fontDisplay) ? FONT_STACK[tokens.fontDisplay] : "ui-serif, Georgia, 'Times New Roman', serif",
+    '--p-sans': isThemeFont(tokens.fontSans) ? FONT_STACK[tokens.fontSans] : 'ui-sans-serif, system-ui, sans-serif',
   } as React.CSSProperties;
 
   return (
@@ -170,16 +172,10 @@ export function ThemeEditor({ themes }: { themes: AdminTheme[] }) {
                 ))}
               </select>
             </label>
-            <label className="adm-field">
-              <span>Display font (optional)</span>
-              <input className="adm-input" value={tokens.fontDisplay ?? ''} onChange={(e) => set('fontDisplay', e.target.value)} placeholder="Georgia, serif" />
-            </label>
-            <label className="adm-field">
-              <span>Body font (optional)</span>
-              <input className="adm-input" value={tokens.fontSans ?? ''} onChange={(e) => set('fontSans', e.target.value)} placeholder="system-ui, sans-serif" />
-            </label>
+            <FontSelect label="Headings font" value={tokens.fontDisplay} onChange={(v) => set('fontDisplay', v)} />
+            <FontSelect label="Body font" value={tokens.fontSans} onChange={(v) => set('fontSans', v)} />
           </div>
-          <p className="adm-help">Fonts must be ones the guest site already loads; otherwise visitors see the fallback.</p>
+          <p className="adm-help">Only fonts the guest site ships are offered, so guests never see a fallback.</p>
 
           <section aria-labelledby="contrast-h">
             <h3 id="contrast-h" style={{ fontSize: 14, fontWeight: 700, margin: '0 0 6px' }}>
@@ -232,6 +228,31 @@ export function ThemeEditor({ themes }: { themes: AdminTheme[] }) {
   );
 }
 
+const FONT_LABEL: Record<ThemeFont, string> = {
+  cormorant: 'Cormorant (serif)',
+  manrope: 'Manrope (sans)',
+  lora: 'Lora (serif)',
+  'work-sans': 'Work Sans (sans)',
+  'barlow-condensed': 'Barlow Condensed (sans)',
+  barlow: 'Barlow (sans)',
+};
+
+function FontSelect({ label, value, onChange }: { label: string; value: string | undefined; onChange: (v: string) => void }) {
+  return (
+    <label className="adm-field">
+      <span>{label}</span>
+      <select className="adm-select" value={isThemeFont(value) ? value : ''} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Theme default</option>
+        {THEME_FONTS.map((f) => (
+          <option key={f} value={f}>
+            {FONT_LABEL[f]}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 /** A miniature guest site (header, search, room card, price, deposit badge, button) driven only by the tokens. */
 function ThemePreview({ style }: { style: React.CSSProperties }) {
   const r = 'var(--p-radius)';
@@ -239,6 +260,7 @@ function ThemePreview({ style }: { style: React.CSSProperties }) {
     <div
       aria-label="Guest site preview"
       role="img"
+      className={FONT_VARIABLES}
       style={{ ...style, background: 'var(--p-bg)', color: GUEST_FG, fontFamily: 'var(--p-sans)', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--a-rule)' }}
     >
       <div style={{ background: 'var(--p-brand)', color: '#fff', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

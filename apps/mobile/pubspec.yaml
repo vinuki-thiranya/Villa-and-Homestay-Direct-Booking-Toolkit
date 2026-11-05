@@ -30,6 +30,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -59,6 +62,23 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Owner app in Sinhala (gen-l10n from lib/l10n/*.arb, see l10n.yaml).
+  generate: true
+
+  # Sinhala fonts, SIL Open Font License (licences beside the files in assets/fonts/).
+  # Noto Sans Sinhala: static Regular/SemiBold from notofonts (the upstream of Google Fonts' variable file).
+  # Abhaya Libre Bold: google/fonts ofl/abhayalibre, the free revival of FM Abhaya, for Sinhala headings.
+  fonts:
+    - family: NotoSansSinhala
+      fonts:
+        - asset: assets/fonts/NotoSansSinhala-Regular.ttf
+        - asset: assets/fonts/NotoSansSinhala-SemiBold.ttf
+          weight: 600
+    - family: AbhayaLibre
+      fonts:
+        - asset: assets/fonts/AbhayaLibre-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

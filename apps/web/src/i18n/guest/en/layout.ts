@@ -1,0 +1,22 @@
+// Guest site text: header, menu, footer, WhatsApp button.
+export const layout = {
+  skip: 'Skip to content',
+  mainNav: 'Main',
+  siteNav: 'Site',
+  menu: 'Menu',
+  rooms: 'Rooms',
+  experiences: 'Experiences',
+  location: 'Location',
+  contact: 'Contact',
+  book: 'Book',
+  bookYourStay: 'Book your stay',
+  currency: 'Currency',
+  sltda: 'SLTDA registration {number}',
+  checkInFrom: 'Check-in from {time}',
+  checkOutBy: 'Check-out by {time}',
+  privacy: 'Privacy notice',
+  managedBy: 'Managed by {brand}',
+  poweredBy: 'Powered by {brand}',
+  waText: 'Hello {name}, I have a question about a stay.',
+  waLabel: 'Message {name} on WhatsApp',
+};

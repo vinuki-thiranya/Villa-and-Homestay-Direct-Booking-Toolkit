@@ -5,8 +5,10 @@
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect, unstable_rethrow } from 'next/navigation';
+import type { OwnerKey } from '@/i18n/owner/t';
 import { ApiError } from '@/lib/api';
 import { ownerApi, PROPERTY_COOKIE } from '@/lib/owner';
+import { getT } from '@/lib/owner-i18n';
 import { isPlanError } from '@/lib/owner-r3';
 import type { ActionResult } from './actions';
 
@@ -17,16 +19,19 @@ const optStr = (fd: FormData, k: string) => str(fd, k) || null;
 const num = (fd: FormData, k: string) => (str(fd, k) === '' ? undefined : Number(str(fd, k)));
 const bool = (fd: FormData, k: string) => fd.get(k) === 'on' || fd.get(k) === 'true';
 
-async function attempt(fn: () => Promise<unknown>, success: string): Promise<ActionResult> {
+/** Run an API call; the success message is a translation key in the owner's language. */
+async function attempt(fn: () => Promise<unknown>, success: OwnerKey | null, vars?: Record<string, string | number>): Promise<ActionResult> {
+  const t = await getT();
   try {
     await fn();
   } catch (err) {
     unstable_rethrow(err);
+    // API messages are English for now (docs/plan.md §9: owner API errors are not translated yet).
     if (isPlanError(err)) return { ok: false, message: `${(err as ApiError).message}` };
-    return { ok: false, message: err instanceof Error ? err.message : 'Something went wrong' };
+    return { ok: false, message: err instanceof Error ? err.message : t('common.tryAgain') };
   }
   revalidatePath('/owner', 'layout');
-  return { ok: true, message: success };
+  return { ok: true, message: success ? t(success, vars) : '' };
 }
 
 // ---------------------------------------------------------------- portfolio
@@ -47,23 +52,23 @@ export async function inviteAction(_: Prev, fd: FormData): Promise<ActionResult>
       body: { name: str(fd, 'name'), phone: str(fd, 'phone'), role: str(fd, 'role'), propertyIds: fd.getAll('propertyIds').map(String) },
     });
     url = r.url;
-  }, 'Invite sent');
-  return res.ok ? { ok: true, message: `Invite sent by WhatsApp/SMS. Link: ${url}` } : res;
+  }, null);
+  return res.ok ? { ok: true, message: (await getT())('team.inviteSent', { url }) } : res;
 }
 
 export async function revokeInviteAction(id: string, _: Prev): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/team/invites/${id}`, { method: 'DELETE' }), 'Invite revoked');
+  return attempt(() => ownerApi(`/team/invites/${id}`, { method: 'DELETE' }), 'team.inviteRevoked');
 }
 
 export async function updateMemberAction(id: string, _: Prev, fd: FormData): Promise<ActionResult> {
   return attempt(
     () => ownerApi(`/team/members/${id}`, { method: 'PATCH', body: { role: str(fd, 'role'), propertyIds: fd.getAll('propertyIds').map(String) } }),
-    'Access saved',
+    'team.accessSaved',
   );
 }
 
 export async function removeMemberAction(id: string, _: Prev): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/team/members/${id}`, { method: 'DELETE' }), 'Removed from the team');
+  return attempt(() => ownerApi(`/team/members/${id}`, { method: 'DELETE' }), 'team.removed');
 }
 
 // ---------------------------------------------------------------- property owners & statements
@@ -89,17 +94,17 @@ export async function saveOwnerAction(id: string | null, _: Prev, fd: FormData):
     payoutDetails: payoutDetails(fd),
     ...(id ? { active: bool(fd, 'active') } : {}),
   };
-  return attempt(() => ownerApi(id ? `/owners/${id}` : '/owners', { method: id ? 'PATCH' : 'POST', body }), id ? 'Owner saved' : 'Owner added');
+  return attempt(() => ownerApi(id ? `/owners/${id}` : '/owners', { method: id ? 'PATCH' : 'POST', body }), id ? 'owners.saved' : 'owners.added');
 }
 
 export async function assignOwnerAction(propertyId: string, _: Prev, fd: FormData): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/properties/${propertyId}/owner`, { method: 'PUT', body: { ownerId: optStr(fd, 'ownerId') } }), 'Owner assigned');
+  return attempt(() => ownerApi(`/properties/${propertyId}/owner`, { method: 'PUT', body: { ownerId: optStr(fd, 'ownerId') } }), 'owners.assigned');
 }
 
 export async function finalizeStatementAction(ownerId: string, period: string, reissue: boolean, _: Prev): Promise<ActionResult> {
   return attempt(
     () => ownerApi(`/owners/${ownerId}/statements`, { method: 'POST', body: { period, reissue } }),
-    reissue ? 'Statement re-issued; the earlier version is superseded' : 'Statement finalised',
+    reissue ? 'owners.reissued' : 'owners.finalised',
   );
 }
 
@@ -118,7 +123,7 @@ export async function saveBrandAction(_: Prev, fd: FormData): Promise<ActionResu
           supportEmail: optStr(fd, 'supportEmail'),
         },
       }),
-    'Brand saved. Guest sites update within a minute.',
+    'brand.saved',
   );
 }
 
@@ -133,7 +138,7 @@ export async function issueInvoiceAction(bookingId: string, _: Prev, fd: FormDat
         method: 'POST',
         body: { ...(periodStart ? { periodStart } : {}), ...(periodEnd ? { periodEnd } : {}) },
       }),
-    'Invoice issued',
+    'documents.issued',
   );
 }
 
@@ -151,16 +156,16 @@ export async function addReadingAction(bookingId: string, _: Prev, fd: FormData)
           unitRate: num(fd, 'unitRate'),
         },
       }),
-    'Reading added',
+    'documents.readingAdded',
   );
 }
 
 export async function deleteReadingAction(id: string, _: Prev): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/utility-readings/${id}`, { method: 'DELETE' }), 'Reading deleted');
+  return attempt(() => ownerApi(`/utility-readings/${id}`, { method: 'DELETE' }), 'documents.readingDeleted');
 }
 
 export async function passportAction(guestId: string, _: Prev, fd: FormData): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/guests/${guestId}/identity`, { method: 'PUT', body: { passportLast4: optStr(fd, 'passportLast4') } }), 'Saved');
+  return attempt(() => ownerApi(`/guests/${guestId}/identity`, { method: 'PUT', body: { passportLast4: optStr(fd, 'passportLast4') } }), 'documents.saved');
 }
 
 // ---------------------------------------------------------------- OTA connection
@@ -169,21 +174,20 @@ export async function connectChannelAction(propertyId: string, _: Prev, fd: Form
   const channels = fd.getAll('channels').map(String);
   return attempt(
     () => ownerApi(`/properties/${propertyId}/channel`, { method: 'POST', body: { partner: 'simulated', channels: channels.length ? channels : ['booking_com', 'airbnb'] } }),
-    'Connected. The full calendar is being sent now.',
+    'setup.channel.connected',
   );
 }
 
 export async function channelStatusAction(propertyId: string, status: 'active' | 'paused', _: Prev): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/properties/${propertyId}/channel/status`, { method: 'POST', body: { status } }), status === 'paused' ? 'Paused' : 'Resumed');
+  return attempt(() => ownerApi(`/properties/${propertyId}/channel/status`, { method: 'POST', body: { status } }), status === 'paused' ? 'setup.channel.paused' : 'setup.channel.resumed');
 }
 
 export async function channelSyncAction(propertyId: string, _: Prev): Promise<ActionResult> {
-  let msg = '';
+  let counts = { pushed: 0, imported: 0 };
   const res = await attempt(async () => {
-    const r = await ownerApi<{ pushed: number; imported: number }>(`/properties/${propertyId}/channel/sync`, { method: 'POST' });
-    msg = `Sent ${r.pushed} room-night${r.pushed === 1 ? '' : 's'}, imported ${r.imported} booking${r.imported === 1 ? '' : 's'}`;
-  }, '');
-  return res.ok ? { ok: true, message: msg } : res;
+    counts = await ownerApi<{ pushed: number; imported: number }>(`/properties/${propertyId}/channel/sync`, { method: 'POST' });
+  }, null);
+  return res.ok ? { ok: true, message: (await getT())('setup.channel.synced', counts) } : res;
 }
 
 export async function simulateReservationAction(propertyId: string, _: Prev, fd: FormData): Promise<ActionResult> {
@@ -203,14 +207,14 @@ export async function simulateReservationAction(propertyId: string, _: Prev, fd:
           currency: str(fd, 'currency') || 'USD',
         },
       }),
-    'Test reservation created and imported',
+    'setup.channel.simulated',
   );
 }
 
 // ---------------------------------------------------------------- providers
 
 export async function reinstateProviderAction(id: string, _: Prev): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/providers/${id}/reinstate`, { method: 'POST' }), 'Provider reinstated. Switch their add-ons back on when ready.');
+  return attempt(() => ownerApi(`/providers/${id}/reinstate`, { method: 'POST' }), 'setup.addOns.reinstated');
 }
 
 // ---------------------------------------------------------------- support
@@ -223,11 +227,11 @@ export async function createTicketAction(_: Prev, fd: FormData): Promise<ActionR
       body: { subject: str(fd, 'subject'), body: str(fd, 'body'), priority: str(fd, 'priority') || 'normal' },
     });
     id = r.id;
-  }, 'Sent');
+  }, 'support.sent');
   if (res.ok) redirect(`/owner/support/${id}`);
   return res;
 }
 
 export async function replyTicketAction(id: string, _: Prev, fd: FormData): Promise<ActionResult> {
-  return attempt(() => ownerApi(`/support/tickets/${id}/messages`, { method: 'POST', body: { body: str(fd, 'body') } }), 'Sent');
+  return attempt(() => ownerApi(`/support/tickets/${id}/messages`, { method: 'POST', body: { body: str(fd, 'body') } }), 'support.sent');
 }

@@ -7,7 +7,10 @@ type Props = {
   searchParams: Promise<{ t?: string }>;
 };
 
-export const metadata: Metadata = { title: 'Review your stay', robots: { index: false, follow: false } };
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { t } = await siteContext((await params).site);
+  return { title: t('review.metaTitle'), robots: { index: false, follow: false } };
+}
 
 export default async function ReviewPage({ params, searchParams }: Props) {
   const { site, reference } = await params;

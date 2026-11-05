@@ -182,6 +182,7 @@ export async function seed(
 
     await seedRelease2(db, { tenantId: tenant.id, propertyId: property.id, roomIds, bookingIds, guestIds, today });
     const r3 = await seedRelease3(db, { tenantId: tenant.id, propertyId: property.id }, today);
+    await seedRelease4(db, { tenantId: tenant.id, propertyId: property.id, roomIds }, today);
 
     await db.query('commit');
     log(`seeded ${DEMO_SLUG}: 6 rooms, ${plans.length} rate plans, 3 bookings. Owner login ${DEMO_PHONE} (dev OTP from OTP_DEV_CODE). Manager company ${MANAGER_PHONE}, limited manager ${MANAGER_STAFF_PHONE}, admin ${ADMIN_PHONE}.`);
@@ -191,6 +192,72 @@ export async function seed(
     throw err;
   } finally {
     await db.end();
+  }
+}
+
+/**
+ * Release 4 demo data for the guest site's trust elements: past stays with public reviews, and a few
+ * answered WhatsApp questions so "usually replies within…" has data. Review guests have no contact
+ * details, so no job ever messages them.
+ */
+async function seedRelease4(db: pg.Client, villa: { tenantId: string; propertyId: string; roomIds: string[] }, today: string) {
+  const reviews: [string, string, number, number, number, string][] = [
+    // guest, country, rating, days ago (check-out), room index, review
+    ['Sophie L.', 'GB', 5, 32, 0, 'Woke up to the sound of the waves every morning. Nimali arranged a tuk-tuk to the whale watching boat at 6 am and breakfast was waiting when we got back.'],
+    ['Jonas K.', 'DE', 5, 58, 3, 'Ruhig, sauber und nur zwei Minuten zum Strand. The hoppers at breakfast are worth the trip alone.'],
+    ['Priya S.', 'IN', 4, 85, 1, 'Lovely room with a big shower. Paying by UPI was easy. The road from the main street is a bit narrow for big cars.'],
+    ['Camille R.', 'FR', 5, 120, 2, 'Une adresse parfaite pour surfer à Mirissa. Boards to borrow, a kind host, and the garden is full of birds.'],
+    ['Tom W.', 'AU', 5, 160, 4, 'Booked direct after finding it on Airbnb and saved a good amount. Same villa, quicker answers on WhatsApp.'],
+    ['Aisha M.', 'AE', 4, 210, 5, 'Quiet and green. Ask for the room at the back if you sleep lightly; the front faces the lane.'],
+  ];
+  for (const [i, [name, country, rating, ago, room, body]] of reviews.entries()) {
+    const to = addDays(today, -ago);
+    const from = addDays(to, -4);
+    const guest = (
+      await db.query(`insert into guest (tenant_id, name, country, language, stays_count) values ($1, $2, $3, 'en', 1) returning id`, [villa.tenantId, name, country])
+    ).rows[0];
+    const b = (
+      await db.query(
+        `insert into booking (tenant_id, property_id, room_id, guest_id, reference, from_date, to_date, guests, status, source,
+                              base_amount, total, currency, deposit_due, balance_due_date, cancellation_policy_snapshot)
+         values ($1, $2, $3, $4, $5, $6, $7, 2, 'checked_out', 'direct', 480, 480, 'USD', 144, $6, '{"policy":"moderate"}') returning id`,
+        [villa.tenantId, villa.propertyId, villa.roomIds[room], guest.id, `SD-PAST${i + 1}`, from, to],
+      )
+    ).rows[0];
+    await db.query(
+      `insert into night_inventory (tenant_id, room_id, date, status, source, booking_id)
+       select $1, $2, d::date, 'reserved', 'direct', $3 from generate_series($4::date, $5::date - 1, interval '1 day') d`,
+      [villa.tenantId, villa.roomIds[room], b.id, from, to],
+    );
+    await db.query(
+      `insert into payment (tenant_id, booking_id, amount, currency, base_amount, method, gateway_ref, status, confirmed_by, confirmed_at)
+       values ($1, $2, 480, 'USD', 480, 'payhere', $3, 'confirmed', 'seed', $4::date)`,
+      [villa.tenantId, b.id, `seed-past-${i}`, from],
+    );
+    await db.query(
+      `insert into review (tenant_id, property_id, booking_id, rating, body, public, guest_name, created_at)
+       values ($1, $2, $3, $4, $5, true, $6, $7::date + time '10:00')`,
+      [villa.tenantId, villa.propertyId, b.id, rating, body, name, to],
+    );
+  }
+
+  // Answered questions from people who did not book (no guest record): replies in 12, 25 and 40 minutes.
+  for (const [i, minutes] of [12, 25, 40].entries()) {
+    const conv = (
+      await db.query(
+        `insert into conversation (tenant_id, property_id, contact, contact_name, language, status, last_message_at)
+         values ($1, $2, $3, 'Enquiry', 'en', 'closed', now() - make_interval(days => $4)) returning id`,
+        [villa.tenantId, villa.propertyId, `+4470000000${i}`, 10 + i * 7],
+      )
+    ).rows[0];
+    const asked = `now() - make_interval(days => ${10 + i * 7})`;
+    await db.query(
+      `insert into message (tenant_id, property_id, conversation_id, channel, direction, body, status, sent_by, created_at)
+       values ($1, $2, $3, 'whatsapp', 'in', 'Hi, is the garden room free in March?', 'read', 'guest', ${asked}),
+              ($1, $2, $3, 'whatsapp', 'out', 'Hello! Yes, it is free from the 3rd. Shall I send you the booking link?', 'sent', 'user:seed',
+               ${asked} + make_interval(mins => $4))`,
+      [villa.tenantId, villa.propertyId, conv.id, minutes],
+    );
   }
 }
 

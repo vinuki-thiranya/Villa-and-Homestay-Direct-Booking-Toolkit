@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import type { ActionResult } from '@/app/owner/actions';
+import { useT } from './I18n';
 
 type Action = (prev: ActionResult | null, fd: FormData) => Promise<ActionResult>;
 
@@ -13,7 +14,7 @@ export function ActionForm({
   action,
   children,
   submitLabel,
-  pendingLabel = 'Saving…',
+  pendingLabel,
   variant = 'primary',
   className = '',
   confirm,
@@ -29,6 +30,7 @@ export function ActionForm({
   inline?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
+  const t = useT();
   const btn = variant === 'danger' ? 'btn-danger' : variant === 'secondary' ? 'btn-secondary' : 'btn-primary';
   return (
     <form
@@ -41,7 +43,7 @@ export function ActionForm({
       {children}
       <div className={inline ? 'contents' : 'flex flex-wrap items-center gap-3'}>
         <button type="submit" className={btn} disabled={pending}>
-          {pending ? pendingLabel : submitLabel}
+          {pending ? (pendingLabel ?? t('shared.saving')) : submitLabel}
         </button>
         {state?.message && (
           <p role={state.ok ? 'status' : 'alert'} className={`text-sm ${state.ok ? 'text-ok' : 'text-bad'}`}>

@@ -253,7 +253,7 @@ describe('reviews and repeat guests', () => {
     expect(high.public).toBe(true);
     expect(high.googleReviewUrl).toContain('g.page');
     const pub = await guests.publicReviews(ctx.propertyId);
-    expect(pub.count).toBe(1);
+    expect(pub.count).toBe(7); // six seeded past stays (seedRelease4) plus this one
     expect(pub.reviews[0]!.guestName).toBe('Claire D.');
   });
 

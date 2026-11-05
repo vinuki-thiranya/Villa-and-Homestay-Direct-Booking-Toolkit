@@ -1,8 +1,8 @@
-/** Static labels for guest pages added in Release 2 (house guide, review, experiences), in EN/DE/FR/HI. */
-export type GuestLang = 'en' | 'de' | 'fr' | 'hi';
+/** Static labels for the house guide, in every guest message language (EN/DE/FR/HI/SI). */
+export type GuestLang = 'en' | 'de' | 'fr' | 'hi' | 'si';
 
-export function guestLang(v: unknown): GuestLang {
-  return v === 'de' || v === 'fr' || v === 'hi' ? v : 'en';
+export function guestLang(v: unknown, fallback: GuestLang = 'en'): GuestLang {
+  return v === 'en' || v === 'de' || v === 'fr' || v === 'hi' || v === 'si' ? v : fallback;
 }
 
 const COPY = {
@@ -73,6 +73,23 @@ const COPY = {
     directions: 'रास्ता',
     whatsapp: '{host} को WhatsApp करें',
     host: 'मेज़बान',
+  },
+  si: {
+    guide: 'නිවාස මාර්ගෝපදේශය',
+    wifi: 'Wi-Fi',
+    network: 'ජාලය',
+    password: 'මුරපදය',
+    copy: 'මුරපදය පිටපත් කරන්න',
+    copied: 'පිටපත් කළා',
+    arrival: 'මෙහි එන ආකාරය',
+    rules: 'නිවාසයේ නීති',
+    checkout: 'පිටවීම',
+    checkInOut: '{in} සිට පැමිණිය හැක · {out} ට පෙර පිටවිය යුතුය',
+    emergency: 'හදිසි දුරකථන අංක',
+    places: 'අවට ස්ථාන',
+    directions: 'මාර්ගය',
+    whatsapp: '{host} වෙත WhatsApp කරන්න',
+    host: 'ඔබගේ සත්කාරකයා',
   },
 } satisfies Record<GuestLang, Record<string, string>>;
 

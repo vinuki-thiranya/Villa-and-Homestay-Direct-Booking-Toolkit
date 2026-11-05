@@ -18,7 +18,7 @@ import {
   type SessionUser,
 } from '@staydirect/shared';
 import type pg from 'pg';
-import { DbService, type Row } from '../../common/db.service.js';
+import { DbService, isUniqueViolation, type Row } from '../../common/db.service.js';
 import { CONFIG, type AppConfig } from '../../config.js';
 import { AvailabilityService } from '../availability/availability.service.js';
 import { BookingsService } from '../bookings/bookings.service.js';
@@ -303,12 +303,18 @@ export class PaymentsService {
       const currency = input.currency ?? booking.currency;
       const fx = await this.fx.table();
       const base = currency === booking.currency ? input.amount : convertExact(input.amount, currency, booking.currency, fx);
-      await this.db.query(
-        `insert into payment (tenant_id, booking_id, amount, currency, base_amount, method, kind, gateway_ref, status, confirmed_by, confirmed_at)
-         values ($1, $2, $3, $4, $5, $6, 'charge', nullif($7, ''), 'confirmed', $8, now())`,
-        [user.tenantId, bookingId, input.amount, currency, base, input.method, input.reference, `user:${user.id}`],
-        tx,
-      );
+      try {
+        await this.db.query(
+          `insert into payment (tenant_id, booking_id, amount, currency, base_amount, method, kind, gateway_ref, status, confirmed_by, confirmed_at)
+           values ($1, $2, $3, $4, $5, $6, 'charge', nullif($7, ''), 'confirmed', $8, now())`,
+          [user.tenantId, bookingId, input.amount, currency, base, input.method, input.reference, `user:${user.id}`],
+          tx,
+        );
+      } catch (err) {
+        // uq_payment_gateway_ref: the same transfer must not be counted twice.
+        if (isUniqueViolation(err)) throw new ConflictException(`A ${input.method} payment with reference "${input.reference}" is already recorded`);
+        throw err;
+      }
       return this.bookings.applyPayment(tx, bookingId, `user:${user.id}`);
     });
     this.afterPayment(booking, booking.property_id, result);

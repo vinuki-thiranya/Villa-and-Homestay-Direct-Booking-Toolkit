@@ -41,7 +41,8 @@ export type UserRole = (typeof USER_ROLES)[number];
 export const PROPERTY_TYPES = ['villa', 'guesthouse', 'homestay', 'surf_camp', 'boutique_hotel', 'bungalow'] as const;
 export type PropertyType = (typeof PROPERTY_TYPES)[number];
 
-export const LANGUAGES = ['en', 'de', 'fr', 'hi'] as const;
+/** Guest languages: guest site text (en, si) and guest emails/WhatsApp (all). */
+export const LANGUAGES = ['en', 'de', 'fr', 'hi', 'si'] as const;
 export type Language = (typeof LANGUAGES)[number];
 
 export const BASE_CURRENCIES = ['USD', 'LKR'] as const;
@@ -52,6 +53,16 @@ export type DisplayCurrency = (typeof DISPLAY_CURRENCIES)[number];
 
 export const THEMES = ['lagoon', 'jungle', 'surf'] as const;
 export type Theme = (typeof THEMES)[number];
+
+/** Fonts the guest site ships (self-hosted with next/font). Theme tokens may only pick from these. */
+/** Owner web/Flutter UI languages (guest sites use LANGUAGES). */
+export const OWNER_LANGUAGES = ['en', 'si'] as const;
+export type OwnerLanguage = (typeof OWNER_LANGUAGES)[number];
+
+export const HOLIDAY_TYPES = ['public', 'bank', 'mercantile'] as const;
+
+export const THEME_FONTS = ['cormorant', 'manrope', 'lora', 'work-sans', 'barlow-condensed', 'barlow'] as const;
+export type ThemeFont = (typeof THEME_FONTS)[number];
 
 /** OTA commission the owner would have paid; used for "commission saved" (spec §6 v_owner_dashboard). */
 export const OTA_COMMISSION_RATE = 0.15;

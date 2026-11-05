@@ -151,3 +151,12 @@ export interface TicketThread {
   ticket: TicketRow;
   messages: { author: string; fromStaff: boolean; body: string; createdAt: string }[];
 }
+
+/** A Sri Lankan public holiday (GET /admin/holidays); same shape as Holiday in @staydirect/shared. */
+export interface AdminHoliday {
+  date: string;
+  nameEn: string;
+  nameSi: string;
+  isPoya: boolean;
+  types: string[];
+}

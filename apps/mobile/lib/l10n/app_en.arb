@@ -1,0 +1,298 @@
+{
+  "@@locale": "en",
+  "errorNoConnectionNothingSaved": "No connection and nothing saved yet.",
+  "errorGeneric": "Something went wrong",
+  "offlineSavedAgo": "Offline — showing what was saved {ago}",
+  "@offlineSavedAgo": {
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "paid": "Paid",
+  "paidInFull": "Paid in full",
+  "dueAmount": "Due {amount}",
+  "@dueAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "balanceDue": "Balance due {amount}",
+  "@balanceDue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "justNow": "just now",
+  "minutesAgo": "{count} min ago",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "{count} h ago",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "{count} d ago",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "channelOther": "Other calendar",
+  "channelCalendar": "Calendar",
+  "listAnd": " and ",
+  "navToday": "Today",
+  "navTasks": "Tasks",
+  "navInbox": "Inbox",
+  "allProperties": "All properties",
+  "switchPropertyCurrent": "Switch property, current {name}",
+  "@switchPropertyCurrent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "account": "Account",
+  "signOut": "Sign out",
+  "language": "Language",
+  "languageSinhala": "සිංහල",
+  "languageEnglish": "English",
+  "loginTagline": "Your bookings, tasks and guests — today first.",
+  "mobileNumber": "Mobile number",
+  "codeFromSms": "6-digit code from SMS",
+  "pleaseWait": "Please wait…",
+  "signIn": "Sign in",
+  "sendCode": "Send code",
+  "useDifferentNumber": "Use a different number",
+  "loginNoConnection": "No connection. Check your internet and try again.",
+  "setUpOnWebFirst": "Set up your property on the web first, then sign in here.",
+  "greetingMorning": "Good morning",
+  "greetingAfternoon": "Good afternoon",
+  "greetingEvening": "Good evening",
+  "greetingWithName": "{greeting}, {name}",
+  "@greetingWithName": {
+    "placeholders": {
+      "greeting": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "poyaDay": "Poya day",
+  "poyaToday": "Poya day: no alcohol may be sold or served today. Many guests visit temples.",
+  "poyaTomorrow": "Tomorrow is {name}: no alcohol may be sold or served.",
+  "@poyaTomorrow": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "holidayToday": "Public holiday today: {name}",
+  "@holidayToday": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "conflictsAlert": "{count, plural, =1{1 double-booking conflict. Open the web dashboard to resolve.} other{{count} double-booking conflicts. Open the web dashboard to resolve.}}",
+  "@conflictsAlert": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncFailing": "Calendar sync failing: {list}",
+  "@syncFailing": {
+    "placeholders": {
+      "list": {
+        "type": "String"
+      }
+    }
+  },
+  "syncPending": "Calendars connected, first sync pending",
+  "syncOk": "Calendars in sync, checked {ago}",
+  "@syncOk": {
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "syncNone": "No Airbnb or Booking.com calendars connected",
+  "glanceArriving": "arriving",
+  "glanceLeaving": "leaving",
+  "glanceUnpaid": "unpaid",
+  "glanceAllPaid": "All paid",
+  "glanceBalances": "balances",
+  "arrivingToday": "Arriving today",
+  "noArrivals": "No arrivals today.",
+  "leavingToday": "Leaving today",
+  "noDepartures": "No departures today.",
+  "waitingApproval": "Waiting for your approval",
+  "unpaidBalances": "Unpaid balances",
+  "everyonePaid": "Everyone has paid.",
+  "next14Days": "Next 14 days",
+  "thisMonth": "This month",
+  "occupancy": "Occupancy",
+  "directRevenue": "Direct revenue",
+  "commissionSaved": "Commission saved",
+  "calendarSync": "Calendar sync",
+  "syncFailingShort": "Failing",
+  "syncedAgo": "Synced {ago}",
+  "@syncedAgo": {
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "notSyncedYet": "Not synced yet",
+  "noCalendarsConnected": "No Airbnb / Booking.com calendars connected yet.",
+  "guestFallback": "Guest",
+  "guestsCount": "{count, plural, =1{1 guest} other{{count} guests}}",
+  "@guestsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portfolioSummary": "{arrivals} arriving and {departures} leaving today across {count} properties",
+  "@portfolioSummary": {
+    "placeholders": {
+      "arrivals": {
+        "type": "int"
+      },
+      "departures": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fullTonight": "{pct}% full tonight",
+  "@fullTonight": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "inOut": "{arrivals} in · {departures} out",
+  "@inOut": {
+    "placeholders": {
+      "arrivals": {
+        "type": "String"
+      },
+      "departures": {
+        "type": "String"
+      }
+    }
+  },
+  "tasksOpen": "{count, plural, =1{1 task open} other{{count} tasks open}}",
+  "@tasksOpen": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "guestsWaiting": "{count, plural, =1{1 guest waiting} other{{count} guests waiting}}",
+  "@guestsWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "conflictsShort": "{count, plural, =1{1 double-booking conflict} other{{count} double-booking conflicts}}",
+  "@conflictsShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "calendarSyncFailing": "calendar sync failing",
+  "todayDate": "Today {date}",
+  "@todayDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "toDo": "To do",
+  "allDoneToday": "All done for today.",
+  "done": "Done",
+  "noConnectionTryOnline": "No connection — try again when online.",
+  "photosCount": "{count, plural, =1{1 photo} other{{count} photos}}",
+  "@photosCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "taskCost": "cost {cost}",
+  "@taskCost": {
+    "placeholders": {
+      "cost": {
+        "type": "String"
+      }
+    }
+  },
+  "noConversations": "No WhatsApp conversations yet.",
+  "needsYou": "Needs you: {summary}",
+  "@needsYou": {
+    "placeholders": {
+      "summary": {
+        "type": "String"
+      }
+    }
+  },
+  "aiConcierge": "AI concierge",
+  "aiResumed": "AI concierge resumed",
+  "aiPaused": "AI concierge paused",
+  "conversationClosed": "Conversation closed",
+  "handedBack": "Handed back to the concierge",
+  "resumeAi": "Resume AI concierge",
+  "pauseAi": "Pause AI concierge",
+  "handBackToAi": "Done — hand back to AI",
+  "closeConversation": "Close conversation",
+  "guestNeedsYou": "The guest needs you.",
+  "quickReplies": "Quick replies",
+  "messageHint": "Message",
+  "send": "Send",
+  "offlineCannotSend": "You are offline. Messages can be sent when you are back online.",
+  "windowClosed": "The 24-hour WhatsApp window is closed. You can reply once the guest writes again.",
+  "noQuickReplies": "No quick replies yet — load the defaults on the web.",
+  "messageNotSent": "No connection — message not sent.",
+  "msgQueued": "queued",
+  "msgSent": "sent",
+  "msgDelivered": "delivered",
+  "msgRead": "read",
+  "msgFailed": "failed"
+}

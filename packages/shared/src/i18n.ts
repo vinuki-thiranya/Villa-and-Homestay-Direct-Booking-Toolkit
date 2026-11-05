@@ -106,6 +106,33 @@ const STRINGS = {
     seqCheckOut: 'ठहरने के लिए धन्यवाद ({property})। चेक-आउट {checkOut} तक। आपका प्रवास कैसा रहा? बस एक मिनट: {review} — धन्यवाद!',
     repeatCode: 'श्रीलंका याद आ रहा है? {property} में सीधे बुक करें और कोड {code} से {pct}% बचाएँ ({date} तक मान्य): {link} — फिर मिलेंगे।',
   },
+  // Sinhala: plain spoken Sinhala, terms as in apps/web/src/i18n/owner/GLOSSARY.md. Needs a native-speaker review.
+  si: {
+    confirmedSubject: '{property} හි ඔබගේ නවාතැන තහවුරුයි — {reference}',
+    requestSubject: '{property} සඳහා ඔබගේ ඉල්ලීම ලැබුණා — {reference}',
+    greeting: 'හිතවත් {name},',
+    confirmedIntro: 'සෘජුවම වෙන් කළාට ස්තූතියි. ඔබගේ නවාතැන තහවුරු කර ඇත.',
+    requestIntro: 'ස්තූතියි. පැය 12ක් ඇතුළත සත්කාරකයා පිළිතුරු දෙනු ඇත. අනුමත වූ පසු ගෙවීමේ සබැඳියක් ඔබට ලැබේ.',
+    dates: 'දින',
+    room: 'කාමරය',
+    guests: 'අමුත්තන්',
+    paid: 'ගෙවූ මුදල',
+    balance: 'ඉතිරි මුදල',
+    balanceBy: '{date} ට පෙර',
+    checkIn: '{time} සිට පැමිණිය හැක',
+    checkOut: '{time} ට පෙර පිටවිය යුතුය',
+    directions: 'Google Maps හි මාර්ගය',
+    whatsappHost: 'සත්කාරකයාට WhatsApp කරන්න',
+    policy: 'අවලංගු කිරීමේ ප්‍රතිපත්තිය',
+    footer: '{property} සමඟ සෘජුවම වෙන් කළා. StayDirect LK මගින්.',
+    seqBookingConfirmed: 'වෙන්කිරීම {reference} ({property}) තහවුරුයි: {from} → {to}. ඔබගේ වෙන්කිරීම් පිටුව: {link} — යමක් අවශ්‍ය නම් මෙතැනටම පිළිතුරු දෙන්න.',
+    seqPreArrival7d: '{property} හි ඔබගේ නවාතැන සතියකින් ({from}) ආරම්භ වේ. මෙහි එන ආකාරය: {directions}. ප්‍රශ්න තිබේද? මෙම පණිවිඩයට පිළිතුරු දෙන්න.',
+    seqPreArrival1d: 'හෙට {property} හිදී හමුවෙමු! {checkIn} සිට පැමිණිය හැක. ලිපිනය: {address}. මාර්ගය: {directions} — සුබ ගමනක්!',
+    seqArrival: '{property} වෙත සාදරයෙන් පිළිගනිමු! Wi-Fi, නීති සහ ප්‍රදේශයේ උපදෙස් සහිත මාර්ගෝපදේශය: {guide} — ඔබගේ නවාතැන භුක්ති විඳින්න.',
+    seqMidStay: '{property} හි ඔබ සතුටින් ඉන්නවා යැයි සිතමු! ගුවන්තොටුපළ ප්‍රවාහනය, සර්ෆ් පාඩම්, සෆාරි සහ තවත් දේ මෙතැනින් වෙන් කරන්න: {addons} — උදව් අවශ්‍ය නම් අසන්න.',
+    seqCheckOut: '{property} හි නැවතී සිටියාට ස්තූතියි. {checkOut} ට පෙර පිටවිය යුතුය. ඔබගේ අත්දැකීම කෙසේද? විනාඩියක් පමණයි: {review} — ස්තූතියි!',
+    repeatCode: 'ශ්‍රී ලංකාව මතක් වෙනවාද? {property} සමඟ සෘජුවම වෙන් කර {code} කේතයෙන් {pct}% ක් ඉතිරි කරගන්න ({date} දක්වා වලංගුයි): {link} — නැවත ඔබව පිළිගැනීමට අපි කැමතියි.',
+  },
 } satisfies Record<Language, Record<string, string>>;
 
 export type MessageKey = keyof (typeof STRINGS)['en'];

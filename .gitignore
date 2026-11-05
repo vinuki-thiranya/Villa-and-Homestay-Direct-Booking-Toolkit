@@ -12,3 +12,5 @@ coverage/
 .DS_Store
 .vercel
 .turbo
+__pycache__/
+*.pyc

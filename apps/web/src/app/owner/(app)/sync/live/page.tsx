@@ -3,15 +3,17 @@ import { CheckCircle2, FlaskConical, PauseCircle, XCircle } from 'lucide-react';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { Check, Field, Section, Select } from '@/components/owner/fields';
 import { UpgradeNote } from '@/components/owner/Upgrade';
-import { fmtDateTime, fmtShort, fmtWeekday } from '@/lib/format';
+import { tLabel } from '@/components/owner/labels';
 import { currentProperty, ownerApi, type OwnerRoom } from '@/lib/owner';
+import { getT } from '@/lib/owner-i18n';
 import { getMe, ownerTry, type ChannelConnection, type SimAri } from '@/lib/owner-r3';
 import { channelStatusAction, channelSyncAction, connectChannelAction, simulateReservationAction } from '../../../actions-r3';
 
-export const metadata = { title: 'Live channel connection' };
+export async function generateMetadata() {
+  return { title: (await getT())('sync.live.title') };
+}
 
 const DAYS = 30;
-const CHANNEL_LABEL: Record<string, string> = { booking_com: 'Booking.com', airbnb: 'Airbnb' };
 
 function addDays(iso: string, n: number) {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -24,16 +26,16 @@ function addDays(iso: string, n: number) {
  * Availability goes out within a minute of any change; OTA bookings come in with guest details.
  */
 export default async function LiveChannelPage() {
-  const me = await getMe();
+  const [me, t] = await Promise.all([getMe(), getT()]);
   const property = await currentProperty();
   if (!property) return null;
   if (!me.flags.ota_direct_api) {
     return (
       <div className="space-y-4">
         <Link href="/owner/sync" className="text-sm text-brand">
-          ← Calendars (iCal)
+          {t('sync.live.back')}
         </Link>
-        <UpgradeNote feature="ota_direct_api" message="iCal sync (every 15 minutes) is included in every plan. The live connection updates Booking.com and Airbnb within a minute and brings in guest names and contact details." />
+        <UpgradeNote feature="ota_direct_api" message={t('sync.live.upgradeMessage')} />
       </div>
     );
   }
@@ -45,33 +47,31 @@ export default async function LiveChannelPage() {
   const dates = Array.from({ length: DAYS }, (_, i) => addDays(today, i));
   const simByKey = new Map((sim?.data ?? []).map((s) => [`${s.room_code}|${s.date.slice(0, 10)}`, s]));
   const healthy = conn && conn.status === 'active' && !conn.lastError;
+  const wd = new Intl.DateTimeFormat(t.locale, { weekday: 'narrow', timeZone: 'UTC' });
 
   return (
     <div className="space-y-5">
       <Link href="/owner/sync" className="text-sm text-brand">
-        ← Calendars (iCal)
+        {t('sync.live.back')}
       </Link>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Live channel connection</h1>
-        {conn && conn.status === 'active' && <ActionForm action={channelSyncAction.bind(null, property.id)} submitLabel="Sync now" pendingLabel="Syncing…" inline />}
+        <h1 className="text-2xl font-semibold">{t('sync.live.title')}</h1>
+        {conn && conn.status === 'active' && <ActionForm action={channelSyncAction.bind(null, property.id)} submitLabel={t('sync.syncNow')} pendingLabel={t('sync.syncing')} inline />}
       </div>
 
       {!conn ? (
-        <Section title="Connect Booking.com and Airbnb">
-          <p className="mb-3 text-sm text-muted">
-            Once connected, availability and prices go out within a minute of every change, and OTA bookings arrive here with the guest&apos;s name and
-            contact details. iCal imports for these channels stop automatically.
-          </p>
-          <ActionForm action={connectChannelAction.bind(null, property.id)} submitLabel="Connect">
+        <Section title={t('sync.live.connectTitle')}>
+          <p className="mb-3 text-sm text-muted">{t('sync.live.connectIntro')}</p>
+          <ActionForm action={connectChannelAction.bind(null, property.id)} submitLabel={t('sync.live.connect')}>
             <div className="flex flex-wrap gap-x-4">
               <Check label="Booking.com" name="channels" value="booking_com" defaultChecked />
               <Check label="Airbnb" name="channels" value="airbnb" defaultChecked />
             </div>
-            <p className="text-xs text-muted">Partner: simulated connectivity partner (development). A certified partner replaces it in production.</p>
+            <p className="text-xs text-muted">{t('sync.live.partnerNote')}</p>
           </ActionForm>
         </Section>
       ) : (
-        <Section title="Status">
+        <Section title={t('sync.live.status')}>
           <div className="flex flex-wrap items-start gap-4">
             {conn.status === 'paused' ? (
               <PauseCircle aria-hidden className="h-8 w-8 text-warn" />
@@ -81,29 +81,34 @@ export default async function LiveChannelPage() {
               <XCircle aria-hidden className="h-8 w-8 text-bad" />
             )}
             <dl className="grid flex-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-              <Row label="State" value={conn.status === 'paused' ? 'Paused — OTAs are not updated' : healthy ? 'Connected' : 'Problem'} tone={conn.status === 'paused' ? 'warn' : healthy ? 'ok' : 'bad'} />
-              <Row label="Channels" value={conn.channels.map((c) => CHANNEL_LABEL[c] ?? c).join(', ')} />
-              <Row label="Last sent" value={conn.lastPushAt ? fmtDateTime(conn.lastPushAt) : 'Not yet'} />
-              <Row label="Last bookings check" value={conn.lastPullAt ? fmtDateTime(conn.lastPullAt) : 'Not yet'} />
-              <Row label="Waiting to send" value={conn.needsFullPush ? 'Full calendar' : `${conn.queued} room-night${conn.queued === 1 ? '' : 's'}`} />
-              <Row label="Partner property" value={conn.externalPropertyId} />
+              <Row
+                label={t('sync.live.state')}
+                value={conn.status === 'paused' ? t('sync.live.paused') : healthy ? t('sync.live.connected') : t('sync.live.problem')} tone={conn.status === 'paused' ? 'warn' : healthy ? 'ok' : 'bad'} />
+              <Row label={t('sync.live.channels')} value={conn.channels.map((c) => tLabel(t, 'source', c)).join(', ')} />
+              <Row label={t('sync.live.lastSent')} value={conn.lastPushAt ? t.dateTime(conn.lastPushAt) : t('sync.live.notYet')} />
+              <Row label={t('sync.live.lastCheck')} value={conn.lastPullAt ? t.dateTime(conn.lastPullAt) : t('sync.live.notYet')} />
+              <Row
+                label={t('sync.live.waiting')}
+                value={conn.needsFullPush ? t('sync.live.fullCalendar') : t.n('sync.live.roomNights', conn.queued)}
+              />
+              <Row label={t('sync.live.partnerProperty')} value={conn.externalPropertyId} />
             </dl>
           </div>
           {conn.lastError && (
             <p role="alert" className="mt-3 rounded-xl bg-bad-bg p-3 text-sm text-bad">
-              Last error: {conn.lastError}
+              {t('sync.live.lastError', { error: conn.lastError })}
             </p>
           )}
           <div className="mt-4">
             {conn.status === 'paused' ? (
-              <ActionForm action={channelStatusAction.bind(null, property.id, 'active')} submitLabel="Resume" inline />
+              <ActionForm action={channelStatusAction.bind(null, property.id, 'active')} submitLabel={t('sync.live.resume')} inline />
             ) : (
               <ActionForm
                 action={channelStatusAction.bind(null, property.id, 'paused')}
-                submitLabel="Pause"
+                submitLabel={t('sync.live.pause')}
                 variant="secondary"
                 inline
-                confirm="Pause the connection? Booking.com and Airbnb will not see new bookings or blocks until you resume."
+                confirm={t('sync.live.pauseConfirm')}
               />
             )}
           </div>
@@ -113,21 +118,21 @@ export default async function LiveChannelPage() {
       {conn && conn.partner === 'simulated' && isDev && (
         <section className="rounded-card border-2 border-dashed border-warn/60 p-4 sm:p-5" aria-labelledby="sim-title">
           <h2 id="sim-title" className="flex items-center gap-2 text-base font-semibold">
-            <FlaskConical aria-hidden className="h-5 w-5 text-warn" /> Development simulator
+            <FlaskConical aria-hidden className="h-5 w-5 text-warn" /> {t('sync.live.sim.title')}
           </h2>
-          <p className="mt-1 text-sm text-muted">What the simulated OTA believes is open for the next {DAYS} days. Green = open for sale, grey = closed.</p>
+          <p className="mt-1 text-sm text-muted">{t('sync.live.sim.intro', { days: DAYS })}</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-max border-collapse text-xs">
-              <caption className="sr-only">OTA availability by room</caption>
+              <caption className="sr-only">{t('sync.live.sim.caption')}</caption>
               <thead>
                 <tr>
                   <th scope="col" className="sticky left-0 min-w-28 bg-bg p-1 text-left">
-                    Room
+                    {t('sync.room')}
                   </th>
                   {dates.map((d) => (
                     <th key={d} scope="col" className="w-8 p-0.5 text-center font-normal text-muted">
-                      <span className="block">{fmtWeekday(d).slice(0, 2)}</span>
-                      <span className="block">{fmtShort(d).split(' ')[0]}</span>
+                      <span className="block">{wd.format(new Date(`${d}T00:00:00Z`))}</span>
+                      <span className="block">{Number(d.slice(8))}</span>
                     </th>
                   ))}
                 </tr>
@@ -140,7 +145,7 @@ export default async function LiveChannelPage() {
                     </th>
                     {dates.map((d) => {
                       const s = simByKey.get(`${code}|${d}`);
-                      const label = s ? (s.availability > 0 ? `open, ${s.rate ?? ''}` : 'closed') : 'not sent yet';
+                      const label = s ? (s.availability > 0 ? t('sync.live.sim.open', { rate: s.rate ?? '' }) : t('sync.live.sim.closed')) : t('sync.live.sim.notSent');
                       return (
                         <td key={d} className="p-0.5">
                           <span
@@ -157,19 +162,19 @@ export default async function LiveChannelPage() {
             </table>
           </div>
 
-          <h3 className="mt-5 text-sm font-semibold">Create a test OTA reservation</h3>
-          <ActionForm action={simulateReservationAction.bind(null, property.id)} submitLabel="Book on the OTA" className="mt-2">
+          <h3 className="mt-5 text-sm font-semibold">{t('sync.live.sim.create')}</h3>
+          <ActionForm action={simulateReservationAction.bind(null, property.id)} submitLabel={t('sync.live.sim.book')} className="mt-2">
             <div className="grid gap-3 sm:grid-cols-4">
-              <Select label="Room" name="roomId" id="sim-room" options={rooms.filter((r) => conn.roomMap[r.id]).map((r) => [r.id, r.name])} />
-              <Select label="Channel" name="channel" id="sim-ch" options={conn.channels.map((c) => [c, CHANNEL_LABEL[c] ?? c])} />
-              <Field label="Check-in" name="from" id="sim-from" type="date" required defaultValue={addDays(today, 14)} />
-              <Field label="Check-out" name="to" id="sim-to" type="date" required defaultValue={addDays(today, 16)} />
-              <Field label="Guest name" name="guestName" id="sim-guest" defaultValue="Lena Fischer" />
-              <Field label="Guests" name="guests" id="sim-guests" type="number" min={1} max={20} defaultValue={2} />
-              <Field label={`Total (${property.baseCurrency})`} name="total" id="sim-total" type="number" min={0} step="0.01" defaultValue={180} />
+              <Select label={t('sync.room')} name="roomId" id="sim-room" options={rooms.filter((r) => conn.roomMap[r.id]).map((r) => [r.id, r.name])} />
+              <Select label={t('sync.channel')} name="channel" id="sim-ch" options={conn.channels.map((c) => [c, tLabel(t, 'source', c)])} />
+              <Field label={t('sync.live.sim.checkIn')} name="from" id="sim-from" type="date" required defaultValue={addDays(today, 14)} />
+              <Field label={t('sync.live.sim.checkOut')} name="to" id="sim-to" type="date" required defaultValue={addDays(today, 16)} />
+              <Field label={t('sync.live.sim.guestName')} name="guestName" id="sim-guest" defaultValue="Lena Fischer" />
+              <Field label={t('sync.live.sim.guests')} name="guests" id="sim-guests" type="number" min={1} max={20} defaultValue={2} />
+              <Field label={t('sync.live.sim.total', { currency: property.baseCurrency })} name="total" id="sim-total" type="number" min={0} step="0.01" defaultValue={180} />
               <input type="hidden" name="currency" value={property.baseCurrency} />
             </div>
-            <Check label="Simulate a race (the OTA sells before our update arrives)" name="lag" />
+            <Check label={t('sync.live.sim.race')} name="lag" />
           </ActionForm>
         </section>
       )}

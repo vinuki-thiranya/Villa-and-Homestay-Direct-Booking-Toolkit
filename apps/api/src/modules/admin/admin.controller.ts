@@ -5,6 +5,8 @@ import {
   FlagDefinitionSchema,
   FlagKeySchema,
   FlagOverrideSchema,
+  HolidayRangeSchema,
+  HolidaySchema,
   LANGUAGES,
   LedgerPaidSchema,
   ThemeSchema,
@@ -17,6 +19,7 @@ import { AdminGuard, CurrentAdmin, type AdminSession } from '../../common/auth.j
 import { ZodPipe } from '../../common/zod.pipe.js';
 import { BillingService } from '../billing/billing.service.js';
 import { BrandingService } from '../branding/branding.service.js';
+import { HolidaysService } from '../holidays/holidays.service.js';
 import { AdminService } from './admin.service.js';
 import { SupportService } from './support.service.js';
 
@@ -34,6 +37,7 @@ export class AdminController {
     private readonly billing: BillingService,
     private readonly branding: BrandingService,
     private readonly support: SupportService,
+    private readonly holidays: HolidaysService,
   ) {}
 
   @Get('me')
@@ -105,6 +109,22 @@ export class AdminController {
   @HttpCode(200)
   async runBilling(@Body(new ZodPipe(BillingRunSchema)) b: B<typeof BillingRunSchema>) {
     return { created: await this.billing.runPeriod(b.period) };
+  }
+
+  // ---------------------------------------------------------------- holidays (Poya days, gazette changes)
+  @Get('holidays')
+  listHolidays(@Query(new ZodPipe(HolidayRangeSchema)) q: B<typeof HolidayRangeSchema>) {
+    return this.holidays.list(q.from, q.to);
+  }
+
+  @Put('holidays')
+  upsertHoliday(@CurrentAdmin() a: AdminSession, @Body(new ZodPipe(HolidaySchema)) b: B<typeof HolidaySchema>) {
+    return this.holidays.upsert(a.name, b);
+  }
+
+  @Delete('holidays/:date/:nameEn')
+  deleteHoliday(@Param('date') date: string, @Param('nameEn') nameEn: string) {
+    return this.holidays.remove(date, nameEn);
   }
 
   // ---------------------------------------------------------------- themes & translations

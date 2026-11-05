@@ -1,10 +1,13 @@
 import { Check, Minus } from 'lucide-react';
 import type { FeatureFlag } from '@staydirect/shared';
 import { Empty, Section } from '@/components/owner/fields';
-import { fmtDate, money } from '@/lib/format';
-import { FEATURE_INFO, getMe, monthLabel, ownerTry, PLAN_LABEL, type LedgerRow } from '@/lib/owner-r3';
+import { money } from '@/lib/format';
+import { getT } from '@/lib/owner-i18n';
+import { FEATURE_INFO, getMe, ownerTry, PLAN_LABEL, type LedgerRow } from '@/lib/owner-r3';
 
-export const metadata = { title: 'Plan and billing' };
+export async function generateMetadata() {
+  return { title: (await getT())('billing.title') };
+}
 
 interface BillingOverview {
   ledger: LedgerRow[];
@@ -12,24 +15,27 @@ interface BillingOverview {
   pricing: Record<string, { flat: number; extraPropertyFee: number; extraFrom: number; pct: number; maxProperties: number | null }>;
 }
 
+const PLANS = ['basic', 'pro', 'pro_multi', 'manager'] as const;
+
 /** What the owner pays StayDirect: plan, included features, and the monthly commission ledger. */
 export default async function BillingPage() {
-  const me = await getMe();
-  const res = await ownerTry<BillingOverview>('/billing');
+  const [me, res, t] = await Promise.all([getMe(), ownerTry<BillingOverview>('/billing'), getT()]);
   const data = res.data;
   const plan = me.tenant.plan;
   const p = data?.pricing[plan];
+  const planName = (PLANS as readonly string[]).includes(plan) ? t(`billing.plans.${plan}`) : (PLAN_LABEL[plan] ?? plan);
+  const lkr = (n: number) => n.toLocaleString('en-US');
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-semibold">Plan and billing</h1>
-      <Section title={`${PLAN_LABEL[plan] ?? plan} plan`}>
+      <h1 className="text-2xl font-semibold">{t('billing.title')}</h1>
+      <Section title={t('billing.planTitle', { plan: planName })}>
         {p && (
           <p className="text-sm text-muted">
-            LKR {p.flat.toLocaleString('en-US')} a month
-            {p.extraPropertyFee ? ` + LKR ${p.extraPropertyFee.toLocaleString('en-US')} per ${plan === 'manager' ? 'managed' : 'extra'} property` : ''}, or {p.pct}% of direct
-            bookings instead. Plus 10% of every add-on sold.
-            {me.tenant.billing_status === 'trial' && <strong className="text-fg"> You are on the free pilot: the subscription is waived.</strong>}
+            {t('billing.priceFlat', { flat: lkr(p.flat) })}
+            {p.extraPropertyFee ? t(plan === 'manager' ? 'billing.priceExtraManaged' : 'billing.priceExtra', { fee: lkr(p.extraPropertyFee) }) : ''}
+            {t('billing.priceOr', { pct: p.pct })}
+            {me.tenant.billing_status === 'trial' && <strong className="text-fg"> {t('billing.pilot')}</strong>}
           </p>
         )}
         <ul className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
@@ -39,8 +45,8 @@ export default async function BillingPage() {
               <li key={k} className="flex items-center gap-2">
                 {on ? <Check aria-hidden className="h-4 w-4 text-ok" /> : <Minus aria-hidden className="h-4 w-4 text-muted" />}
                 <span className={on ? '' : 'text-muted'}>
-                  {FEATURE_INFO[k].label}
-                  <span className="sr-only">{on ? ' — included' : ' — not included'}</span>
+                  {t(`billing.features.${k}`)}
+                  <span className="sr-only">: {on ? t('billing.included') : t('billing.notIncluded')}</span>
                 </span>
               </li>
             );
@@ -48,29 +54,40 @@ export default async function BillingPage() {
         </ul>
       </Section>
 
-      <Section title="Monthly statements from StayDirect">
+      <Section title={t('billing.statementsTitle')}>
         {!data || data.ledger.length === 0 ? (
-          <Empty>Nothing billed yet. Statements appear on the 1st of each month.</Empty>
+          <Empty>{t('billing.empty')}</Empty>
         ) : (
           <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <table className="w-full min-w-[34rem] text-sm">
-              <caption className="sr-only">Amounts owed to StayDirect per month, in LKR</caption>
+              <caption className="sr-only">{t('billing.caption')}</caption>
               <thead className="text-left text-xs text-muted">
                 <tr>
-                  <th scope="col" className="py-2 pr-3 font-medium">Month</th>
-                  <th scope="col" className="py-2 pr-3 text-right font-medium">Plan</th>
-                  <th scope="col" className="py-2 pr-3 text-right font-medium">Add-ons</th>
-                  <th scope="col" className="py-2 pr-3 text-right font-medium">Total</th>
-                  <th scope="col" className="py-2 font-medium">Status</th>
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    {t('billing.month')}
+                  </th>
+                  <th scope="col" className="py-2 pr-3 text-right font-medium">
+                    {t('billing.plan')}
+                  </th>
+                  <th scope="col" className="py-2 pr-3 text-right font-medium">
+                    {t('billing.addOns')}
+                  </th>
+                  <th scope="col" className="py-2 pr-3 text-right font-medium">
+                    {t('billing.total')}
+                  </th>
+                  <th scope="col" className="py-2 font-medium">
+                    {t('billing.status')}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {data.ledger.map((l) => (
                   <tr key={l.id}>
                     <th scope="row" className="py-2.5 pr-3 text-left font-medium">
-                      {monthLabel(l.period)}
+                      {t.month(l.period)}
                       <span className="block text-xs font-normal text-muted">
-                        {l.properties} propert{l.properties === 1 ? 'y' : 'ies'} · {l.billingModel === 'pct' ? `% of ${money(l.directBookingValue, 'LKR')} direct` : 'flat'}
+                        {t.n('billing.properties', l.properties)},{' '}
+                        {l.billingModel === 'pct' ? t('billing.pctOf', { amount: money(l.directBookingValue, 'LKR') }) : t('billing.flat')}
                       </span>
                     </th>
                     <td className="py-2.5 pr-3 text-right tabular-nums">{money(l.billingModel === 'pct' ? l.pctFee : l.subscriptionFee, l.currency)}</td>
@@ -78,7 +95,13 @@ export default async function BillingPage() {
                     <td className="py-2.5 pr-3 text-right font-semibold tabular-nums">{money(l.totalDue, l.currency)}</td>
                     <td className="py-2.5">
                       <span className={`pill ${l.status === 'paid' ? 'bg-ok-bg text-ok' : l.status === 'void' ? 'bg-surface-2 text-muted' : 'bg-bad-bg text-bad'}`}>
-                        {l.status === 'paid' ? `Paid${l.paidAt ? ` ${fmtDate(l.paidAt.slice(0, 10))}` : ''}` : l.status === 'void' ? 'Void' : 'Due'}
+                        {l.status === 'paid'
+                          ? l.paidAt
+                            ? t('billing.paidOn', { date: t.date(l.paidAt.slice(0, 10)) })
+                            : t('billing.paid')
+                          : l.status === 'void'
+                            ? t('billing.void')
+                            : t('billing.due')}
                       </span>
                     </td>
                   </tr>
@@ -87,7 +110,7 @@ export default async function BillingPage() {
             </table>
           </div>
         )}
-        <p className="mt-3 text-xs text-muted">Pay by bank transfer, LankaQR or PayHere. Questions about a statement? Open a support ticket.</p>
+        <p className="mt-3 text-xs text-muted">{t('billing.payNote')}</p>
       </Section>
     </div>
   );

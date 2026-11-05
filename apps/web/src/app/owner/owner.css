@@ -1,0 +1,32 @@
+/*
+ * Sinhala owner app (lang="si" on .owner): same look as English, Sinhala fonts and room for the script.
+ * Abhaya Libre for headings, Noto Sans Sinhala for everything else (both load only for Sinhala text).
+ */
+.owner[lang='si'] {
+  /* Tailwind's font-sans / font-display read these (globals.css @theme). */
+  --g-sans: var(--f-sinhala), ui-sans-serif, system-ui, sans-serif;
+  --g-display: var(--f-abhaya), var(--f-sinhala), ui-serif, serif;
+  font-family: var(--g-sans);
+  /* Vowel signs sit above and below the letters: give lines room and never squeeze letters. */
+  line-height: 1.7;
+  letter-spacing: 0;
+}
+
+/* Sinhala text reads best a step larger: 17 px instead of 16 (every rem size follows). */
+html:has(.owner[lang='si']) {
+  font-size: 106.25%;
+}
+
+/* Layered, so an explicit Tailwind utility on an element still wins. */
+@layer components {
+  .owner[lang='si'] :is(h1, h2, h3) {
+    font-family: var(--g-display);
+    line-height: 1.35;
+  }
+
+  /* Sinhala labels run longer than English: let them wrap instead of cutting them off. */
+  .owner[lang='si'] :is(button, .pill, label) {
+    white-space: normal;
+    line-height: 1.45;
+  }
+}

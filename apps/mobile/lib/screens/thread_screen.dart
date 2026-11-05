@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../format.dart';
+import '../l10n/app_localizations.dart';
 import '../main.dart';
 import '../widgets.dart';
 
@@ -63,31 +64,33 @@ class _ThreadScreenState extends State<ThreadScreen> {
       _text.clear();
       await _load();
     } on ApiException catch (e) {
-      if (mounted) showSnack(context, e.status == 0 ? 'No connection — message not sent.' : e.message);
+      if (mounted) showSnack(context, e.status == 0 ? context.l10n.messageNotSent : e.message);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
   Future<void> _update(Map<String, Object> patch, String done) async {
+    final offline = context.l10n.noConnectionTryOnline; // read before any await
     try {
       await widget.services.api.patch('/conversations/${widget.conversationId}', patch);
       await _load();
       if (mounted) showSnack(context, done);
     } on ApiException catch (e) {
-      if (mounted) showSnack(context, e.message);
+      if (mounted) showSnack(context, e.status == 0 ? offline : e.message);
     }
   }
 
   Future<void> _pickQuickReply() async {
     final pid = widget.services.store.propertyId!;
     final lang = _conv?['language'] as String? ?? 'en';
+    final offline = context.l10n.noConnectionTryOnline;
     List<Map<String, dynamic>> replies;
     try {
       final r = await widget.services.store.read('quick:$pid:$lang', () => widget.services.api.get('/properties/$pid/quick-replies?language=$lang'));
       replies = (r.data as List).cast<Map<String, dynamic>>();
     } on ApiException catch (e) {
-      if (mounted) showSnack(context, e.message);
+      if (mounted) showSnack(context, e.status == 0 ? offline : e.message);
       return;
     }
     if (!mounted) return;
@@ -99,7 +102,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
         expand: false,
         initialChildSize: 0.6,
         builder: (context, controller) => replies.isEmpty
-            ? const Center(child: Text('No quick replies yet — load the defaults on the web.'))
+            ? Center(child: Text(context.l10n.noQuickReplies))
             : ListView.builder(
                 controller: controller,
                 itemCount: replies.length,
@@ -120,6 +123,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
     final windowOpen = c?['windowOpen'] == true;
     final aiPaused = c?['aiPaused'] == true;
     final scheme = Theme.of(context).colorScheme;
+    final l = context.l10n;
     return Scaffold(
       appBar: AppBar(
         title: Text(c == null ? '' : ((c['contactName'] as String?)?.isNotEmpty == true ? c['contactName'] as String : c['contact'] as String)),
@@ -127,14 +131,14 @@ class _ThreadScreenState extends State<ThreadScreen> {
           if (c != null && !_offline)
             PopupMenuButton<String>(
               onSelected: (v) {
-                if (v == 'ai') _update({'aiPaused': !aiPaused}, aiPaused ? 'AI concierge resumed' : 'AI concierge paused');
-                if (v == 'resolve') _update({'status': 'closed'}, 'Conversation closed');
-                if (v == 'reopen') _update({'status': 'open', 'aiPaused': false}, 'Handed back to the concierge');
+                if (v == 'ai') _update({'aiPaused': !aiPaused}, aiPaused ? l.aiResumed : l.aiPaused);
+                if (v == 'resolve') _update({'status': 'closed'}, l.conversationClosed);
+                if (v == 'reopen') _update({'status': 'open', 'aiPaused': false}, l.handedBack);
               },
               itemBuilder: (_) => [
-                PopupMenuItem(value: 'ai', child: Text(aiPaused ? 'Resume AI concierge' : 'Pause AI concierge')),
-                if (c['status'] == 'needs_human') const PopupMenuItem(value: 'reopen', child: Text('Done — hand back to AI')),
-                const PopupMenuItem(value: 'resolve', child: Text('Close conversation')),
+                PopupMenuItem(value: 'ai', child: Text(aiPaused ? l.resumeAi : l.pauseAi)),
+                if (c['status'] == 'needs_human') PopupMenuItem(value: 'reopen', child: Text(l.handBackToAi)),
+                PopupMenuItem(value: 'resolve', child: Text(l.closeConversation)),
               ],
             ),
         ],
@@ -147,7 +151,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
               color: scheme.errorContainer,
               child: ListTile(
                 leading: Icon(Icons.support_agent, color: scheme.onErrorContainer),
-                title: Text(c?['escalationSummary'] as String? ?? 'The guest needs you.', style: TextStyle(color: scheme.onErrorContainer)),
+                title: Text(c?['escalationSummary'] as String? ?? l.guestNeedsYou, style: TextStyle(color: scheme.onErrorContainer)),
               ),
             ),
           if (_error != null) Padding(padding: const EdgeInsets.all(16), child: Text(_error!)),
@@ -168,25 +172,23 @@ class _ThreadScreenState extends State<ThreadScreen> {
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
               child: windowOpen && !_offline
                   ? Row(children: [
-                      IconButton(tooltip: 'Quick replies', icon: const Icon(Icons.bolt), onPressed: _pickQuickReply),
+                      IconButton(tooltip: l.quickReplies, icon: const Icon(Icons.bolt), onPressed: _pickQuickReply),
                       Expanded(
                         child: TextField(
                           controller: _text,
                           minLines: 1,
                           maxLines: 5,
                           textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(hintText: 'Message', isDense: true),
+                          decoration: InputDecoration(hintText: l.messageHint, isDense: true),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      IconButton.filled(tooltip: 'Send', onPressed: _sending ? null : _send, icon: const Icon(Icons.send)),
+                      IconButton.filled(tooltip: l.send, onPressed: _sending ? null : _send, icon: const Icon(Icons.send)),
                     ])
                   : Padding(
                       padding: const EdgeInsets.all(8),
                       child: Text(
-                        _offline
-                            ? 'You are offline. Messages can be sent when you are back online.'
-                            : 'The 24-hour WhatsApp window is closed. You can reply once the guest writes again.',
+                        _offline ? l.offlineCannotSend : l.windowClosed,
                         textAlign: TextAlign.center,
                         style: TextStyle(color: scheme.outline),
                       ),
@@ -209,6 +211,7 @@ class _Bubble extends StatelessWidget {
     final ai = m['aiGenerated'] == true;
     final scheme = Theme.of(context).colorScheme;
     final at = m['createdAt'] as String?;
+    final l = context.l10n;
     return Align(
       alignment: inbound ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
@@ -223,7 +226,9 @@ class _Bubble extends StatelessWidget {
           Text(m['body'] as String? ?? ''),
           const SizedBox(height: 2),
           Text(
-            [if (ai) 'AI concierge', if (at != null) ago(DateTime.parse(at)), if (!inbound) (m['status'] as String? ?? '')].join(' · '),
+            [if (ai) l.aiConcierge, if (at != null) ago(l, DateTime.parse(at)), if (!inbound) _status(l, m['status'] as String?)]
+                .where((x) => x.isNotEmpty)
+                .join(' · '),
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ]),
@@ -231,3 +236,13 @@ class _Bubble extends StatelessWidget {
     );
   }
 }
+
+/// WhatsApp delivery state from the API, in the app's language.
+String _status(AppLocalizations l, String? s) => switch (s) {
+      'queued' => l.msgQueued,
+      'sent' => l.msgSent,
+      'delivered' => l.msgDelivered,
+      'read' => l.msgRead,
+      'failed' => l.msgFailed,
+      _ => s ?? '',
+    };

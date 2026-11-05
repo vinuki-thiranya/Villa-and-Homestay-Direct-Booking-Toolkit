@@ -85,6 +85,7 @@ export const PropertyUpsertSchema = z.object({
   customDomain: z.string().max(253).nullable().default(null),
   hostName: z.string().max(80).default(''),
   hostPhotoUrl: z.string().url().nullable().default(null),
+  heroVideoUrl: z.string().url().regex(/^https:\/\//, 'Use an https link').nullable().default(null),
 });
 export type PropertyUpsert = z.infer<typeof PropertyUpsertSchema>;
 export const PropertyPatchSchema = patchOf(PropertyUpsertSchema);

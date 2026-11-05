@@ -10,12 +10,15 @@ import {
   balanceDueDate,
   CANCELLATION_POLICY_TEXT,
   HOLD_MINUTES,
+  LANGUAGES,
   refundDue,
   REQUEST_HOLD_HOURS,
+  t,
   todayIn,
   type BookingStatus,
   type CreateBooking,
   type CreateBookingResult,
+  type Language,
   type OwnerBookingRow,
   type PublicBooking,
   type SessionUser,
@@ -42,7 +45,7 @@ const TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
 };
 
 export const BOOKING_LIST_SQL = `
-  select b.*, r.name as room_name, g.name as guest_name, g.phone as guest_phone, g.email as guest_email, g.passport_last4, p.paid
+  select b.*, r.name as room_name, g.name as guest_name, g.phone as guest_phone, g.email as guest_email, g.language as guest_language, g.passport_last4, p.paid
     from booking b
     join room r on r.id = b.room_id
     left join guest g on g.id = b.guest_id
@@ -183,7 +186,20 @@ export class BookingsService {
       address: property.address,
       mapsUrl: this.catalog.mapsUrl(property),
       hostWhatsapp: property.whatsapp_number,
+      confirmationMessage: this.confirmationMessage(property, b),
     };
+  }
+
+  /** The exact text of the booking-confirmed WhatsApp message (SequencesService, template sd_booking_confirmed). */
+  confirmationMessage(property: Row, b: Row): string {
+    const lang = (LANGUAGES as readonly string[]).includes(b.guest_language) ? (b.guest_language as Language) : 'en';
+    return t(lang, 'seqBookingConfirmed', {
+      property: property.name,
+      reference: b.reference,
+      from: b.from_date,
+      to: b.to_date,
+      link: `${this.catalog.siteUrl(property)}/booking/${b.reference}?t=${b.access_token}`,
+    });
   }
 
   async findByReference(reference: string, token: string): Promise<Row> {

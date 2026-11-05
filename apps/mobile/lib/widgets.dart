@@ -2,7 +2,16 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'format.dart';
+import 'l10n/app_localizations.dart';
 import 'store.dart';
+
+/// Shorthand for the app's strings: `context.l10n.paid`.
+extension L10nContext on BuildContext {
+  AppLocalizations get l10n => AppLocalizations.of(this);
+
+  /// 'en' or 'si', for intl date formatting.
+  String get localeTag => Localizations.localeOf(this).languageCode;
+}
 
 /// Load-with-cache scaffold shared by the tabs: pull to refresh, offline banner, error state.
 class CachedView extends StatefulWidget {
@@ -51,7 +60,7 @@ class _CachedViewState extends State<CachedView> {
         await widget.onUnauthorized();
         return;
       }
-      if (mounted) setState(() => _error = e.status == 0 ? 'No connection and nothing saved yet.' : e.message);
+      if (mounted) setState(() => _error = e.status == 0 ? context.l10n.errorNoConnectionNothingSaved : e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -66,7 +75,7 @@ class _CachedViewState extends State<CachedView> {
         child: ListView(children: [
           const SizedBox(height: 120),
           Icon(Icons.cloud_off, size: 48, color: Theme.of(context).colorScheme.outline),
-          Padding(padding: const EdgeInsets.all(24), child: Text(_error ?? 'Something went wrong', textAlign: TextAlign.center)),
+          Padding(padding: const EdgeInsets.all(24), child: Text(_error ?? context.l10n.errorGeneric, textAlign: TextAlign.center)),
         ]),
       );
     }
@@ -98,7 +107,7 @@ class OfflineBanner extends StatelessWidget {
           Icon(Icons.cloud_off, size: 18, color: scheme.onTertiaryContainer),
           const SizedBox(width: 8),
           Expanded(
-            child: Text('Offline — showing what was saved ${ago(savedAt)}', style: TextStyle(color: scheme.onTertiaryContainer)),
+            child: Text(context.l10n.offlineSavedAgo(ago(context.l10n, savedAt)), style: TextStyle(color: scheme.onTertiaryContainer)),
           ),
         ]),
       ),
@@ -107,6 +116,37 @@ class OfflineBanner extends StatelessWidget {
 }
 
 /// Green when paid in full, red when money is still owed (owner app design brief).
+/// Paid (green) and owing (red), the same everywhere in the app, tuned per light/dark theme.
+@immutable
+class StatusColors extends ThemeExtension<StatusColors> {
+  const StatusColors({required this.ok, required this.onOk, required this.bad, required this.onBad});
+  final Color ok;
+  final Color onOk;
+  final Color bad;
+  final Color onBad;
+
+  static const light = StatusColors(ok: Color(0xFF1B7F3B), onOk: Colors.white, bad: Color(0xFFB3261E), onBad: Colors.white);
+  // Dark: lighter fills with dark text keep 4.5:1 without glowing on a black screen.
+  static const dark = StatusColors(ok: Color(0xFF6FD08C), onOk: Color(0xFF00210B), bad: Color(0xFFFF8A80), onBad: Color(0xFF410002));
+
+  static StatusColors of(BuildContext context) =>
+      Theme.of(context).extension<StatusColors>() ?? (Theme.of(context).brightness == Brightness.dark ? dark : light);
+
+  @override
+  StatusColors copyWith({Color? ok, Color? onOk, Color? bad, Color? onBad}) =>
+      StatusColors(ok: ok ?? this.ok, onOk: onOk ?? this.onOk, bad: bad ?? this.bad, onBad: onBad ?? this.onBad);
+
+  @override
+  StatusColors lerp(StatusColors? other, double t) => other == null
+      ? this
+      : StatusColors(
+          ok: Color.lerp(ok, other.ok, t)!,
+          onOk: Color.lerp(onOk, other.onOk, t)!,
+          bad: Color.lerp(bad, other.bad, t)!,
+          onBad: Color.lerp(onBad, other.onBad, t)!,
+        );
+}
+
 class PaidChip extends StatelessWidget {
   const PaidChip({super.key, required this.balance, required this.currency});
   final num balance;
@@ -115,14 +155,15 @@ class PaidChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final paid = balance <= 0;
-    final bg = paid ? const Color(0xFF1B7F3B) : const Color(0xFFB3261E);
+    final c = StatusColors.of(context);
+    final l = context.l10n;
     return Semantics(
-      label: paid ? 'Paid in full' : 'Balance due ${money(balance, currency)}',
+      label: paid ? l.paidInFull : l.balanceDue(money(balance, currency)),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-        child: Text(paid ? 'Paid' : 'Due ${money(balance, currency)}',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12)),
+        decoration: BoxDecoration(color: paid ? c.ok : c.bad, borderRadius: BorderRadius.circular(999)),
+        child: Text(paid ? l.paid : l.dueAmount(money(balance, currency)),
+            style: TextStyle(color: paid ? c.onOk : c.onBad, fontWeight: FontWeight.w600, fontSize: 12)),
       ),
     );
   }

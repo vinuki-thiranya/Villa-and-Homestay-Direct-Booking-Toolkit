@@ -55,6 +55,7 @@ commission ledger, admin console) in [§8](docs/plan.md).
 Demo logins (dev OTP `123456`): owner `0770000000` (Villa Lagoon, Pro, simulated OTA connection), caretaker company
 `0770000001` (Manager plan, two owners and properties, white label), limited manager `0770000002`, StayDirect admin
 `0770000099` at `/admin`.
+The owner web and app also run in Sinhala: tap **සිං** in the owner header (or More → Language); the choice follows the user to the Flutter app.
 Set `ANTHROPIC_API_KEY` and switch the concierge on under *Setup → Concierge* to try it; without a key, guest messages land in the inbox only.
 
 ## Tests
@@ -73,7 +74,24 @@ guarantees under test live in the database:
 - iCal import adds/releases OTA nights, records conflicts with direct bookings, and never releases nights on a failed fetch;
 - RLS hides other tenants' rows; payment rows are append-only.
 - Release 3: managers limited to their properties by RLS, invite links, plan flags and overrides, the OTA adapter (trigger-queued availability push, OTA booking import, closed dates refused, races recorded as conflicts, cancellations, idempotent revisions), monthly long-stay pricing with metered utilities and numbered append-only invoices, owner statement payout maths and re-issue, the commission ledger, provider auto-removal, admin/tenant token separation, locked template translations, white label.
+- Release 4: the guest-site calendar (closed only when every room is taken), trust facts (median first reply, review summary), the confirmation message text, duplicate manual payment references refused with 409.
+- Web unit tests (`apps/web`): every theme palette meets WCAG AA in light and dark, owner brand colours get readable button text, inlined theme CSS only accepts validated values, currency detection, payment grouping by guest type, date-range rules.
 - Release 2: WhatsApp webhook signatures and duplicates, the 24-hour window, the AI concierge with a stubbed model (tool use, fallbacks, never books, escalation, monthly budget), discount codes, add-on commission split and job cards, review routing, repeat-guest codes, sequence send hours, the daily task board and the cleaner link; WhatsApp templates checked against Meta's rules.
+
+### Guest site: screenshots and Lighthouse
+
+With the API and seed running:
+
+```bash
+cd apps/web
+npm run dev                                        # or a production build, see below
+OUT=./screenshots npm run screenshots              # 375 px, every theme, a real booking through to confirmation
+npm run build && ALLOW_THEME_PREVIEW=1 npx next start --port 3100
+WEB=http://localhost:3100 RUNS=5 OUT=../../docs/lighthouse npm run lighthouse
+```
+
+`?previewTheme=lagoon|jungle|surf` renders any guest site in another theme (dev, or `ALLOW_THEME_PREVIEW=1`).
+CI runs both on every push (job `guest-site`) and uploads the screenshots and reports.
 
 ## Deploy
 

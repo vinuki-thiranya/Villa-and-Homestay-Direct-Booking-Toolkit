@@ -1,10 +1,11 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { BedDouble, Users } from 'lucide-react';
 import type { PublicRoom } from '@staydirect/shared';
 import { displayPrice } from '@/lib/format';
+import { guestT } from '@/lib/site';
+import { RoomGallery } from './RoomGallery';
 
-export function RoomCard({
+export async function RoomCard({
   room,
   base,
   baseCurrency,
@@ -17,52 +18,45 @@ export function RoomCard({
   currency: string;
   fx: Record<string, number>;
 }) {
+  const t = await guestT();
   const price = displayPrice(room.baseRate, baseCurrency, currency, fx);
-  const photo = room.photos[0];
+  const href = `${base}/rooms/${room.id}`;
   return (
-    <article className="card flex flex-col overflow-hidden">
-      <div className="relative aspect-[4/3] bg-surface-2">
-        {photo && (
-          <Image src={photo} alt={`${room.name}`} fill sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover" />
-        )}
-        {room.photos.length > 1 && (
-          <span className="pill absolute bottom-3 right-3 bg-black/60 text-white">{room.photos.length} photos</span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-3 p-5">
-        <div>
-          <h3 className="font-display text-xl font-semibold">{room.name}</h3>
-          <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
-            <span className="inline-flex items-center gap-1">
-              <Users aria-hidden className="h-4 w-4" /> Up to {room.maxGuests}
+    <article className="flex flex-col">
+      <RoomGallery
+        photos={room.photos}
+        name={room.name}
+        sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+        aspect="aspect-[4/3]"
+        className="g-room-media overflow-hidden rounded-card"
+      />
+      <div className="flex flex-1 flex-col gap-2 pt-4">
+        <h3 className="g-display text-2xl leading-tight">
+          <Link href={href} className="underline-offset-4 hover:underline">
+            {room.name}
+          </Link>
+        </h3>
+        <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <Users aria-hidden className="h-4 w-4" /> {t('rooms.sleeps', { n: room.maxGuests })}
+          </span>
+          {room.beds && (
+            <span className="inline-flex items-center gap-1.5">
+              <BedDouble aria-hidden className="h-4 w-4" /> {room.beds}
             </span>
-            {room.beds && (
-              <span className="inline-flex items-center gap-1">
-                <BedDouble aria-hidden className="h-4 w-4" /> {room.beds}
-              </span>
-            )}
-          </p>
-        </div>
-        {room.amenities.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5" aria-label="Amenities">
-            {room.amenities.slice(0, 6).map((a) => (
-              <li key={a} className="pill bg-surface-2 font-medium text-muted">
-                {a}
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+          )}
+        </p>
+        {room.amenities.length > 0 && <p className="text-sm text-muted">{room.amenities.slice(0, 4).join(', ')}</p>}
+        <div className="mt-auto flex items-center justify-between gap-3 pt-3">
           <p className="text-sm text-muted">
-            from{' '}
-            <span className="text-lg font-semibold text-fg">
+            <span className="text-lg font-semibold tabular-nums text-fg">
               {price.approx && '≈ '}
               {price.text}
             </span>{' '}
-            / night
+            {t('rooms.aNight')}
           </p>
-          <Link href={`${base}/book?room=${room.id}`} className="btn-primary min-h-10 px-4">
-            Book
+          <Link href={`${base}/book?room=${room.id}`} className="g-cta min-h-10 px-4" aria-label={t('rooms.bookRoom', { room: room.name })}>
+            {t('rooms.book')}
           </Link>
         </div>
       </div>

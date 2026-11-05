@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../main.dart';
+import '../widgets.dart';
 
 /// Phone-OTP login (spec §5): phone number → 6-digit code by SMS.
 class LoginScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _run(Future<void> Function() action) async {
+    final noConnection = context.l10n.loginNoConnection; // read before any await
     setState(() {
       _busy = true;
       _error = null;
@@ -35,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await action();
     } on ApiException catch (e) {
-      setState(() => _error = e.status == 0 ? 'No connection. Check your internet and try again.' : e.message);
+      if (mounted) setState(() => _error = e.status == 0 ? noConnection : e.message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -46,24 +48,31 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _codeSent = true);
       });
 
-  Future<void> _verify() => _run(() async {
+  Future<void> _verify() {
+    final setUpFirst = context.l10n.setUpOnWebFirst; // read before any await
+    return _run(() async {
         final api = widget.services.api;
         final res = await api.post('/auth/otp/verify', {'phone': _phone.text.trim(), 'code': _code.text.trim()}) as Map<String, dynamic>;
         api.token = res['token'] as String;
         final properties = await api.get('/properties') as List<dynamic>;
         if (properties.isEmpty) {
           api.token = null;
-          throw ApiException(400, 'Set up your property on the web first, then sign in here.');
+          throw ApiException(400, setUpFirst);
         }
         final store = widget.services.store;
         await store.saveSession(token: api.token!, name: (res['user'] as Map<String, dynamic>)['name'] as String? ?? '');
         await store.setProperty((properties.first as Map<String, dynamic>)['id'] as String);
+        // A language picked here is saved to the new session; otherwise the account's language applies.
+        await widget.services.locale.syncWithServer(api);
         widget.onSignedIn();
       });
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l = context.l10n;
+    final locale = widget.services.locale;
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -74,16 +83,27 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+                      onPressed: () => locale.setLanguage(locale.isSinhala ? 'en' : 'si'),
+                      icon: const Icon(Icons.translate, size: 18),
+                      // Named in the language it switches to.
+                      label: Text(locale.isSinhala ? l.languageEnglish : l.languageSinhala),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Text('StayDirect', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
-                  Text('Your bookings, tasks and guests — today first.', style: theme.textTheme.bodyLarge),
+                  Text(l.loginTagline, style: theme.textTheme.bodyLarge),
                   const SizedBox(height: 32),
                   TextField(
                     controller: _phone,
                     enabled: !_codeSent && !_busy,
                     keyboardType: TextInputType.phone,
                     autofillHints: const [AutofillHints.telephoneNumber],
-                    decoration: const InputDecoration(labelText: 'Mobile number', hintText: '077 123 4567'),
+                    decoration: InputDecoration(labelText: l.mobileNumber, hintText: '077 123 4567'),
                   ),
                   if (_codeSent) ...[
                     const SizedBox(height: 16),
@@ -93,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       keyboardType: TextInputType.number,
                       maxLength: 6,
                       autofillHints: const [AutofillHints.oneTimeCode],
-                      decoration: const InputDecoration(labelText: '6-digit code from SMS'),
+                      decoration: InputDecoration(labelText: l.codeFromSms),
                     ),
                   ],
                   if (_error != null) ...[
@@ -104,12 +124,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   FilledButton(
                     onPressed: _busy ? null : (_codeSent ? _verify : _sendCode),
                     style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                    child: Text(_busy ? 'Please wait…' : (_codeSent ? 'Sign in' : 'Send code')),
+                    child: Text(_busy ? l.pleaseWait : (_codeSent ? l.signIn : l.sendCode)),
                   ),
                   if (_codeSent)
                     TextButton(
                       onPressed: _busy ? null : () => setState(() => _codeSent = false),
-                      child: const Text('Use a different number'),
+                      child: Text(l.useDifferentNumber),
                     ),
                 ],
               ),

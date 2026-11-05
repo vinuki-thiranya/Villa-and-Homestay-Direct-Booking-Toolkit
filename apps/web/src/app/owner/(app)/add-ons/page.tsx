@@ -1,13 +1,16 @@
 import Link from 'next/link';
 import { ActionForm } from '@/components/owner/ActionForm';
 import { Empty, Section } from '@/components/owner/fields';
-import { fmtDate, fmtDateTime, money } from '@/lib/format';
+import { money } from '@/lib/format';
 import { currentProperty, ownerApi } from '@/lib/owner';
+import { getT } from '@/lib/owner-i18n';
 import { OrderBadge } from '@/components/owner/OrderBadge';
 import type { AddOnOrder, Commissions } from '@/lib/owner-types';
 import { orderStatusAction, resendJobCardAction } from '../../actions-r2';
 
-export const metadata = { title: 'Add-ons' };
+export async function generateMetadata() {
+  return { title: (await getT())('addons.title') };
+}
 
 const isDate = (v: string | undefined) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 
@@ -21,43 +24,44 @@ export default async function AddOnOrdersPage({ searchParams }: { searchParams: 
   const qs = new URLSearchParams();
   if (from) qs.set('from', from);
   if (to) qs.set('to', to);
-  const [orders, commissions] = await Promise.all([
+  const [orders, commissions, t] = await Promise.all([
     ownerApi<AddOnOrder[]>(`/properties/${property.id}/add-on-orders${qs.size ? `?${qs}` : ''}`),
     ownerApi<Commissions>(`/properties/${property.id}/add-on-commissions?month=${month}`),
+    getT(),
   ]);
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Add-ons</h1>
+        <h1 className="text-2xl font-semibold">{t('addons.title')}</h1>
         <Link href="/owner/setup/add-ons" className="text-sm font-medium text-brand">
-          Catalogue & providers
+          {t('addons.catalogue')}
         </Link>
       </div>
 
-      <Section title={`Commissions · ${month}`}>
+      <Section title={t('addons.commissions', { month })}>
         <form className="mb-3 flex items-end gap-2">
           <div>
             <label htmlFor="month" className="label">
-              Month
+              {t('addons.month')}
             </label>
             <input id="month" name="month" type="month" defaultValue={month} className="field" />
           </div>
-          <button className="btn-secondary">Show</button>
+          <button className="btn-secondary">{t('addons.show')}</button>
         </form>
         {commissions.byCurrency.length === 0 ? (
-          <p className="text-sm text-muted">No confirmed add-on sales this month.</p>
+          <p className="text-sm text-muted">{t('addons.noSales')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted">
-                  <th className="py-1 font-medium">Currency</th>
-                  <th className="py-1 text-right font-medium">Orders</th>
-                  <th className="py-1 text-right font-medium">Sales</th>
-                  <th className="py-1 text-right font-medium">You earned</th>
-                  <th className="py-1 text-right font-medium">Providers</th>
-                  <th className="py-1 text-right font-medium">StayDirect fee</th>
+                  <th className="py-1 font-medium">{t('addons.currency')}</th>
+                  <th className="py-1 text-right font-medium">{t('addons.orders')}</th>
+                  <th className="py-1 text-right font-medium">{t('addons.sales')}</th>
+                  <th className="py-1 text-right font-medium">{t('addons.earned')}</th>
+                  <th className="py-1 text-right font-medium">{t('addons.providers')}</th>
+                  <th className="py-1 text-right font-medium">{t('addons.platformFee')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -73,34 +77,34 @@ export default async function AddOnOrdersPage({ searchParams }: { searchParams: 
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 text-xs text-muted">The StayDirect fee is invoiced monthly with your subscription.</p>
+            <p className="mt-2 text-xs text-muted">{t('addons.feeNote')}</p>
           </div>
         )}
       </Section>
 
-      <Section title={`Orders (${orders.length})`}>
+      <Section title={t('addons.ordersTitle', { n: orders.length })}>
         <form className="mb-4 flex flex-wrap items-end gap-2">
           <div>
             <label htmlFor="from" className="label">
-              From
+              {t('addons.from')}
             </label>
             <input id="from" name="from" type="date" defaultValue={from} className="field" />
           </div>
           <div>
             <label htmlFor="to" className="label">
-              To
+              {t('addons.to')}
             </label>
             <input id="to" name="to" type="date" defaultValue={to} className="field" />
           </div>
-          <button className="btn-secondary">Filter</button>
+          <button className="btn-secondary">{t('addons.filter')}</button>
           {(from || to) && (
             <Link href="/owner/add-ons" className="text-sm text-brand">
-              Clear
+              {t('addons.clear')}
             </Link>
           )}
         </form>
         {orders.length === 0 ? (
-          <Empty>No add-on orders yet. Guests order from their booking page, or you can order for them from a booking.</Empty>
+          <Empty>{t('addons.empty')}</Empty>
         ) : (
           <ul className="divide-y divide-line">
             {orders.map((o) => (
@@ -111,34 +115,40 @@ export default async function AddOnOrdersPage({ searchParams }: { searchParams: 
                       {o.addOnName} × {o.qty}
                     </p>
                     <p className="text-sm text-muted">
-                      {fmtDate(o.date)}
-                      {o.time ? ` ${o.time}` : ''} ·{' '}
+                      {t.date(o.date)}
+                      {o.time ? ` ${o.time}` : ''},{' '}
                       <Link href={`/owner/bookings/${o.bookingId}`} className="text-brand underline-offset-2 hover:underline">
                         {o.guestName ?? o.bookingReference}
-                      </Link>{' '}
-                      · {o.providerName ?? 'No provider'}
+                      </Link>
+                      , {o.providerName ?? t('addons.noProvider')}
                     </p>
                     <p className="text-sm">
-                      {money(o.amount, o.currency)} · you {money(o.ownerAmount, o.currency)} · provider {money(o.providerAmount, o.currency)}
+                      {t('addons.split', {
+                        amount: money(o.amount, o.currency),
+                        own: money(o.ownerAmount, o.currency),
+                        provider: money(o.providerAmount, o.currency),
+                      })}
                     </p>
                     {o.notes && <p className="text-sm text-muted">“{o.notes}”</p>}
                     <p className="text-xs text-muted">
-                      Job card {o.providerNotifiedAt ? `sent ${fmtDateTime(o.providerNotifiedAt)}` : 'not sent'}
-                      {o.providerConfirmedAt ? ` · accepted ${fmtDateTime(o.providerConfirmedAt)}` : ''}
+                      {o.providerNotifiedAt ? t('addons.jobCardSent', { when: t.dateTime(o.providerNotifiedAt) }) : t('addons.jobCardNotSent')}
+                      {o.providerConfirmedAt ? `, ${t('addons.accepted', { when: t.dateTime(o.providerConfirmedAt) })}` : ''}
                     </p>
                   </div>
                   <OrderBadge status={o.status} />
                 </div>
                 {o.status !== 'cancelled' && o.status !== 'done' && (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {o.status === 'requested' && <ActionForm action={orderStatusAction.bind(null, o.id, 'confirmed')} submitLabel="Confirm" inline />}
-                    <ActionForm action={orderStatusAction.bind(null, o.id, 'done')} submitLabel="Mark done" variant="secondary" inline />
-                    {o.providerId && <ActionForm action={resendJobCardAction.bind(null, o.id)} submitLabel="Resend job card" variant="secondary" inline />}
+                    {o.status === 'requested' && <ActionForm action={orderStatusAction.bind(null, o.id, 'confirmed')} submitLabel={t('addons.confirm')} inline />}
+                    <ActionForm action={orderStatusAction.bind(null, o.id, 'done')} submitLabel={t('addons.markDone')} variant="secondary" inline />
+                    {o.providerId && (
+                      <ActionForm action={resendJobCardAction.bind(null, o.id)} submitLabel={t('addons.resend')} variant="secondary" inline />
+                    )}
                     <ActionForm
                       action={orderStatusAction.bind(null, o.id, 'cancelled')}
-                      submitLabel="Cancel"
+                      submitLabel={t('addons.cancel')}
                       variant="danger"
-                      confirm="Cancel this order? The amount is removed from the guest's balance."
+                      confirm={t('addons.cancelConfirm')}
                       inline
                     />
                   </div>

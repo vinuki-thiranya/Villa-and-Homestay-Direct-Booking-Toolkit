@@ -1,0 +1,34 @@
+import type { Dict } from '../t';
+import type { review as en } from '../en/review';
+
+export const review: Dict<typeof en> = {
+  metaTitle: 'ඔබගේ නවාතැන සමාලෝචනය කරන්න',
+  notFound: 'සමාලෝචන සබැඳිය හමු නොවීය',
+  notFoundHint: 'කරුණාකර ඔබගේ පිටවීමේ පණිවිඩයේ ඇති සබැඳිය භාවිතා කරන්න.',
+  loading: 'පූරණය වෙමින්',
+  thanks: 'ස්තූතියි, {name}!',
+  publicHint: 'ඔබගේ සමාලෝචනය වෙනත් සංචාරකයින්ට {property} සොයා ගැනීමට උදව් වේ.',
+  google: 'Google හිද අපව සමාලෝචනය කරන්න',
+  privateHint: 'ඔබගේ අදහස් පෞද්ගලිකව සත්කාරකයාට ලැබුණා. ඔවුන් සෑම පණිවිඩයක්ම කියවන අතර, ගැටලුව නිවැරදි කිරීමට ඔබව සම්බන්ධ කර ගැනීමට ඉඩ ඇත.',
+  opensOn: 'සමාලෝචන {date} දින විවෘත වේ',
+  opensHint: 'ඔබගේ නවාතැන: {from} සිට {to} දක්වා. ඔබ පිටවන දිනයේ මෙම සබැඳියට නැවත පැමිණෙන්න.',
+  chooseStars: 'තරු ගණනක් තෝරන්න.',
+  failed: 'ඔබගේ සමාලෝචනය යැවීමට නොහැකි විය',
+  title: '{property} හි ඔබගේ නවාතැන කෙසේද?',
+  dates: '{from} සිට {to} දක්වා',
+  yourRating: 'ඔබගේ ශ්‍රේණිගත කිරීම',
+  rating: 'ශ්‍රේණිගත කිරීම',
+  starLabel_one: 'තරු {n}, {label}',
+  starLabel_other: 'තරු {n}, {label}',
+  labels: {
+    poor: 'දුර්වලයි',
+    fair: 'සාමාන්‍යයි',
+    good: 'හොඳයි',
+    veryGood: 'ඉතා හොඳයි',
+    excellent: 'විශිෂ්ටයි',
+  },
+  more: 'අපට තවත් කියන්න',
+  optional: '(අත්‍යවශ්‍ය නැත)',
+  send: 'සමාලෝචනය යවන්න',
+  sending: 'යවමින්…',
+};

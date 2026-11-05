@@ -38,6 +38,7 @@ export interface OwnerProperty {
   customDomain: string | null;
   hostName: string;
   hostPhotoUrl: string | null;
+  heroVideoUrl: string | null;
   published: boolean;
 }
 

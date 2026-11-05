@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { BrandSchema, MESSAGE_KEYS, defaultMessage, fillMessage, type Brand, type Language, type MessageKey, type SessionUser } from '@staydirect/shared';
+import { BrandSchema, LANGUAGES, MESSAGE_KEYS, defaultMessage, fillMessage, type Brand, type Language, type MessageKey, type SessionUser } from '@staydirect/shared';
 import { DbService } from '../../common/db.service.js';
 import { RevalidateService } from '../../common/revalidate.service.js';
 import { FlagsService } from '../flags/flags.service.js';
@@ -76,14 +76,14 @@ export class BrandingService {
 
   /** Like shared t(), with admin overrides. Template-backed keys always use the approved default text. */
   async t(lang: Language | string, key: MessageKey, vars: Record<string, string | number> = {}): Promise<string> {
-    const l = (['en', 'de', 'fr', 'hi'].includes(lang) ? lang : 'en') as Language;
+    const l = ((LANGUAGES as readonly string[]).includes(lang) ? lang : 'en') as Language;
     const override = LOCKED_MESSAGE_KEYS.has(key) ? undefined : (await this.overrides()).get(`${l}:${key}`);
     return fillMessage(override ?? defaultMessage(l, key), vars);
   }
 
   /** Synchronous translator for one language with overrides preloaded (for building whole emails). */
   async translator(lang: Language | string): Promise<(key: MessageKey, vars?: Record<string, string | number>) => string> {
-    const l = (['en', 'de', 'fr', 'hi'].includes(lang) ? lang : 'en') as Language;
+    const l = ((LANGUAGES as readonly string[]).includes(lang) ? lang : 'en') as Language;
     const map = await this.overrides();
     return (key, vars = {}) => fillMessage((LOCKED_MESSAGE_KEYS.has(key) ? undefined : map.get(`${l}:${key}`)) ?? defaultMessage(l, key), vars);
   }
@@ -94,7 +94,7 @@ export class BrandingService {
       key,
       locked: LOCKED_MESSAGE_KEYS.has(key),
       values: Object.fromEntries(
-        (['en', 'de', 'fr', 'hi'] as Language[]).map((lang) => [lang, { default: defaultMessage(lang, key), override: map.get(`${lang}:${key}`) ?? null }]),
+        [...LANGUAGES].map((lang) => [lang, { default: defaultMessage(lang, key), override: map.get(`${lang}:${key}`) ?? null }]),
       ),
     }));
   }

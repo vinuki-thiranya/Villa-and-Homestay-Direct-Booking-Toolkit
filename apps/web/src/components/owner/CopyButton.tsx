@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { Check, Copy } from 'lucide-react';
+import { useT } from './I18n';
 
-export function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
+export function CopyButton({ text, label }: { text: string; label?: string }) {
   const [done, setDone] = useState(false);
+  const t = useT();
   return (
     <button
       type="button"
@@ -16,7 +18,7 @@ export function CopyButton({ text, label = 'Copy' }: { text: string; label?: str
       }}
     >
       {done ? <Check aria-hidden className="h-4 w-4 text-ok" /> : <Copy aria-hidden className="h-4 w-4" />}
-      <span aria-live="polite">{done ? 'Copied' : label}</span>
+      <span aria-live="polite">{done ? t('shared.copied') : (label ?? t('shared.copy'))}</span>
     </button>
   );
 }
