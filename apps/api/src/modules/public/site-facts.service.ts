@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { addDays, diffDays, isIsoDate, todayIn, type SiteCalendar } from '@staydirect/shared';
 import { DbService, type Row } from '../../common/db.service.js';
+import { RevalidateService } from '../../common/revalidate.service.js';
 
 const FACTS_TTL_MS = 10 * 60_000;
 const CALENDAR_TTL_MS = 60_000;
@@ -14,14 +15,23 @@ export class SiteFactsService {
   private factCache = new Map<string, { at: number; value: { average: number | null; count: number; responseMinutes: number | null } }>();
   private calendars = new Map<string, { at: number; value: SiteCalendar }>();
 
-  constructor(private readonly db: DbService) {}
+  constructor(
+    private readonly db: DbService,
+    @Optional() revalidate?: RevalidateService,
+  ) {
+    // A new review or changed nights must not wait out the cache: drop the property's entries.
+    revalidate?.onChange((propertyId) => {
+      this.factCache.delete(propertyId);
+      for (const key of this.calendars.keys()) if (key.startsWith(`${propertyId}:`)) this.calendars.delete(key);
+    });
+  }
 
   async facts(propertyId: string) {
     const hit = this.factCache.get(propertyId);
     if (hit && Date.now() - hit.at < FACTS_TTL_MS) return hit.value;
     const [reviews, reply] = await Promise.all([
       this.db.one<{ avg: number | null; n: number }>(
-        `select round(avg(rating)::numeric, 1) as avg, count(*)::int as n from review where property_id = $1 and public`,
+        `select round(avg(rating)::numeric, 1) as avg, count(*)::int as n from review where property_id = $1`, // every rating, not only published texts
         [propertyId],
       ),
       // Median time from a guest's message to the first human or AI answer after it; automatic

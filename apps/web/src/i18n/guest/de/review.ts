@@ -1,0 +1,35 @@
+import type { Dict } from '../t';
+import type { review as en } from '../en/review';
+
+export const review: Dict<typeof en> = {
+  metaTitle: 'Bewerten Sie Ihren Aufenthalt',
+  notFound: 'Bewertungslink nicht gefunden',
+  notFoundHint: 'Bitte nutzen Sie den Link aus Ihrer Check-out-Nachricht.',
+  loading: 'Wird geladen',
+  thanks: 'Vielen Dank, {name}!',
+  publicHint: 'Ihre Bewertung hilft anderen Reisenden, {property} zu entdecken.',
+  google: 'Bewerten Sie uns auch auf Google',
+  privateHint: 'Ihr Feedback ging vertraulich an den Gastgeber. Jede Nachricht wird gelesen, und vielleicht meldet sich der Gastgeber bei Ihnen, um es wiedergutzumachen.',
+  alsoGoogle: 'Gern können Sie Ihre Bewertung auch auf Google teilen.',
+  opensOn: 'Bewertungen ab {date} möglich',
+  opensHint: 'Ihr Aufenthalt: {from} bis {to}. Öffnen Sie diesen Link an Ihrem Abreisetag erneut.',
+  chooseStars: 'Bitte wählen Sie eine Sternebewertung.',
+  failed: 'Ihre Bewertung konnte nicht gesendet werden',
+  title: 'Wie war Ihr Aufenthalt bei {property}?',
+  dates: '{from} bis {to}',
+  yourRating: 'Ihre Bewertung',
+  rating: 'Bewertung',
+  starLabel_one: '{n} Stern, {label}',
+  starLabel_other: '{n} Sterne, {label}',
+  labels: {
+    poor: 'Schlecht',
+    fair: 'Mäßig',
+    good: 'Gut',
+    veryGood: 'Sehr gut',
+    excellent: 'Ausgezeichnet',
+  },
+  more: 'Erzählen Sie uns mehr',
+  optional: '(optional)',
+  send: 'Bewertung senden',
+  sending: 'Wird gesendet…',
+};

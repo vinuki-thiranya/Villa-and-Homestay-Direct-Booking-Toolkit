@@ -259,12 +259,13 @@ export class PropertiesService {
   removeIcalSource(user: SessionUser, sourceId: string) {
     return this.db.withTenant(user.tenantId, async (tx) => {
       // Release the nights this feed created, then drop the feed.
-      await this.db.query(
+      const released = await this.db.query<{ room_id: string }>(
         `update night_inventory set status = 'released', released_at = now()
-          where ical_source_id = $1 and status in ('reserved', 'blocked')`,
+          where ical_source_id = $1 and status in ('reserved', 'blocked') returning room_id`,
         [sourceId],
         tx,
       );
+      for (const roomId of new Set(released.map((r) => r.room_id))) this.revalidate.availability(roomId);
       const row = await this.db.one(`delete from ical_source where id = $1 returning id`, [sourceId], tx);
       if (!row) throw new NotFoundException('Calendar import not found');
       await this.audit(tx, user, 'ical_source.delete', 'ical_source', sourceId, null, null);

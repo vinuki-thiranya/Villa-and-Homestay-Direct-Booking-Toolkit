@@ -113,11 +113,11 @@ DTO interfaces for every public/owner endpoint, zod request schemas, and pure fu
 
 | Host | Rewrite to |
 |---|---|
-| `staydirect.lk`, `www.staydirect.lk` | marketing pages (`/`) |
-| `app.staydirect.lk` | `/owner/*` |
-| `{slug}.staydirect.lk` | `/s/{slug}/*` |
-| anything else (custom domain) | `/s/{host}/*` → page resolves `property.custom_domain = host` |
-| local dev | `villa-lagoon.localhost:3000` works natively; `/s/villa-lagoon` also reachable directly |
+| `staydirect.lk`, `www.staydirect.lk` | marketing: `/…` → `/m/en/…`, `/si/…` → `/m/si/…` |
+| `app.staydirect.lk`, `admin.staydirect.lk` | `/owner/*`, `/admin/*` (robots.txt disallows everything) |
+| `{slug}.staydirect.lk` | `/s/{slug}/{lang}/*`, language from the URL prefix (`/de/rooms`; English unprefixed) |
+| anything else (custom domain) | `/s/{host}/{lang}/*` → page resolves `property.custom_domain = host` |
+| local dev | `villa-lagoon.localhost:3000` works natively; `/s/villa-lagoon/…` also by path (internally `villa-lagoon~d`) |
 
 **Deployment:** Vercel Pro (wildcard `*.staydirect.lk` needs Pro; DNS on Cloudflare with
 `*.staydirect.lk CNAME cname.vercel-dns.com`, proxy off). Custom domains: owner adds a CNAME to
@@ -125,12 +125,15 @@ DTO interfaces for every public/owner endpoint, zod request schemas, and pure fu
 Cloudflare Pages is the fallback if Vercel Pro is not wanted (free wildcards via Workers routes).
 
 **Cache strategy for guest pages:**
-- Property data is fetched through Next's data cache (`revalidate: 300`, tags `site:{slug}` /
-  `site:{custom_domain}`); the API calls `/api/revalidate` on any owner edit, so changes show within seconds.
-  Phase 1 renders guest pages per request from that cache; full static prerendering per site (plus
-  `generateStaticParams` for live sites) is part of the Prompt 6 performance pass.
-- Availability and prices are never in the page HTML: the client calls the API, which caches a
-  search for 60 s keyed by (room set, dates, guests) and invalidates on any inventory write.
+- Indexable guest pages (home, rooms, room, location, things to do, contact) are rendered on their
+  first visit and then served from the cache (ISR; `generateStaticParams` returns `[]`). Property data
+  is fetched with tags `site:{slug}` / `site:{custom_domain}`; the API calls `/api/revalidate` after
+  owner edits, add-on and review changes, so pages update within seconds.
+- Pages read no cookies or headers. Prices are converted in the browser from the `sd_cur` cookie,
+  which proxy.ts sets on the first visit from the country (or browser region).
+- The date picker's closed nights come from `/api/calendar/{site}`, edge-cached per site and cleared
+  (`avail:{site}`) a few seconds after any night changes (`InventoryService` → `RevalidateService`).
+  Live quotes (`/availability`) stay uncached.
 - Images: Next `<Image>` with R2 origin, AVIF/WebP, max 150 KB; fonts self-hosted via `next/font`.
 - Checkout and confirmation pages are dynamic and `no-store`.
 
@@ -194,7 +197,7 @@ Built on branch `phase-2-concierge-ops`; schema in [0002_concierge_ops.sql](../a
 | House guide | `/guide/{guide_token}` — token-gated because it contains the Wi-Fi password; sent on arrival day. |
 | Housekeeping | Hourly job builds each property's board once local time passes 06:00 (clean for check-outs, prepare for check-ins incl. OTA arrivals), idempotent per day, then WhatsApps each cleaner a link to `/t/{token}` (no login). Maintenance tasks carry photos and cost. |
 | Add-ons | Catalogue per property, providers per tenant. Each order splits the amount into provider / owner (`commission_pct`, default 12.5%) / platform (`platform_pct`, default 10%) — a DB check makes the parts sum to the amount. The amount is added to the booking total (collected with the stay); cancelling reverses it. Providers get a WhatsApp job card linking to `/j/{token}`; the guest's phone is shown only after they accept. Monthly commission summary per currency. |
-| Reviews | Review link on check-out day. 4–5★ are public and invite the guest to Google; 1–3★ stay private and alert the owner. |
+| Reviews | Review link on check-out day. Every guest is offered the Google review link, whatever the rating ([Google's policy](https://support.google.com/contributionpolicy/answer/7400114) forbids asking only happy guests). 4–5★ texts are shown on the site; 1–3★ go privately to the owner first, who may publish them. The site's average and count (and JSON-LD `aggregateRating`) include every rating. |
 | Guest CRM | Guests per property with stays and spend; discount codes (manual, and an automatic personal "book direct next time" code ~11 months after a stay). Codes apply in availability quotes and at booking; uses are counted on confirmation. |
 | Owner app | Flutter (`apps/mobile`): Today (arrivals, departures, unpaid balances green/red, sync health), Tasks, Inbox with quick replies; every screen cached on the device for offline viewing; dark mode. |
 
@@ -249,3 +252,37 @@ Built on branch `phase-4-guest-site`; schema change in [0004_guest_site.sql](../
 | Holidays | `public_holiday` (platform data, no tenant): 2026–2027 public, bank and mercantile holidays seeded from the Central Bank list that follows Extraordinary Gazettes 2438/22 and 2493/05; Poya days marked. Admin console → Holidays to correct or add years. Owner calendar marks them; Today warns on Poya days (no alcohol sold or served). |
 | Not translated | API error messages beyond the common ones, PDFs (pdfkit cannot shape Sinhala conjuncts), owner WhatsApp alerts (need Meta-approved Sinhala templates). |
 | Guest sites | Sinhala is a guest-site language inside all three themes (`apps/web/src/i18n/guest/{en,si}`, `siteContext().t`, `useGT()`). The guest picks it with the සිං / EN button (cookie `sd_glang`); a browser set to Sinhala gets it by default. Only the font changes: serif themes fall back to Abhaya Libre, Surf to Noto Sans Sinhala; headings get more line height for the vowel signs. Sinhala is also a guest message language: emails and WhatsApp inside the 24-hour window are in Sinhala; WhatsApp templates fall back to English until Meta approves Sinhala versions (`APPROVED` in `templates.ts`). |
+
+## 10. Release 5 (Prompt 6) — SEO for every property site and the marketing site
+
+**Guest sites (every property, automatically)**
+- Five languages, each with its own URL: `/` (English, x-default), `/si`, `/de`, `/fr`, `/hi`. An
+  unprefixed URL goes to the guest's earlier choice (cookie) only; Accept-Language only offers a
+  "view in …" chip, as Google recommends. `<html lang>` is the page language.
+- Metadata from `lib/seo.ts`: title "{name} — {type} in {place} — book direct" (≤ 60), description
+  (≤ 155), canonical to the custom domain when set, hreflang for all five plus x-default, Open Graph
+  and Twitter cards from the gallery (1200 px through the site's image optimiser), Search Console
+  `google-site-verification` from the owner.
+- JSON-LD (`lib/jsonld.ts`): LodgingBusiness (@id, address, geo, map, amenities, rating, latest
+  reviews, rooms), HotelRoom with a nightly Offer, BreadcrumbList on every page.
+- `/sitemap.xml` per host (every indexable page × 5 languages with xhtml:link alternates, lastmod)
+  and `/robots.txt` (booking, guide and review links disallowed).
+- Local content (`site_content`): "how to get here" (Location), "things to do nearby" (Things to do,
+  formerly /experiences), "best time to visit" (home), plus translations of the property and room
+  descriptions. Owners write them, or draft all of it with one Claude call (`CONTENT_MODEL`,
+  structured output, prompt caching, 3 drafts a month, `ai_site_content` flag on Pro and up);
+  everything AI-written is a draft until the owner publishes it. Owner app: Setup → Google & local
+  guide.
+- Fonts: Sinhala (Abhaya Libre, Noto Sans Sinhala) and Devanagari (Noto Sans Devanagari) load only on
+  pages that contain those letters.
+
+**Marketing site (staydirect.lk, English and Sinhala)**
+- Home, pricing (plans from `PLAN_PRICING`, savings calculator), Booking.com commission alternative,
+  six area pages (Mirissa, Weligama, Ella, Arugam Bay, Kandy, Sigiriya), FAQ with FAQPage JSON-LD,
+  `/blog` with 12 guides for owners (Article JSON-LD), and an example case study that stays noindex
+  and out of the sitemap until a real pilot replaces it.
+- All static, from Markdown in `apps/web/content/marketing/{en,si}/`; facts are sourced and linked.
+
+**Launch:** `docs/seo-launch-checklist.md` (StayDirect once, each owner at launch, first backlink
+targets). Lighthouse reports: `docs/lighthouse/seo/` (guest site, en and de) and
+`docs/lighthouse/marketing/`.

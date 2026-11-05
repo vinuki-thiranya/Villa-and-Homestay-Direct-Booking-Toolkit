@@ -2,6 +2,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { addDays, nightsBetween } from '@staydirect/shared';
 import type pg from 'pg';
 import { DbService, isUniqueViolation } from '../../common/db.service.js';
+import { RevalidateService } from '../../common/revalidate.service.js';
 
 /** Thrown when the unique active-night index refuses a write. */
 export class NightsUnavailableError extends ConflictException {
@@ -23,10 +24,18 @@ export interface OccupiedNight {
  * The only code that writes night_inventory and hold. Every method takes the transaction client
  * of its caller: inventory changes never happen outside a transaction (CLAUDE.md rule 1).
  * Double sales are refused by uq_night_active; this service only translates that refusal.
+ * Every change also tells the guest site to refresh its cached availability calendar.
  */
 @Injectable()
 export class InventoryService {
-  constructor(private readonly db: DbService) {}
+  constructor(
+    private readonly db: DbService,
+    private readonly revalidate: RevalidateService,
+  ) {}
+
+  private changed(roomIds: Iterable<string>): void {
+    for (const id of new Set(roomIds)) this.revalidate.availability(id);
+  }
 
   /**
    * Release holds that have expired, optionally only those touching a room/date range.
@@ -49,12 +58,13 @@ export class InventoryService {
     );
     if (released.length === 0) return [];
     const holdIds = released.map((r) => r.id);
-    await this.db.query(
+    const nights = await this.db.query<{ room_id: string }>(
       `update night_inventory set status = 'released', released_at = now()
-        where hold_id = any($1::uuid[]) and status = 'held'`,
+        where hold_id = any($1::uuid[]) and status = 'held' returning room_id`,
       [holdIds],
       tx,
     );
+    this.changed(nights.map((n) => n.room_id));
     const abandoned = await this.db.query<{ id: string; tenant_id: string }>(
       `update booking set status = 'abandoned', updated_at = now()
         where id = any($1::uuid[]) and status = 'pending'
@@ -127,6 +137,7 @@ export class InventoryService {
       [booking.id],
       tx,
     );
+    this.changed([booking.room_id]);
     if (converted.length === nights.length) return true;
 
     const have = new Set(converted.map((r) => r.date as string));
@@ -151,13 +162,14 @@ export class InventoryService {
 
   /** Release every active night of a booking (cancel, decline, abandon). Optionally only from a date on. */
   async releaseBooking(tx: pg.PoolClient, bookingId: string, fromDate?: string): Promise<number> {
-    const rows = await this.db.query(
+    const rows = await this.db.query<{ room_id: string }>(
       `update night_inventory set status = 'released', released_at = now()
         where booking_id = $1 and status in ('held', 'reserved') ${fromDate ? 'and date >= $2' : ''}
-        returning id`,
+        returning room_id`,
       fromDate ? [bookingId, fromDate] : [bookingId],
       tx,
     );
+    this.changed(rows.map((r) => r.room_id));
     await this.db.query(
       `update hold set released_at = now() where booking_id = $1 and released_at is null and converted_at is null`,
       [bookingId],
@@ -182,6 +194,7 @@ export class InventoryService {
       [args.roomId, args.from, args.to],
       tx,
     );
+    if (rows.length) this.changed([args.roomId]);
     return rows.length;
   }
 
@@ -202,6 +215,7 @@ export class InventoryService {
           tx,
         ),
       );
+      this.changed([args.roomId]);
       return null;
     } catch (err) {
       if (!isUniqueViolation(err)) throw err;
@@ -223,6 +237,7 @@ export class InventoryService {
     args: { tenantId: string; roomId: string; bookingId: string; from: string; to: string; source: string },
   ): Promise<OccupiedNight[]> {
     const taken: OccupiedNight[] = [];
+    this.changed([args.roomId]);
     for (const date of nightsBetween(args.from, args.to)) {
       try {
         await this.withSavepoint(tx, () =>
@@ -248,12 +263,14 @@ export class InventoryService {
 
   async releaseOtaNights(tx: pg.PoolClient, ids: number[]): Promise<void> {
     if (ids.length === 0) return;
-    await this.db.query(
+    const rows = await this.db.query<{ room_id: string }>(
       `update night_inventory set status = 'released', released_at = now()
-        where id = any($1::bigint[]) and status in ('reserved', 'blocked') and ical_source_id is not null`,
+        where id = any($1::bigint[]) and status in ('reserved', 'blocked') and ical_source_id is not null
+        returning room_id`,
       [ids],
       tx,
     );
+    this.changed(rows.map((r) => r.room_id));
   }
 
   /**
@@ -343,6 +360,7 @@ export class InventoryService {
         [args.tenantId, args.roomId, args.dates, args.status, args.source, args.bookingId ?? null, args.holdId ?? null, args.note ?? null],
         tx,
       );
+      this.changed([args.roomId]);
     } catch (err) {
       if (isUniqueViolation(err)) throw new NightsUnavailableError(args.roomId, args.dates);
       throw err;

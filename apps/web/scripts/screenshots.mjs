@@ -5,7 +5,8 @@
  * confirmation. Doubles as the end-to-end smoke test in CI: any missing step fails the run.
  *
  *   WEB=http://localhost:3000 API=http://localhost:4000 OUT=./screenshots node scripts/screenshots.mjs
- *   LANG=si … (or GUEST_LANG=si) books in Sinhala; files are then named si-<theme>-<step>.jpg
+ *   GUEST_LANG=si|de|fr|hi … books in that language; files are then named <lang>-<theme>-<step>.jpg
+ *   (LANG=si works too)
  *
  * Needs the seeded demo (npm run db:seed), the API with OTP_DEV_CODE, and Chrome installed
  * (playwright-core drives the system Chrome; no browser download). Themes are switched with the
@@ -23,8 +24,10 @@ const OTP = process.env.OTP ?? '123456';
 const OUT = resolve(process.env.OUT ?? 'screenshots');
 const THEMES = (process.env.THEMES ?? 'lagoon,jungle,surf').split(',');
 // Guest site language. LANG is often a system locale (en_US.UTF-8), so only its first two letters count.
-const GUEST_LANG = (process.env.GUEST_LANG ?? process.env.LANG ?? 'en').slice(0, 2) === 'si' ? 'si' : 'en';
-const PREFIX = GUEST_LANG === 'si' ? 'si-' : '';
+const WANTED = (process.env.GUEST_LANG ?? process.env.LANG ?? 'en').slice(0, 2);
+const GUEST_LANG = ['si', 'de', 'fr', 'hi'].includes(WANTED) ? WANTED : 'en';
+const PREFIX = GUEST_LANG === 'en' ? '' : `${GUEST_LANG}-`;
+const LOCALES = { en: 'en-GB', si: 'si-LK', de: 'de-DE', fr: 'fr-FR', hi: 'hi-IN' };
 const langCookie = (ctx) => ctx.addCookies([{ name: 'sd_glang', value: GUEST_LANG, url: WEB }]);
 
 mkdirSync(OUT, { recursive: true });
@@ -68,7 +71,7 @@ const browser = await chromium.launch({ channel: process.env.CHROME_CHANNEL ?? '
 try {
   for (const [i, theme] of THEMES.entries()) {
     const q = `previewTheme=${theme}`;
-    const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2, colorScheme: 'light', locale: GUEST_LANG === 'si' ? 'si-LK' : 'en-GB' });
+    const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2, colorScheme: 'light', locale: LOCALES[GUEST_LANG] });
     await langCookie(ctx);
     const page = await ctx.newPage();
     const errors = [];

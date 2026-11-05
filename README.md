@@ -58,6 +58,12 @@ Demo logins (dev OTP `123456`): owner `0770000000` (Villa Lagoon, Pro, simulated
 The owner web and app also run in Sinhala: tap **සිං** in the owner header (or More → Language); the choice follows the user to the Flutter app.
 Set `ANTHROPIC_API_KEY` and switch the concierge on under *Setup → Concierge* to try it; without a key, guest messages land in the inbox only.
 
+Guest sites come in English, Sinhala, German, French and Hindi, each at its own URL: `villa-lagoon.localhost:3000/de/rooms`
+or `localhost:3000/s/villa-lagoon/hi`. The marketing site is at `localhost:3000/` and `localhost:3000/si`. Owners write
+(or draft with AI, which needs `ANTHROPIC_API_KEY`) the local guide and translations under *Setup → Google & local guide*;
+nothing is public until they publish it. SEO details: [docs/plan.md §10](docs/plan.md); launch steps:
+[docs/seo-launch-checklist.md](docs/seo-launch-checklist.md).
+
 ## Tests
 
 ```bash

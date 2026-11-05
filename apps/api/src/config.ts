@@ -38,6 +38,11 @@ const ConfigSchema = z.object({
   CONCIERGE_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
   /** Per property per month; spec §7 budgets about LKR 300 (≈ USD 1). */
   CONCIERGE_MONTHLY_BUDGET_USD: z.coerce.number().default(1),
+  /** Drafts the local guide blocks and site translations (owner app, Setup → Google & local guide). */
+  CONTENT_MODEL: z.string().default('claude-opus-5-5'),
+  CONTENT_EFFORT: z.enum(['low', 'medium', 'high']).default('medium'),
+  /** Drafts per property per month. */
+  CONTENT_GENERATIONS_PER_MONTH: z.coerce.number().int().default(3),
   PAYHERE_SANDBOX: bool,
   PAYPAL_SANDBOX: bool,
   R2_ACCOUNT_ID: z.string().optional().default(''),

@@ -49,6 +49,7 @@ const pages = [
   ['tasks', '/owner/tasks'],
   ['setup', '/owner/setup'],
   ['sync', '/owner/sync'],
+  ['local', '/owner/setup/local'],
   ['more', '/owner/more'],
 ];
 // UI words that must not survive on a Sinhala screen (data such as names and Booking.com may).

@@ -13,6 +13,7 @@ const TABS = [
   ['/owner/setup/staff', 'staff'],
   ['/owner/setup/add-ons', 'addOns'],
   ['/owner/setup/branding', 'branding'],
+  ['/owner/setup/local', 'local'],
 ] as const;
 
 export function SetupTabs() {

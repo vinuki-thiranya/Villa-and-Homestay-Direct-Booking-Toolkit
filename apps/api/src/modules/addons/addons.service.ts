@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { addDays, convertExact, formatMoney, fromMinor, pctOf, toMinor, todayIn, type SessionUser } from '@staydirect/shared';
 import type pg from 'pg';
+import { RevalidateService } from '../../common/revalidate.service.js';
 import { DbService, type Row } from '../../common/db.service.js';
 import { BookingsService } from '../bookings/bookings.service.js';
 import { FlagsService } from '../flags/flags.service.js';
@@ -95,6 +96,7 @@ export class AddOnsService {
     private readonly fx: FxService,
     private readonly whatsapp: WhatsAppChannel,
     private readonly notify: NotificationsService,
+    private readonly revalidate: RevalidateService,
   ) {}
 
   // ---------------------------------------------------------------- providers
@@ -162,6 +164,7 @@ export class AddOnsService {
         [user.tenantId, propertyId, ...params],
         tx,
       );
+      this.revalidate.property(propertyId);
       return toAddOn(row!, { owner: true });
     });
   }
@@ -174,6 +177,7 @@ export class AddOnsService {
       if (!row) throw new NotFoundException('Add-on not found');
       const c = Number(row.commission_pct) + Number(row.platform_pct);
       if (c > 60) throw new BadRequestException('Owner + platform share cannot exceed 60%');
+      this.revalidate.property(row.property_id);
       return toAddOn(row, { owner: true });
     });
   }

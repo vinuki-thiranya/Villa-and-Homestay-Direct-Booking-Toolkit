@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 /* Guest-site theme layouts; every rule is scoped to .g-site/[data-theme], so other apps are unaffected. */
-@import './s/[site]/guest.css';
+@import './s/[site]/[lang]/guest.css';
 
 /*
  * Design tokens. Guest sites pick a theme with data-theme on <html>/<div>
@@ -96,6 +96,62 @@
   /* Guest sites set --g-sans/--g-display from their theme (themes/registry.ts); elsewhere the system stacks. */
   --font-sans: var(--g-sans, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
   --font-display: var(--g-display, ui-serif, Georgia, 'Times New Roman', serif);
+}
+
+
+/*
+ * Fallbacks for systems without Arial / Times New Roman (Android, Linux, ChromeOS), which next/font's
+ * own fallbacks measure against. Liberation and Tinos/Arimo share Arial's and Times' metrics, Roboto
+ * is close to Arial: the same overrides keep text from re-wrapping when the theme font arrives.
+ * Values from next/font's generated '<Family> Fallback' faces; used in themes/fonts.ts FONT_STACK.
+ */
+@font-face {
+  font-family: 'Cormorant Fallback Open';
+  src: local('Liberation Serif'), local('Tinos');
+  ascent-override: 95.52%;
+  descent-override: 29.67%;
+  line-gap-override: 0%;
+  size-adjust: 96.74%;
+}
+@font-face {
+  font-family: 'Lora Fallback Open';
+  src: local('Liberation Serif'), local('Tinos');
+  ascent-override: 87.33%;
+  descent-override: 23.78%;
+  line-gap-override: 0%;
+  size-adjust: 115.2%;
+}
+@font-face {
+  font-family: 'Manrope Fallback Open';
+  src: local('Liberation Sans'), local('Arimo'), local('Roboto');
+  ascent-override: 103.31%;
+  descent-override: 29.07%;
+  line-gap-override: 0%;
+  size-adjust: 103.19%;
+}
+@font-face {
+  font-family: 'Work Sans Fallback Open';
+  src: local('Liberation Sans'), local('Arimo'), local('Roboto');
+  ascent-override: 83.09%;
+  descent-override: 21.71%;
+  line-gap-override: 0%;
+  size-adjust: 111.93%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback Open';
+  src: local('Liberation Sans'), local('Arimo'), local('Roboto');
+  ascent-override: 130.73%;
+  descent-override: 26.15%;
+  line-gap-override: 0%;
+  size-adjust: 76.49%;
+}
+@font-face {
+  font-family: 'Barlow Fallback Open';
+  src: local('Liberation Sans'), local('Arimo'), local('Roboto');
+  ascent-override: 103.43%;
+  descent-override: 20.69%;
+  line-gap-override: 0%;
+  size-adjust: 96.68%;
 }
 
 html {

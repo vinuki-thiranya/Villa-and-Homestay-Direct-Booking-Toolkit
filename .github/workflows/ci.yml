@@ -81,6 +81,15 @@ jobs:
         # Shared runners are slower and noisier than a phone-class lab: 85 guards against regressions;
         # the 95 target is checked locally (docs/lighthouse/).
         run: WEB=http://localhost:3100 OUT=../../ci-lighthouse MIN_PERF=85 RUNS=3 node scripts/lighthouse.mjs
+      - name: Lighthouse, SEO pages and the marketing site
+        working-directory: apps/web
+        run: WEB=http://localhost:3100 OUT=../../ci-lighthouse/seo SET=seo MIN_PERF=85 RUNS=1 node scripts/lighthouse.mjs && WEB=http://localhost:3100 OUT=../../ci-lighthouse/marketing SET=marketing MIN_PERF=85 RUNS=1 node scripts/lighthouse.mjs
+      - name: Sitemap, robots and hreflang
+        run: |
+          curl -sf -H 'Host: villa-lagoon.localhost:3100' localhost:3100/sitemap.xml | grep -q 'hreflang="hi"'
+          curl -sf -H 'Host: villa-lagoon.localhost:3100' localhost:3100/robots.txt | grep -q 'Disallow: /booking/'
+          curl -sf -H 'Host: villa-lagoon.localhost:3100' localhost:3100/de/rooms | grep -q 'hrefLang="x-default"'
+          curl -sf localhost:3100/sitemap.xml | grep -q '/si/blog/'
       - if: always()
         uses: actions/upload-artifact@v4
         with:

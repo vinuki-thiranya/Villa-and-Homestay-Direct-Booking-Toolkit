@@ -72,6 +72,29 @@ export interface PublicProperty {
   brand: { displayName: string; logoUrl: string | null; primaryColor: string | null; accentColor: string | null } | null;
   /** CSS variable values from the admin theme editor for this property's theme. */
   themeTokens: Record<string, string> | null;
+  /** Search Console HTML-tag verification code, entered by the owner. */
+  googleSiteVerification: string | null;
+  /** The property's Google Maps / review link (JSON-LD sameAs). */
+  googleReviewUrl: string | null;
+  /**
+   * Published local content and translations, content[lang][key]. Keys: getting_here,
+   * things_to_do, best_time, description, room:{roomId}. Drafts never appear here.
+   */
+  content: SiteContentMap;
+  /** Last change to the site's data (sitemap lastmod). */
+  updatedAt: string;
+}
+
+export type SiteContentMap = Partial<Record<string, Record<string, string>>>;
+
+/** One block of site content in one language, as the owner app edits it. */
+export interface SiteContentRow {
+  key: string;
+  lang: string;
+  body: string;
+  status: 'draft' | 'published';
+  source: 'ai' | 'owner';
+  updatedAt: string;
 }
 
 /** A Sri Lankan public holiday (Poya days marked), for owner calendars. */

@@ -19,7 +19,7 @@ interface ReviewContext {
 
 const LABELS = ['', 'poor', 'fair', 'good', 'veryGood', 'excellent'] as const;
 
-/** Post-stay review (spec §3.8): 4–5★ are published and invited to Google, 1–3★ go privately to the host. */
+/** Post-stay review (spec §3.8): every guest is invited to Google; 4–5★ are also shown on the site, 1–3★ go privately to the host first. */
 export function ReviewForm({ reference, token }: { reference: string; token: string }) {
   const t = useGT();
   const label = (n: number) => (n ? t(`review.labels.${LABELS[n]!}` as 'review.labels.poor') : '');
@@ -54,16 +54,17 @@ export function ReviewForm({ reference, token }: { reference: string; token: str
         <CheckCircle2 aria-hidden className="h-10 w-10 text-ok" />
         <h1 className="font-display text-2xl font-semibold">{t('review.thanks', { name: ctx.guestName.split(' ')[0]! })}</h1>
         {finished.public ? (
-          <>
-            <p className="text-muted">{t('review.publicHint', { property: ctx.propertyName })}</p>
-            {finished.googleReviewUrl && (
-              <a href={finished.googleReviewUrl} target="_blank" rel="noopener noreferrer" className="btn-primary">
-                {t('review.google')}
-              </a>
-            )}
-          </>
+          <p className="text-muted">{t('review.publicHint', { property: ctx.propertyName })}</p>
         ) : (
-          <p className="text-muted">{t('review.privateHint')}</p>
+          <p className="text-muted">
+            {t('review.privateHint')} {finished.googleReviewUrl && t('review.alsoGoogle')}
+          </p>
+        )}
+        {/* Offered to every guest, whatever the rating: Google does not allow asking only happy guests. */}
+        {finished.googleReviewUrl && (
+          <a href={finished.googleReviewUrl} target="_blank" rel="noopener noreferrer" className="btn-primary">
+            {t('review.google')}
+          </a>
         )}
       </div>
     );

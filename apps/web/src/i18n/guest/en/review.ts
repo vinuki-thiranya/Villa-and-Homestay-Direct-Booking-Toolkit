@@ -8,6 +8,7 @@ export const review = {
   publicHint: 'Your review will help other travellers find {property}.',
   google: 'Also review us on Google',
   privateHint: 'Your feedback went privately to the host. They read every message and may get in touch to make it right.',
+  alsoGoogle: 'You are welcome to share your review on Google too.',
   opensOn: 'Reviews open on {date}',
   opensHint: 'Your stay: {from} to {to}. Come back to this link on your check-out day.',
   chooseStars: 'Choose a star rating.',

@@ -37,6 +37,7 @@ export const home: Dict<typeof en> = {
   welcome: '{name} වෙත සාදරයෙන් පිළිගනිමු',
   howToGet: '{place} වෙත එන ආකාරය',
   howToGetUs: 'අප වෙත එන ආකාරය',
+  bestTime: '{place} වෙත යාමට හොඳම කාලය',
   theRoom: 'කාමරය',
   rooms: 'කාමර',
   seeAllRooms: 'කාමර {n} ම බලන්න',

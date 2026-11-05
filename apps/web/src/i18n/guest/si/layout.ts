@@ -8,6 +8,7 @@ export const layout: Dict<typeof en> = {
   menu: 'මෙනුව',
   rooms: 'කාමර',
   experiences: 'අත්දැකීම්',
+  thingsToDo: 'අවට කළ හැකි දේ',
   location: 'ස්ථානය',
   contact: 'සම්බන්ධ වන්න',
   book: 'වෙන් කරන්න',

@@ -13,6 +13,7 @@ export const setup: Dict<typeof en> = {
     staff: 'කාර්ය මණ්ඩලය',
     addOns: 'අමතර සේවා',
     branding: 'සන්නාමය',
+    local: 'Google හා ප්‍රදේශය',
   },
   rooms: {
     name: 'කාමරයේ නම',

@@ -1,25 +1,31 @@
 import type { PublicProperty } from '@staydirect/shared';
 import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { lang as rootLang, site as rootSite } from 'next/root-params';
 import { cache } from 'react';
 import { isGuestLang, makeGuestT, type GuestLang, type GuestTranslator } from '@/i18n/guest/t';
 import { FONT_STACK } from '@/themes/fonts';
 import { isThemeKey, themeCss, THEMES, type GuestTheme } from '@/themes/registry';
 import { getSite } from './api';
 import { isCurrency, type Currency } from './format';
-import { guessCurrency } from './guest-locale';
+import { defaultCurrency, guessCurrency } from './guest-locale';
+import { langPrefix, parseSiteParam, previewAllowed } from './site-routing';
 
 export const CURRENCY_COOKIE = 'sd_cur';
-/** The guest's chosen site language (en | si). */
+/** The guest's chosen site language; proxy.ts sends an unprefixed URL to it. */
 export const GUEST_LANG_COOKIE = 'sd_glang';
-/** Set by proxy.ts from ?previewTheme= (dev, or ALLOW_THEME_PREVIEW=1), for screenshots of every theme. */
-export const PREVIEW_THEME_HEADER = 'x-sd-preview-theme';
 
 export interface SiteContext {
   property: PublicProperty;
-  /** Prefix for internal links: '' on a subdomain/custom domain, '/s/{site}' when path-routed (dev). */
+  /**
+   * Prefix for internal links in this language: '' or '/de' on a subdomain/custom domain,
+   * '/s/{site}' or '/s/{site}/de' when path-routed (dev, preview deployments).
+   */
   base: string;
-  currency: Currency;
+  /** `base` without the language: the site root, for links to the same page in another language. */
+  root: string;
+  /** The guest's display currency, from the URL variant proxy.ts adds (cookie or country), else the language's usual one. */
+  defaultCurrency: Currency;
   siteKey: string;
   theme: GuestTheme;
   lang: GuestLang;
@@ -27,45 +33,64 @@ export interface SiteContext {
   t: GuestTranslator;
 }
 
-/** The guest's site language: their choice (cookie), else a browser set to Sinhala, else English. */
+/**
+ * The page's language, from the URL (`/s/[site]/[lang]`, filled in by proxy.ts). Pages read no
+ * cookies or headers, so every indexable guest page can be rendered once and cached (ISR).
+ */
 export const guestLang = cache(async (): Promise<GuestLang> => {
-  const lc = (await cookies()).get(GUEST_LANG_COOKIE)?.value;
-  if (isGuestLang(lc)) return lc;
-  return /^si\b/i.test((await headers()).get('accept-language') ?? '') ? 'si' : 'en';
+  const l = await rootLang();
+  if (!isGuestLang(l)) notFound();
+  return l;
 });
 
-/** Guest translator for server components that have no site key (shared pieces, not-found). */
+/** Guest translator for server components below the guest root layout (Hero, RoomCard, not-found). */
 export async function guestT(): Promise<GuestTranslator> {
   return makeGuestT(await guestLang());
 }
 
-/** Per-request site context; memoised so layout and page share one fetch. */
-export const siteContext = cache(async (rawSite: string): Promise<SiteContext> => {
-  const site = decodeURIComponent(rawSite);
-  const property = await getSite(site);
+/** The site and its context for this page; memoised so layout, metadata and page share one fetch. */
+export const siteContext = cache(async (): Promise<SiteContext> => {
+  const raw = await rootSite();
+  if (!raw) notFound();
+  const { site, preview, direct, currency } = parseSiteParam(raw);
+  const [property, lang] = await Promise.all([getSite(site), guestLang()]);
   if (!property) notFound();
-  const h = await headers();
-  const base = h.get('x-sd-base') === '' ? '' : `/s/${encodeURIComponent(site)}`;
-  const jar = await cookies();
-  const c = jar.get(CURRENCY_COOKIE)?.value;
-  const lang = await guestLang();
-  const currency: Currency = isCurrency(c) ? c : (guessCurrency(h) ?? (isCurrency(property.baseCurrency) ? property.baseCurrency : 'USD'));
-  // proxy.ts only sets the header when previews are allowed and strips any copy sent by the client.
-  const preview = h.get(PREVIEW_THEME_HEADER);
-  const key = isThemeKey(preview) ? preview : isThemeKey(property.theme) ? property.theme : 'lagoon';
-  return { property, base, currency, siteKey: site, theme: THEMES[key], lang, t: makeGuestT(lang) };
+  const root = direct ? `/s/${encodeURIComponent(site)}` : '';
+  const key = preview && previewAllowed() && isThemeKey(preview) ? preview : isThemeKey(property.theme) ? property.theme : 'lagoon';
+  return {
+    property,
+    base: root + langPrefix(lang),
+    root,
+    defaultCurrency: isCurrency(currency) ? currency : defaultCurrency(lang),
+    siteKey: site,
+    theme: THEMES[key],
+    lang,
+    t: makeGuestT(lang),
+  };
 });
+
+/**
+ * The guest's currency on the dynamic pages (book, booking): their choice, else a guess from the
+ * country or browser region, else the language's default. Indexable pages use <Price> instead.
+ */
+export async function guestCurrency(): Promise<Currency> {
+  const c = (await cookies()).get(CURRENCY_COOKIE)?.value;
+  if (isCurrency(c)) return c;
+  return guessCurrency(await headers()) ?? defaultCurrency(await guestLang());
+}
+
+/**
+ * Owner content in the page's language: the published translation, else the English block, else the
+ * owner's original text (`fallback`). Drafts never reach the site (the API sends published rows only).
+ */
+export function siteText(p: PublicProperty, lang: GuestLang, key: string, fallback = ''): string {
+  return p.content[lang]?.[key] ?? p.content.en?.[key] ?? fallback;
+}
 
 /** Lowest base rate across rooms, for "from" prices. */
 export function fromRate(p: PublicProperty): number | null {
   const rates = p.rooms.map((r) => r.baseRate);
   return rates.length ? Math.min(...rates) : null;
-}
-
-export function canonicalUrl(p: PublicProperty, path = ''): string {
-  const root = process.env.ROOT_DOMAIN ?? 'staydirect.lk';
-  const host = p.customDomain ?? `${p.slug}.${root}`;
-  return `https://${host}${path}`;
 }
 
 /**

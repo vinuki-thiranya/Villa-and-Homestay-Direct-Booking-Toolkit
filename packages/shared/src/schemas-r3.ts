@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FEATURE_FLAGS, HOLIDAY_TYPES, INVITE_ROLES, LANGUAGES, OWNER_LANGUAGES, PLANS, THEME_FONTS, TICKET_STATUSES, UTILITY_METERS } from './enums.js';
+import { FEATURE_FLAGS, HOLIDAY_TYPES, INVITE_ROLES, LANGUAGES, OWNER_LANGUAGES, PLANS, SITE_LANGUAGES, THEME_FONTS, TICKET_STATUSES, UTILITY_METERS } from './enums.js';
 import { isoDate, normalizePhone, phone } from './schemas.js';
 
 const intlPhone = z.string().min(6).max(20).transform((p) => normalizePhone(p)).pipe(phone);
@@ -157,3 +157,35 @@ export const TranslationSchema = z.object({
 });
 export const BillingRunSchema = z.object({ period });
 export const LedgerPaidSchema = z.object({ note: z.string().max(300).default('') });
+
+// ---------------------------------------------------------------- SEO: local content, Search Console
+const siteContentKey = z.string().regex(/^(getting_here|things_to_do|best_time|description|room:[0-9a-f-]{36})$/, 'Unknown content block');
+const siteLang = z.enum(SITE_LANGUAGES);
+
+/** Owner edit of one block in one language. Editing keeps its status unless `publish` says otherwise. */
+export const SiteContentUpsertSchema = z.object({
+  key: siteContentKey,
+  lang: siteLang,
+  body: z.string().trim().min(1).max(6000),
+  publish: z.boolean().optional(),
+});
+
+/** Publish or unpublish blocks: every row of the property when `keys`/`langs` are left out. */
+export const SiteContentStatusSchema = z.object({
+  keys: z.array(siteContentKey).max(200).optional(),
+  langs: z.array(siteLang).max(5).optional(),
+  status: z.enum(['draft', 'published']),
+});
+
+/** Draft the local blocks and translations with AI. `overwrite` replaces earlier AI text (never the owner's own). */
+export const SiteContentGenerateSchema = z.object({ overwrite: z.boolean().default(false) });
+
+/** Search Console "HTML tag" code: the content="…" value, or the whole tag pasted. Null removes it. */
+export const SiteVerificationSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .transform((v) => /content="([^"]+)"/.exec(v)?.[1] ?? v)
+    .pipe(z.string().regex(/^[A-Za-z0-9_-]{10,100}$/, 'Paste the code from Search Console'))
+    .nullable(),
+});

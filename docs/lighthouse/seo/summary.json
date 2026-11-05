@@ -1,0 +1,119 @@
+{
+  "site": "villa-lagoon",
+  "at": "2026-11-05T05:27:47.615Z",
+  "min": {
+    "performance": 85,
+    "accessibility": 100,
+    "best-practices": 95
+  },
+  "rows": [
+    {
+      "page": "en-home",
+      "runs": [
+        87,
+        90,
+        93
+      ],
+      "performance": 90,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 3334,
+      "fcpMs": 1525,
+      "cls": 0,
+      "totalKb": 363,
+      "largestImageKb": 24,
+      "heavyImages": []
+    },
+    {
+      "page": "en-room",
+      "runs": [
+        94,
+        94,
+        94
+      ],
+      "performance": 94,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 3014,
+      "fcpMs": 1517,
+      "cls": 0,
+      "totalKb": 319,
+      "largestImageKb": 24,
+      "heavyImages": []
+    },
+    {
+      "page": "en-location",
+      "runs": [
+        94,
+        94,
+        95
+      ],
+      "performance": 94,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 2900,
+      "fcpMs": 1520,
+      "cls": 0.012,
+      "totalKb": 825,
+      "largestImageKb": 23,
+      "heavyImages": []
+    },
+    {
+      "page": "de-home",
+      "runs": [
+        90,
+        92,
+        93
+      ],
+      "performance": 92,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 3264,
+      "fcpMs": 1516,
+      "cls": 0,
+      "totalKb": 364,
+      "largestImageKb": 24,
+      "heavyImages": []
+    },
+    {
+      "page": "de-room",
+      "runs": [
+        94,
+        95,
+        97
+      ],
+      "performance": 95,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 2790,
+      "fcpMs": 1517,
+      "cls": 0,
+      "totalKb": 320,
+      "largestImageKb": 24,
+      "heavyImages": []
+    },
+    {
+      "page": "de-location",
+      "runs": [
+        63,
+        93,
+        95
+      ],
+      "performance": 93,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "lcpMs": 2956,
+      "fcpMs": 1544,
+      "cls": 0,
+      "totalKb": 752,
+      "largestImageKb": 23,
+      "heavyImages": []
+    }
+  ]
+}

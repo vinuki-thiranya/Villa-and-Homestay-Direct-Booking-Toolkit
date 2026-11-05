@@ -2,6 +2,10 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Several root layouts (guest sites, marketing, owner, admin, staff links): one 404 for unmatched URLs.
+  experimental: { globalNotFound: true },
+  // Marketing Markdown is read at build time; ship it too in case a page is ever rendered on demand.
+  outputFileTracingIncludes: { '/m/**': ['./content/marketing/**/*'] },
   images: {
     formats: ['image/avif', 'image/webp'],
     // 60 for guest-site photos (AVIF holds up well and keeps every image far under 150 KB), 75 elsewhere.

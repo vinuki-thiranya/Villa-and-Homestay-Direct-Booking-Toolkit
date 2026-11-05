@@ -23,5 +23,6 @@ import { login } from './login';
 import { property } from './property';
 import { brand } from './brand';
 import { documents } from './documents';
+import { local } from './local';
 
-export const en = { common, nav, shared, today, bookings, calendar, conflicts, guests, inbox, tasks, reviews, sync, actions, setup, addons, billing, owners, portfolio, support, team, more, login, property, brand, documents };
+export const en = { common, nav, shared, today, bookings, calendar, conflicts, guests, inbox, tasks, reviews, sync, actions, setup, addons, billing, owners, portfolio, support, team, more, login, property, brand, documents, local };

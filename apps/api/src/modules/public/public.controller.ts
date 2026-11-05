@@ -30,6 +30,7 @@ import { FxService } from '../fx/fx.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
 import { CatalogService } from '../properties/catalog.service.js';
 import { enabledMethods, toPublicRoom } from '../properties/mappers.js';
+import { SeoContentService } from '../seo/seo-content.service.js';
 import { SiteFactsService } from './site-facts.service.js';
 
 const SlipSchema = z.object({ token: z.string().min(16), method: z.enum(['bank', 'lankaqr']) });
@@ -45,6 +46,7 @@ export class PublicController {
     private readonly fx: FxService,
     private readonly branding: BrandingService,
     private readonly siteFacts: SiteFactsService,
+    private readonly seo: SeoContentService,
   ) {}
 
   @Get('sites/:site')
@@ -54,7 +56,7 @@ export class PublicController {
     if (!p) throw new NotFoundException('Property not found');
     const bundle = (await this.catalog.bundle(p.id))!;
     const cfg = this.catalog.gatewayConfig(p);
-    const [brand, facts] = await Promise.all([this.branding.forTenant(p.tenant_id), this.siteFacts.facts(p.id)]);
+    const [brand, facts, published] = await Promise.all([this.branding.forTenant(p.tenant_id), this.siteFacts.facts(p.id), this.seo.published(p.id)]);
     return {
       id: p.id,
       slug: p.slug,
@@ -93,6 +95,10 @@ export class PublicController {
         ? { displayName: brand.displayName, logoUrl: brand.logoUrl, primaryColor: brand.primaryColor, accentColor: brand.accentColor }
         : null,
       themeTokens: await this.branding.themeTokens(p.theme),
+      googleSiteVerification: p.google_site_verification ?? null,
+      googleReviewUrl: p.google_review_url ?? null,
+      content: published.content,
+      updatedAt: [new Date(p.updated_at).toISOString(), published.updatedAt].filter(Boolean).sort().at(-1)!,
     };
   }
 
