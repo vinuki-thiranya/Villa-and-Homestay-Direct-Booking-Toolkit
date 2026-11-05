@@ -40,7 +40,14 @@ export function proxy(request: NextRequest) {
 
   if (host.endsWith('.localhost')) return guest(request, host.slice(0, -'.localhost'.length), pathname, false);
 
-  if (host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`) return marketing(request, pathname);
+  if (host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`) {
+    // Links that work by path in dev (/owner/login, /s/villa-lagoon) go to their own hosts here.
+    const app = /^\/(owner|admin)(\/.*)?$/.exec(pathname);
+    if (app) return NextResponse.redirect(`https://${app[1] === 'owner' ? OWNER_HOST : ADMIN_HOST}${app[2] ?? '/'}`, 307);
+    const site = /^\/s\/([a-z0-9-]+)(\/.*)?$/.exec(pathname);
+    if (site) return NextResponse.redirect(`https://${site[1]}.${ROOT_DOMAIN}${site[2] ?? '/'}`, 307);
+    return marketing(request, pathname);
+  }
 
   if (host === OWNER_HOST || host === ADMIN_HOST) {
     const app = host === OWNER_HOST ? '/owner' : '/admin';

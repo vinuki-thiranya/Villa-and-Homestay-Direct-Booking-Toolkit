@@ -244,17 +244,18 @@
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 
-  /* ---------------------------------------------------------------- Sinhala (any theme)
-   * Only the font changes (themes/fonts.ts falls back per glyph). Sinhala vowel signs sit above and
-   * below the letters, so the tight display leading of each theme would clip them: open it up. */
-  .g-site[lang='si'] {
+  /* ---------------------------------------------------------------- Sinhala and Hindi (any theme)
+   * Only the font changes (themes/fonts.ts falls back per glyph). Sinhala and Devanagari vowel signs
+   * sit above and below the letters, so the tight display leading of each theme would clip them: open
+   * it up. The page language is on <html lang>. */
+  :is(html[lang='si'], html[lang='hi']) .g-site {
     line-height: 1.7;
   }
-  .g-site[lang='si'] :is(.g-name, .g-display, h1, h2, h3) {
+  :is(html[lang='si'], html[lang='hi']) .g-site :is(.g-name, .g-display, h1, h2, h3) {
     line-height: 1.3;
     letter-spacing: 0;
   }
-  [data-theme='surf'][lang='si'] .g-name {
+  :is(html[lang='si'], html[lang='hi']) [data-theme='surf'] .g-name {
     font-size: clamp(2.6rem, 12vw, 6rem);
   }
 

@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PUBLIC_REVIEW_MIN_RATING, type SessionUser } from '@staydirect/shared';
+import { RevalidateService } from '../../common/revalidate.service.js';
 import { DbService, isUniqueViolation, type Row } from '../../common/db.service.js';
 import { BookingsService } from '../bookings/bookings.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -43,6 +44,7 @@ export class GuestsService {
     private readonly bookings: BookingsService,
     private readonly catalog: CatalogService,
     private readonly notify: NotificationsService,
+    private readonly revalidate: RevalidateService,
   ) {}
 
   // ---------------------------------------------------------------- CRM
@@ -206,6 +208,7 @@ export class GuestsService {
       if (isUniqueViolation(err)) throw new ConflictException('You already reviewed this stay. Thank you!');
       throw err;
     }
+    if (isPublic) this.revalidate.property(b.property_id);
     const p = (await this.db.one(`select google_review_url from property where id = $1`, [b.property_id]))!;
     this.notify.run(
       this.notify.ownerAlert(
@@ -233,11 +236,12 @@ export class GuestsService {
   replyReview(user: SessionUser, reviewId: string, input: { reply: string; public?: boolean }) {
     return this.db.withTenant(user.tenantId, async (tx) => {
       const r = await this.db.one(
-        `update review set owner_reply = $2, public = coalesce($3, public) where id = $1 returning id`,
+        `update review set owner_reply = $2, public = coalesce($3, public) where id = $1 returning id, property_id`,
         [reviewId, input.reply, input.public ?? null],
         tx,
       );
       if (!r) throw new NotFoundException('Review not found');
+      this.revalidate.property(r.property_id);
       return { ok: true };
     });
   }

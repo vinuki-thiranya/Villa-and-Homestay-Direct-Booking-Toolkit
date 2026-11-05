@@ -6,7 +6,6 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import type { SiteCalendar } from '@staydirect/shared';
 import { addDaysIso, monthGrid, monthsFrom, nightsIso, pick, selectable, type Range } from '@/lib/calendar';
-import { publicApi } from '@/lib/client-api';
 import { GuestMotion } from './GuestMotion';
 import { useGT } from './GuestI18n';
 
@@ -18,8 +17,10 @@ const closedCache = new Map<string, Promise<Set<string>>>();
 function loadClosed(site: string, today: string): Promise<Set<string>> {
   let p = closedCache.get(site);
   if (!p) {
-    p = publicApi<SiteCalendar>(`/public/sites/${encodeURIComponent(site)}/calendar?from=${today}&to=${addDaysIso(today, 366)}`)
-      .then((c) => new Set(c.closed))
+    // Same-origin and edge-cached (app/api/calendar/[site]); the API drops the cache when nights change.
+    p = fetch(`/api/calendar/${encodeURIComponent(site)}`)
+      .then((r) => (r.ok ? (r.json() as Promise<SiteCalendar>) : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((c) => new Set(c.closed.filter((d) => d >= today)))
       .catch(() => new Set<string>()); // the booking step still checks availability
     closedCache.set(site, p);
   }

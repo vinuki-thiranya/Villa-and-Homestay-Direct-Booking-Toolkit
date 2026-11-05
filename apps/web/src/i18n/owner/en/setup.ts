@@ -11,6 +11,7 @@ export const setup = {
     staff: 'Staff',
     addOns: 'Add-ons',
     branding: 'Branding',
+    local: 'Google & local guide',
   },
   // rooms
   rooms: {
